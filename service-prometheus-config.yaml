@@ -1,0 +1,155 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+scrape_configs:
+  # ============ INFRASTRUCTURE ============
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Proxmox Host OS
+  - job_name: 'proxmox-node'
+    static_configs:
+      - targets: ['192.168.0.151:9100']
+        labels:
+          instance: 'proxmox-host'
+
+  # Proxmox VE API (LXC/VM stats)
+  - job_name: 'proxmox-pve'
+    static_configs:
+      - targets: ['192.168.0.151:9221']
+    metrics_path: /pve
+    params:
+      target: ['localhost']
+
+  # Docker containers via cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # ============ LXC CONTAINERS ============
+
+  - job_name: 'lxc-containers'
+    static_configs:
+      - targets: ['192.168.0.11:9100']
+        labels: {container: 'adguard', vmid: '101'}
+      - targets: ['192.168.0.13:9100']
+        labels: {container: 'emby', vmid: '102'}
+      - targets: ['192.168.0.45:9100']
+        labels: {container: 'syncthing', vmid: '103'}
+      - targets: ['192.168.0.176:9100']
+        labels: {container: 'samba', vmid: '104'}
+      - targets: ['192.168.0.207:9100']
+        labels: {container: 'unmanic', vmid: '105'}
+      - targets: ['192.168.0.42:9100']
+        labels: {container: 'radarr', vmid: '107'}
+      - targets: ['192.168.0.153:9100']
+        labels: {container: 'zwave-js-ui', vmid: '108'}
+      - targets: ['192.168.0.51:9100']
+        labels: {container: 'tdarr', vmid: '109'}
+      - targets: ['192.168.0.24:9100']
+        labels: {container: 'sonarr', vmid: '110'}
+      - targets: ['192.168.0.209:9100']
+        labels: {container: 'urbackup', vmid: '111'}
+      - targets: ['192.168.0.30:9100']
+        labels: {container: 'nginxproxymanager', vmid: '112'}
+      - targets: ['192.168.0.43:9100']
+        labels: {container: 'jellyseerr', vmid: '113'}
+      - targets: ['192.168.0.44:9100']
+        labels: {container: 'uptimekuma', vmid: '114'}
+      - targets: ['192.168.0.48:9100']
+        labels: {container: 'bazarr', vmid: '115'}
+      - targets: ['192.168.0.57:9100']
+        labels: {container: 'wikijs', vmid: '117'}
+      - targets: ['192.168.0.70:9100']
+        labels: {container: 'homepage', vmid: '118'}
+      - targets: ['192.168.0.96:9100']
+        labels: {container: 'notifiarr', vmid: '121'}
+      - targets: ['192.168.0.180:9100']
+        labels: {container: 'claude-ai', vmid: '124'}
+      - targets: ['192.168.0.179:9100']
+        labels: {container: 'komodo', vmid: '128'}
+      - targets: ['192.168.0.175:9100']
+        labels: {container: 'pulse', vmid: '120'}
+
+  # ============ SERVICES (Native) ============
+
+  - job_name: 'frigate'
+    static_configs:
+      - targets: ['192.168.0.179:5000']
+        labels: {instance: 'frigate-docker'}
+    metrics_path: /api/metrics
+
+  # ============ BLACKBOX PROBES ============
+
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          # Infrastructure
+          - https://192.168.0.151:8006
+          - http://192.168.0.11:80
+          - http://192.168.0.30:81
+          - http://192.168.0.44:3001
+          - http://192.168.0.70:3000
+          # Media
+          - http://192.168.0.13:8096
+          - http://192.168.0.42:7878
+          - http://192.168.0.24:8989
+          - http://192.168.0.48:6767
+          - http://192.168.0.43:5055
+          - http://192.168.0.51:8265
+          # Komodo Docker services
+          - http://192.168.0.179:9120
+          - http://192.168.0.179:3001
+          - http://192.168.0.179:2283
+          - http://192.168.0.179:5000
+          - http://192.168.0.179:8010
+          - http://192.168.0.179:8070
+          - http://192.168.0.179:8090
+          - http://192.168.0.179:8095
+          - http://192.168.0.179:3214
+          - http://192.168.0.179:9925
+          # Other LXCs
+          - http://192.168.0.45:8384
+          - http://192.168.0.57:3000
+          - http://192.168.0.153:8091
+          - http://192.168.0.175:7655
+          - http://192.168.0.209:55414
+          - http://192.168.0.96:5454
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: 'blackbox-tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - 192.168.0.176:445
+          - 192.168.0.179:22
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

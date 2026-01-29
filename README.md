@@ -62,6 +62,21 @@ Official documentation for the Proxmox-based homelab infrastructure.
 
 ---
 
+## System Inventory
+
+**[system-inventory.json](system-inventory.json)** - Auto-generated hourly snapshot of system state.
+
+Contains:
+- All LXC containers (CTID, name, IP, status, resources)
+- All Docker containers and stacks
+- Storage pools and usage
+- Network bridges
+- Host metrics
+
+Commits to git only when meaningful changes detected (new containers, IP changes, status changes).
+
+---
+
 ## Quick Reference
 
 ### Key IPs

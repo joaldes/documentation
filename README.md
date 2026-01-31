@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-01-28
+**Last Updated**: 2026-01-30
 
 ---
 
@@ -26,6 +26,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [unmanic-config.md](services/unmanic-config.md) | Unmanic transcoding service |
 | [prometheus-config.yaml](services/prometheus-config.yaml) | Prometheus scrape configuration |
 | [homeassistant-mcp-integration.md](services/homeassistant-mcp-integration.md) | Home Assistant MCP integration for Claude |
+| [rtl433-honeywell-setup.md](services/rtl433-honeywell-setup.md) | RTL-433 SDR + Honeywell 5800 sensor integration |
 
 ### Incidents
 

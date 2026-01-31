@@ -43,38 +43,42 @@ Two RTL-SDR dongles connected via powered USB hub to Proxmox host (192.168.0.151
 ## Configuration
 
 ### Honeywell 345 MHz Config
+File: `/config/rtl/rtl_433_honeywell_5816wmwh.conf`
 ```
-# RTL-SDR Device Selection (use serial number, not index)
+# Honeywell
+
 device            :00000001
+frequency         345M            # 345MHz center frequency
+sample_rate       250000          # 250kHz (stable for R820T)
+gain              40              # Fixed gain (more stable than auto)
 
-# Frequency
-frequency         345M
-sample_rate       250000
-
-# Gain (40 recommended for weak signals, 0 = auto)
-gain              40
-
-# Protocol 70 = Honeywell Security
-protocol          70
-
-# Metadata
+protocol          70              # Honeywell Security protocol
 report_meta       level,time:iso:utc
 
-# MQTT Output
 output            mqtt://core-mosquitto:1883,user=mqtt,pass=mqtt,retain=1
 output            kv
+```
+
+**Analyzer mode** (for troubleshooting - receives all RF):
+```
+protocol          0
+analyze_pulses    true
 ```
 
 ### WH51 915 MHz Config
+File: `/config/rtl/rtl_433_ecowitt_wh51_soil.conf`
 ```
+# ECOWITT
+
 device            :00000002
-frequency         915000000
-sample_rate       250000
-gain              0
-protocol          142
-report_meta       time
-output            mqtt://core-mosquitto:1883,user=mqtt,pass=mqtt,retain=1
-output            kv
+frequency         915000000       # 915MHz - USA ISM band for WH51 sensors
+sample_rate       250000          # 250kHz sample rate (lightweight, responsive)
+
+protocol          142             # Fine Offset/ECOWITT WH51 protocol decoder
+report_meta       time            # Include timestamp
+
+output            mqtt://core-mosquitto:1883,user=mqtt,pass=mqtt,retain=1,devices=rtl_433[/model][/id]
+output            kv              # Key-value format for debugging
 ```
 
 ## Troubleshooting
@@ -96,15 +100,12 @@ output            kv
 - Gain too low (try `gain 40` instead of `gain 0`)
 - Device index changed after reboot (use serial number instead)
 
-**Diagnosis**: Use analyzer mode to verify RF reception:
+**Diagnosis**: Enable analyzer mode in Honeywell config:
 ```
-device            :00000001
-frequency         345M
-gain              40
-protocol          0
-analyze_pulses    true
-output            kv
+protocol          0               # Comment out protocol 70
+analyze_pulses    true            # Add this line
 ```
+Check logs for pulse data when triggering sensors.
 
 #### 4. No Pulses in Analyzer Mode
 **Cause**: Wrong dongle has the 345 MHz antenna

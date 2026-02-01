@@ -1,6 +1,6 @@
 # RTL-433 Honeywell 5800-Series Sensor Integration
 
-**Last Updated**: 2026-01-30
+**Last Updated**: 2026-01-31
 **Related Systems**: Home Assistant, RTL-SDR, MQTT
 
 ## Overview
@@ -10,7 +10,7 @@ Integration of Honeywell 5800-series wireless security sensors (door/window sens
 ## Hardware
 
 ### RTL-SDR Dongles
-Two RTL-SDR dongles connected via powered USB hub to Proxmox host (192.168.0.151):
+Two RTL-SDR dongles connected via powered USB hub to Proxmox host (192.168.0.151), passed through to Home Assistant VM:
 
 | Serial Number | Frequency | Purpose | Antenna |
 |---------------|-----------|---------|---------|
@@ -22,143 +22,194 @@ Two RTL-SDR dongles connected via powered USB hub to Proxmox host (192.168.0.151
 ### Antennas
 - **345 MHz**: Requires ~21.7cm quarter-wave antenna (20cm is close enough)
 - **915 MHz**: Requires ~8.2cm quarter-wave antenna (13cm works)
-- Antenna length matters significantly for weak signal reception
+- Antenna length matters but mismatched antennas will still receive (just reduced efficiency)
+- Different connector types on dongles - can swap whip portions but not bases
 
 ### Sensors
 - **Honeywell 5816WMWH**: Door/window sensors on 345 MHz
-- Transmit on open/close events
-- Supervisory heartbeat every 60-70 minutes
+- Transmit on open/close events (multiple burst transmissions per event)
+- Supervisory heartbeat every 70-90 minutes
 - Protocol 70 in rtl_433
+- **No visible LED** - cannot visually confirm transmission (verify via control panel or rtl_433 logs)
 
-## Software Stack
+## Infrastructure
 
-### Home Assistant Add-ons
-- **rtl_433** - Main RF decoder
-- **rtl_433 Auto Discovery** - MQTT auto-discovery for HA
+### Home Assistant
+- **Type**: KVM VM on Proxmox with USB passthrough
+- **IP**: 192.168.0.154:8123
+- **Credentials**: hassio / hassiopassword
+- **USB Passthrough**: Both RTL-SDR dongles passed through to VM
 
-### Config File Locations (in HA)
-- `/config/rtl/rtl_433_honeywell_5816wmwh.conf`
-- `/config/rtl/rtl_433_ecowitt_wh51_soil.conf`
+### Proxmox Host
+- **IP**: 192.168.0.151
+- **DVB Modules**: Must be blacklisted (see setup below)
+
+## Proxmox Host Setup
+
+### Blacklist DVB Kernel Modules (Required)
+The Linux kernel loads DVB-T TV tuner drivers that claim RTL-SDR devices. Blacklist them:
+
+```bash
+cat >> /etc/modprobe.d/blacklist-rtl.conf << 'EOF'
+blacklist dvb_usb_rtl28xxu
+blacklist rtl2832
+blacklist rtl2832_sdr
+blacklist dvb_usb_v2
+blacklist dvb_core
+EOF
+
+update-initramfs -u
+reboot
+```
+
+**Verify modules not loaded:**
+```bash
+lsmod | grep -E 'dvb|rtl28'
+```
+
+### Verify Dongles Detected
+```bash
+lsusb | grep RTL
+lsusb -v -d 0bda:2838 2>/dev/null | grep -E "Bus|iSerial"
+```
 
 ## Configuration
 
 ### Honeywell 345 MHz Config
 File: `/config/rtl/rtl_433_honeywell_5816wmwh.conf`
 ```
-# Honeywell
+# Honeywell 5800-series door/window sensors
 
 device            :00000001
-frequency         345M            # 345MHz center frequency
-sample_rate       250000          # 250kHz (stable for R820T)
-gain              40              # Fixed gain (more stable than auto)
+frequency         345M
+sample_rate       250000
+gain              40
 
-protocol          70              # Honeywell Security protocol
+protocol          70
 report_meta       level,time:iso:utc
 
 output            mqtt://core-mosquitto:1883,user=mqtt,pass=mqtt,retain=1
 output            kv
 ```
 
-**Analyzer mode** (for troubleshooting - receives all RF):
+**Broader frequency coverage** (catches 345.000 and 345.875 MHz variants):
 ```
-protocol          0
-analyze_pulses    true
+frequency         345M
+sample_rate       2048000         # 2 MHz bandwidth covers 344-346 MHz
 ```
 
 ### WH51 915 MHz Config
 File: `/config/rtl/rtl_433_ecowitt_wh51_soil.conf`
 ```
-# ECOWITT
+# ECOWITT WH51 soil moisture sensors
 
 device            :00000002
-frequency         915000000       # 915MHz - USA ISM band for WH51 sensors
-sample_rate       250000          # 250kHz sample rate (lightweight, responsive)
+frequency         915000000
+sample_rate       250000
 
-protocol          142             # Fine Offset/ECOWITT WH51 protocol decoder
-report_meta       time            # Include timestamp
+protocol          142
+report_meta       time
 
 output            mqtt://core-mosquitto:1883,user=mqtt,pass=mqtt,retain=1,devices=rtl_433[/model][/id]
-output            kv              # Key-value format for debugging
+output            kv
+```
+
+### Single-Dongle Frequency Hopping (Backup)
+If one dongle fails, use frequency hopping on the working dongle:
+```
+device            :00000002
+frequency         345M
+frequency         915M
+hop_interval      30
+protocol          70
+protocol          142
+gain              40
+sample_rate       250000
+output            mqtt://core-mosquitto:1883,user=mqtt,pass=mqtt,retain=1
+output            kv
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### "usb_claim_interface error -6"
+**Cause**: Something else is claiming the USB device
+**Checks**:
+1. DVB kernel modules loaded: `lsmod | grep dvb`
+2. Device in use by VM: `fuser -v /dev/bus/usb/003/*`
+3. HA add-ons still running
 
-#### 1. "Could not find device with serial 'XXXXXXXX'"
+**Fix**: Blacklist DVB modules (see Proxmox Host Setup above)
+
+### "Could not find device with serial 'XXXXXXXX'"
 **Cause**: Trailing spaces in config file after serial number
 **Fix**: Remove all trailing whitespace from the `device` line
 
-#### 2. "PLL not locked!" Warning
-**Cause**: R820T tuner struggling at 345 MHz (lower edge of range)
+### "PLL not locked!" Warning
+**Cause**: R820T tuner at 345 MHz (lower edge of comfortable range)
 **Impact**: Usually benign, clears after startup
-**Fix**: If persistent, try slightly different frequency (344.9M or 345.1M)
+**Fix**: If persistent, try 344.9M or 345.1M
 
-#### 3. Sensors Work Intermittently
+### Sensors Work Intermittently
 **Causes**:
-- Wrong antenna on 345 MHz dongle (need longer 20cm antenna)
-- Gain too low (try `gain 40` instead of `gain 0`)
-- Device index changed after reboot (use serial number instead)
+- Gain too low (try `gain 40`)
+- Device index changed after reboot (use serial number)
+- Weak signal / distance
 
-**Diagnosis**: Enable analyzer mode in Honeywell config:
+**Diagnosis - Analyzer mode**:
 ```
-protocol          0               # Comment out protocol 70
-analyze_pulses    true            # Add this line
+protocol          0
+analyze_pulses    true
 ```
-Check logs for pulse data when triggering sensors.
 
-#### 4. No Pulses in Analyzer Mode
-**Cause**: Wrong dongle has the 345 MHz antenna
-**Fix**: Try the other serial number, or physically swap antennas
+### One Dongle Not Receiving
+**Test dongle hardware** on Windows laptop:
+1. Install SDR# from https://airspy.com/download/
+2. Install Zadig drivers: https://zadig.akeo.ie/
+3. Run SDR#, select RTL-SDR USB, tune to FM radio (100 MHz)
+4. Working dongle shows signals in waterfall
 
-#### 5. Sensors Not Registering After Reboot
-**Cause**: Device enumeration order changed
-**Fix**: Always use serial number format (`:00000001`) not device index (`device 0`)
-
-### Verify Hardware Serials
-From Proxmox host:
+**Test on Proxmox host** (stop HA first):
 ```bash
-lsusb -v 2>/dev/null | grep -A15 'RTL2838' | grep -E 'Bus|iSerial'
+rtl_test -d 0 -t
+rtl_test -d 1 -t
 ```
 
-Or with sshpass:
+### Verify USB Passthrough
+Check what's using USB devices:
 ```bash
-SSHPASS='claudepassword' sshpass -e ssh claude@192.168.0.151 "lsusb -v 2>/dev/null | grep -A10 'RTL2838'"
+fuser -v /dev/bus/usb/003/*
 ```
+Should show `kvm` if passed through to HA VM.
 
-### Check Add-on Logs
-Look for:
-- `Found Rafael Micro R820T tuner` - dongle detected
-- `[SDR] Using device X: ... SN: XXXXXXXX` - confirms which serial is in use
-- `Analyzing pulses...` - RF being received (analyzer mode)
+## Frequency Reference
 
-### MQTT Topics
+| Frequency | Bandwidth | Coverage |
+|-----------|-----------|----------|
+| 345M + 250k sample | ±125 kHz | 344.875 - 345.125 MHz |
+| 345M + 1024k sample | ±512 kHz | 344.5 - 345.5 MHz |
+| 345M + 2048k sample | ±1 MHz | 344 - 346 MHz |
+
+| Sensor Type | Frequency | Protocol |
+|-------------|-----------|----------|
+| Honeywell 5800-series | 345.000 MHz | 70 |
+| Honeywell (alt) | 345.875 MHz | 70 |
+| Ecowitt WH51 | 915.000 MHz | 142 |
+
+## Known Sensor IDs
+
+| Location | Sensor ID (hex) | Sensor ID (dec) | Status |
+|----------|-----------------|-----------------|--------|
+| Laundry room | 60afe | 396030 | Working |
+| Front door | TBD | TBD | Not transmitting |
+
+## MQTT Topics
 - Events: `rtl_433/9b13b3f4-rtl433/events`
 - Devices: `rtl_433/9b13b3f4-rtl433/devices/...`
 - States: `rtl_433/9b13b3f4-rtl433/states`
 
-## Frequency Reference
-
-| Sensor Type | Frequency | Protocol | Notes |
-|-------------|-----------|----------|-------|
-| Honeywell 5800-series | 345.000 MHz | 70 | US security sensors |
-| Honeywell (alt) | 345.875 MHz | 70 | Some variants |
-| Ecowitt WH51 | 915.000 MHz | 142 | ISM band soil sensors |
-
-## Known Working Sensor IDs
-- Sensor 1: ID 396030 (front door)
-- Sensor 2: ID [TBD]
-
-## USB Passthrough
-
-The RTL-SDR dongles are passed through from Proxmox host to Home Assistant VM/container. If dongles stop working:
-
-1. Check USB hub power
-2. Verify passthrough in Proxmox VM/LXC config
-3. Restart Home Assistant
-4. Check `dmesg` on host for USB disconnect messages
-
 ## References
 - rtl_433 protocols: https://github.com/merbanan/rtl_433
-- Honeywell 5800 protocol: Protocol 70 in rtl_433
+- Honeywell 5800 protocol: Protocol 70
 - R820T tuner range: 24-1766 MHz (works best 50-1500 MHz)
+- Zadig USB drivers: https://zadig.akeo.ie/
+- SDR# software: https://airspy.com/download/

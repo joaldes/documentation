@@ -200,7 +200,7 @@ Should show `kvm` if passed through to HA VM.
 | Location | Sensor ID (hex) | Sensor ID (dec) | Status |
 |----------|-----------------|-----------------|--------|
 | Laundry room | 60afe | 396030 | Working |
-| Front door | TBD | TBD | Not transmitting |
+| Front door | d5704 | 874244 | Working |
 
 ## MQTT Topics
 - Events: `rtl_433/9b13b3f4-rtl433/events`

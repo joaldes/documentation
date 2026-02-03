@@ -369,9 +369,38 @@ systemctl restart birdnet_analysis birdnet_recording caddy php8.2-fpm
 | File | Purpose |
 |------|---------|
 | `/home/birdnet/BirdNET-Pi/birdnet.conf` | Main configuration (RECS_DIR, location, etc.) |
+| `/home/birdnet/BirdNET-Pi/scripts/birds.db` | SQLite database with all detections |
 | `/etc/caddy/Caddyfile` | Web server configuration |
 | `/etc/systemd/system/birdnet_*.service` | Systemd service files |
 | `/var/log/php8.2-fpm.log` | PHP error logs |
+
+---
+
+## Reset / Wipe All Data
+
+To completely reset BirdNET-Pi and start fresh:
+
+```bash
+# Stop services
+systemctl stop birdnet_analysis birdnet_recording birdnet_log birdnet_stats
+
+# Delete the database
+rm -f /home/birdnet/BirdNET-Pi/scripts/birds.db
+
+# Clear detection clips and charts
+rm -rf /home/birdnet/BirdSongs/Extracted/By_Date/*
+rm -rf /home/birdnet/BirdSongs/Extracted/Charts/*
+rm -rf /home/birdnet/BirdSongs/Processed/*
+
+# Recreate empty database (REQUIRED - web UI will error without it)
+cd /home/birdnet/BirdNET-Pi/scripts
+sudo -u birdnet bash createdb.sh
+
+# Restart services
+systemctl start birdnet_recording birdnet_analysis birdnet_log birdnet_stats
+```
+
+**Important**: You must run `createdb.sh` after deleting `birds.db` or the web UI will show a database error.
 
 ---
 

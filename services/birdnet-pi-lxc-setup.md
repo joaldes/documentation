@@ -1,8 +1,10 @@
 # BirdNET-Pi LXC Installation Guide
 
+> **⚠️ DEPRECATED**: BirdNET-Pi (CT 122) was removed on 2026-02-03. Using BirdNET-Go on Komodo instead. This document kept for reference if needed in future.
+
 **Created**: 2026-02-02
 **Updated**: 2026-02-03
-**Status**: Complete and operational
+**Status**: DEPRECATED - Container destroyed
 
 ## Summary
 

@@ -1,7 +1,7 @@
 # BirdNET-Go Docker Setup
 
 **Created**: 2026-02-03
-**Updated**: 2026-02-03
+**Updated**: 2026-02-04
 **Status**: Complete and operational
 
 ## Summary
@@ -20,20 +20,7 @@ BirdNET-Go running as a Docker container on Komodo (CT 128), providing bird dete
 | Data Storage | /mnt/birdnet/birdnet-go |
 | Location | 32.4107, -110.9361 (Tucson, AZ) |
 
-## BirdNET-Go vs BirdNET-Pi
-
-| Feature | BirdNET-Go | BirdNET-Pi |
-|---------|------------|------------|
-| Deployment | Docker container | Native LXC install |
-| Complexity | Simple | Complex |
-| Web UI | Modern, minimal | Full-featured, classic |
-| Maintenance | Actively maintained | Community fork |
-| Setup Time | ~5 minutes | 30-45 minutes |
-| Resource Usage | Lower | Higher |
-| Container | CT 128 (Komodo) | CT 122 (dedicated) |
-| Port | 8060 | 80 |
-
-Both are running simultaneously, sharing the same RTSP audio feed and storing data on the shared `/mnt/birdnet` partition.
+BirdNET-Go is the sole bird detection system. BirdNET-Pi (CT 122) was deprecated and destroyed on 2026-02-03. BirdNET-Pi was also removed from the Raspberry Pi on 2026-02-04 during the audio stream rebuild.
 
 ---
 
@@ -100,14 +87,10 @@ docker ps | grep birdnet-go
 
 ## Shared Storage Setup
 
-BirdNET-Go and BirdNET-Pi share a dedicated partition:
+BirdNET-Go data lives on a dedicated partition:
 
 ```
 /mnt/birdnet (250GB partition - /dev/sde5)
-├── birdnet-pi/      # Mounted in CT 122
-│   ├── By_Date/
-│   ├── Charts/
-│   └── ...
 └── birdnet-go/      # Used by Docker in CT 128
     ├── config/
     └── data/
@@ -187,6 +170,31 @@ rtsp://192.168.0.136:8554/birdmic
 ```
 
 Configure in the web UI under Settings → Audio Input.
+
+---
+
+## Audio Equalizer
+
+An equalizer is enabled to filter environmental noise before analysis:
+
+```yaml
+equalizer:
+  enabled: true
+  filters:
+    - type: HighPass
+      frequency: 500
+      q: 0.1
+    - type: LowPass
+      frequency: 12000
+      q: 0.1
+```
+
+- **HighPass 500Hz**: Filters pool water trickling, traffic rumble, HVAC
+- **LowPass 12kHz**: Filters ultrasonic noise above BirdNET's analysis range
+
+Config location: `/mnt/birdnet/birdnet-go/config/config.yaml` → `realtime.audio.equalizer`
+
+Restart after changes: `docker restart birdnet-go`
 
 ---
 

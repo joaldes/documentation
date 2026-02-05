@@ -1,6 +1,6 @@
 # BirdNET Deployment Guide
 
-**Last Updated**: 2026-02-04
+**Last Updated**: 2026-02-05
 **Related Systems**: Raspberry Pi (192.168.0.136), Komodo CT 128 (192.168.0.179), Home Assistant VM 100 (192.168.0.154)
 
 ---
@@ -38,6 +38,8 @@ Two components:
 | **BirdNET-Go Data** | /mnt/birdnet/birdnet-go |
 | **Location** | 32.4107, -110.9361 (Tucson, AZ) |
 | **MQTT** | Disabled (can enable to 192.168.0.154:1883) |
+| **Mic Gain** | 6/15 (~9dB) via ALSA — saved with `alsactl store 3` |
+| **Normalization** | Disabled (was boosting noise floor at night) |
 | **Equalizer** | HighPass 500Hz + LowPass 12kHz (filters pool/traffic noise) |
 
 ---
@@ -51,6 +53,9 @@ The Pi's only job is to capture USB mic audio and serve it as an RTSP stream.
 - **Raspberry Pi 4** (arm64), Raspberry Pi OS Bookworm, Wi-Fi
 - **USB Microphone**: UAC 1.0 device at ALSA `hw:3,0` (natively stereo, downmixed to mono)
   - Movo M1 USB Lavalier (20ft cable, recommended) or NowTH USB Lavalier (6.5ft cable)
+  - **Mic gain**: 6/15 (~9dB) — ALSA `Mic Capture Volume` (numid=3, range 0-15, 0-22.39dB)
+  - Default gain (15/15) is way too hot — causes clipping and amplifies electrical hum
+  - Gain is persisted with `sudo alsactl store 3` on the Pi
 
 ### Software Stack
 
@@ -196,6 +201,9 @@ birdnet:
   longitude: -110.9361
 realtime:
   audio:
+    export:
+      normalization:
+        enabled: false    # Disabled 2026-02-05 — was boosting noise floor at night
     equalizer:
       enabled: true
       filters:
@@ -316,6 +324,22 @@ Normal during startup while the model loads (~30 seconds). If it persists:
 ```bash
 docker logs birdnet-go | tail -30
 ```
+
+### Pi: Audio buzzing / crackling / too loud
+
+Investigated 2026-02-05. Root cause was the **Pi's mechanical cooling fan** vibrating near the USB mic, plus gain set too high.
+
+**Fixes applied:**
+1. Mic gain lowered from 15/15 to 6/15: `amixer -c 3 cset numid=3 6 && sudo alsactl store 3`
+2. BirdNET-Go normalization disabled (was amplifying quiet nighttime noise to -23 LUFS)
+
+**To adjust gain remotely:**
+```bash
+# Set gain (0-15, currently 6)
+SSHPASS='9773' sshpass -e ssh alec@192.168.0.136 "amixer -c 3 cset numid=3 <VALUE> && sudo alsactl store 3"
+```
+
+**If buzzing returns**, consider physically separating the mic from the Pi's fan, or replacing the fan with a passive heatsink case.
 
 ### General: Test stream from any machine
 

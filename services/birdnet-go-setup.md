@@ -1,7 +1,7 @@
 # BirdNET-Go Docker Setup
 
 **Created**: 2026-02-03
-**Updated**: 2026-02-04
+**Updated**: 2026-02-05
 **Status**: Complete and operational
 
 ## Summary
@@ -173,6 +173,19 @@ Configure in the web UI under Settings → Audio Input.
 
 ---
 
+## Audio Normalization
+
+Normalization is **disabled** (as of 2026-02-05). It was boosting the quiet nighttime noise floor to -23 LUFS, which amplified the Pi's cooling fan buzz and mic self-noise.
+
+```yaml
+normalization:
+  enabled: false
+```
+
+If re-enabled, the settings were: target -23 LUFS, loudness range 7, true peak -2.
+
+---
+
 ## Audio Equalizer
 
 An equalizer is enabled to filter environmental noise before analysis:
@@ -238,6 +251,174 @@ The container includes a built-in health check. View status:
 ```bash
 docker inspect birdnet-go --format='{{.State.Health.Status}}'
 ```
+
+---
+
+## API Reference (v2)
+
+Base URL: `http://192.168.0.179:8060`
+
+### Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Service health, version, uptime |
+
+### App
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/app/config` | Application configuration |
+
+### Analytics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/analytics/species/daily?date=&limit=` | Daily species summary |
+| GET | `/api/v2/analytics/species/daily/batch?dates=&limit=` | Batch daily data |
+| GET | `/api/v2/analytics/species/detections/new` | New species detections |
+| GET | `/api/v2/analytics/species/summary` | Species summary |
+| GET | `/api/v2/analytics/species/thumbnails` | Species thumbnails |
+| GET | `/api/v2/analytics/time/daily` | Daily time analytics |
+| GET | `/api/v2/analytics/time/daily/batch` | Batch daily time analytics |
+| GET | `/api/v2/analytics/time/distribution/hourly` | Hourly distribution |
+| GET | `/api/v2/analytics/time/hourly/batch` | Batch hourly analytics |
+
+### Audio
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/audio/{detectionId}` | Download detection audio clip |
+
+### Detections
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/detections` | List detections (filtered) |
+| GET | `/api/v2/detections/recent?limit=&includeWeather=` | Recent detections |
+| GET | `/api/v2/detections/{id}` | Single detection detail |
+| POST | `/api/v2/detections/ignore` | Ignore/unignore a species |
+| POST | `/api/v2/detections/{id}/lock` | Lock/unlock a detection |
+| DELETE | `/api/v2/detections/{id}` | Delete a detection |
+| SSE | `/api/v2/detections/stream` | Real-time detection stream |
+
+### Media
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/media/species-image?name={scientificName}` | Species image |
+| GET | `/api/v2/media/audio/{id}` | Audio media file |
+| GET | `/api/v2/spectrogram/{id}?size=md&raw=true` | Spectrogram image |
+
+### Species
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/species?scientific_name=` | Species info |
+| GET | `/api/v2/species/taxonomy?scientific_name=` | Taxonomy lookup |
+
+### Search
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/search` | Search detections |
+
+### Notifications
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/notifications?limit=&status=` | List notifications |
+| PUT | `/api/v2/notifications/{id}/read` | Mark as read |
+| POST | `/api/v2/notifications/{id}/acknowledge` | Acknowledge notification |
+| DELETE | `/api/v2/notifications/{id}` | Delete notification |
+| POST | `/api/v2/notifications/test/new-species` | Test notification |
+| SSE | `/api/v2/notifications/stream` | Real-time notification stream |
+
+### Streams (Live Audio)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| SSE | `/api/v2/streams/audio-level` | Audio level meter |
+| POST | `/api/v2/streams/hls/{source}/start` | Start HLS stream |
+| POST | `/api/v2/streams/hls/{source}/stop` | Stop HLS stream |
+| GET | `/api/v2/streams/hls/{source}/playlist.m3u8` | HLS playlist |
+| POST | `/api/v2/streams/hls/heartbeat` | Keep stream alive |
+| GET | `/api/v2/streams/health` | Stream health check |
+| SSE | `/api/v2/streams/health/stream` | Stream health SSE |
+| SSE | `/api/v2/soundlevels/stream` | Sound level SSE |
+
+### Weather
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/weather/sun/{location}` | Sunrise/sunset times |
+| GET | `/api/v2/weather/hourly/{location}` | Hourly forecast |
+| GET | `/api/v2/weather/detection/{id}` | Weather at detection time |
+
+### Settings
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/settings/dashboard` | Dashboard settings |
+| GET | `/api/v2/settings/locales` | Available locales |
+| GET | `/api/v2/settings/imageproviders` | Image providers |
+| GET | `/api/v2/settings/notification` | Notification settings |
+| GET | `/api/v2/settings/systemid` | System ID |
+
+### System
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/system/info` | System information |
+| GET | `/api/v2/system/resources` | Resource usage |
+| GET | `/api/v2/system/disks` | Disk info |
+| GET | `/api/v2/system/processes` | Process list (`?all=true` for all) |
+| GET | `/api/v2/system/temperature/cpu` | CPU temperature |
+| GET | `/api/v2/system/audio/devices` | Audio devices |
+| GET | `/api/v2/system/audio/equalizer/config` | Equalizer config |
+| GET | `/api/v2/system/database/stats` | Database stats |
+| GET | `/api/v2/support/generate` | Generate support bundle |
+
+### Dynamic Thresholds
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/dynamic-thresholds?limit=` | List thresholds |
+| GET | `/api/v2/dynamic-thresholds/stats` | Threshold stats |
+| DELETE | `/api/v2/dynamic-thresholds/{species}` | Delete threshold |
+| POST | `/api/v2/dynamic-thresholds?confirm=true` | Update thresholds |
+
+### Range Filter
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/range/species/count` | Species count in range |
+| GET | `/api/v2/range/species/list` | List species in range |
+| GET | `/api/v2/range/species/csv` | CSV export |
+| POST | `/api/v2/range/species/test` | Test range filter |
+
+### Integrations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v2/integrations/birdweather/test` | Test BirdWeather connection |
+| POST | `/api/v2/integrations/mqtt/test` | Test MQTT connection |
+| POST | `/api/v2/integrations/mqtt/homeassistant/discovery` | Trigger HA MQTT discovery |
+| POST | `/api/v2/integrations/weather/test` | Test weather integration |
+
+### Auth
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v2/auth/login` | Login |
+| POST | `/api/v2/auth/logout` | Logout |
+| GET | `/auth/google` | Google OAuth |
+| GET | `/auth/github` | GitHub OAuth |
+| GET | `/auth/microsoftonline` | Microsoft OAuth |
+| GET | `/auth/kakao` | Kakao OAuth |
+| GET | `/auth/line` | LINE OAuth |
+
+> **Note**: Extracted from frontend JS bundles (nightly-20260118). Server-side-only endpoints may exist beyond what the UI calls.
 
 ---
 

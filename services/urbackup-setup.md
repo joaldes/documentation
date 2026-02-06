@@ -81,10 +81,38 @@ mkfs.ext4 -L urbackup-data -m 0 -T largefile4 /dev/sdf1
 Added entries:
 ```
 # UrBackup Storage (10TB)
-UUID=b8b3f0dc-5adc-4a2f-adef-13ffc9ae4d6b /mnt/backups ext4 defaults,noatime,nodiratime 0 2
+UUID=702673ce-559f-4c1c-866c-f44ff415e421 /mnt/backups ext4 defaults,noatime,nodiratime 0 2
 
 # Proxmox Backups (vzdump, images)
 UUID=e424b756-df58-41b6-83fd-291525fc6e95 /mnt/container-backups ext4 defaults,noatime 0 2
+```
+
+#### /etc/systemd/system/mnt-backups.mount (Proxmox Host)
+
+**IMPORTANT**: This systemd mount unit file exists and takes precedence over fstab. If the wrong disk is mounted at `/mnt/backups`, check this file first.
+
+```ini
+[Unit]
+Description=Mount backups storage
+
+[Mount]
+What=/dev/disk/by-uuid/702673ce-559f-4c1c-866c-f44ff415e421
+Where=/mnt/backups
+Type=ext4
+Options=defaults
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**UUIDs Reference:**
+- `702673ce-559f-4c1c-866c-f44ff415e421` = sdf1 (10TB) — **Correct** for UrBackup
+- `e424b756-df58-41b6-83fd-291525fc6e95` = sdd1 (1TB) — Proxmox vzdump backups
+
+After modifying this file, run:
+```bash
+systemctl daemon-reload
+systemctl restart mnt-backups.mount
 ```
 
 #### /etc/pve/storage.cfg (Proxmox Host)

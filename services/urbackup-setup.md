@@ -184,6 +184,59 @@ Changed from `/opt/urbackup/backups` to `/mnt/backups`
 
 ---
 
+## Windows Client Configuration
+
+### Strategy
+Instead of backing up the entire C:\ drive with extensive exclusions, we backup only the user profile folder. This is faster, smaller, and avoids locked system files.
+
+### Current Clients
+
+| Client | User | Backup Path |
+|--------|------|-------------|
+| Hydrofoil | alecd | `C:\Users\alecd` |
+| Megsy | anima | `C:\Users\anima` |
+
+### Settings (per client in Web UI → Settings → Clients)
+
+| Setting | Value |
+|---------|-------|
+| **Default directories to backup** | `C:\Users\<username>` |
+| **Included files (with wildcards)** | *(empty)* |
+| **Excluded files (with wildcards)** | See exclusion list below |
+
+### Exclusion List
+
+```
+AppData\Local\Temp\*;AppData\Local\*\Cache\*;AppData\Local\*\Code Cache\*;AppData\Local\Microsoft\Windows\INetCache\*;AppData\Local\Microsoft\Windows\Explorer\thumbcache*;CrossDevice\*;iCloud*\*;OneDrive\*;Dropbox\*;AppData\Local\Docker\*;AppData\Local\Spotify\*
+```
+
+**What's excluded:**
+- `AppData\Local\Temp\*` — Windows temp files
+- `AppData\Local\*\Cache\*` — Browser and app caches
+- `AppData\Local\*\Code Cache\*` — VS Code, Electron app caches
+- `AppData\Local\Microsoft\Windows\INetCache\*` — IE/Edge cache
+- `AppData\Local\Microsoft\Windows\Explorer\thumbcache*` — Thumbnail cache
+- `CrossDevice\*` — Phone Link sync (Hydrofoil)
+- `iCloud*\*` — iCloud Drive and Photos (Megsy)
+- `OneDrive\*` — OneDrive sync folder
+- `Dropbox\*` — Dropbox sync folder
+- `AppData\Local\Docker\*` — Docker Desktop data
+- `AppData\Local\Spotify\*` — Spotify cache
+
+### What Gets Backed Up
+- Documents, Desktop, Pictures, Videos, Downloads
+- AppData\Roaming (application settings, profiles)
+- Any other folders in the user profile
+
+### What's NOT Backed Up
+- Windows system files (C:\Windows)
+- Installed programs (C:\Program Files)
+- System-wide app data (C:\ProgramData)
+- Cloud-synced folders (already in cloud)
+- Caches and temp files (rebuilt automatically)
+
+---
+
 ## Mount Points Inside Container 111
 
 All paths mirror host paths for simplicity:
@@ -216,13 +269,16 @@ All paths mirror host paths for simplicity:
 
 ## Remaining Tasks
 
+### Completed:
+- [x] Deploy Windows client agents (Hydrofoil, Megsy)
+- [x] Configure Windows client backup paths and exclusions
+
 ### Not Yet Completed:
 1. [ ] Install UrBackup client inside container (for local backup paths)
 2. [ ] Add local backup directories (pictures, documents, docker, frigate)
-3. [ ] Deploy Windows client agents on 3 PCs
-4. [ ] Configure per-client retention policies
-5. [ ] Set up admin user authentication
-6. [ ] Configure email alerts (optional)
+3. [ ] Configure per-client retention policies
+4. [ ] Set up admin user authentication
+5. [ ] Configure email alerts (optional)
 
 ### Retention Policy Plan (Per Client Type)
 
@@ -350,4 +406,6 @@ cat /etc/pve/storage.cfg
 | 2026-01-16 | Initial setup: partitioned sdf, created mounts, configured UrBackup server |
 | 2026-01-16 | Renamed storage: backups (10TB), container-backups (1TB) |
 | 2026-01-16 | Configured backup intervals, skipped admin user setup |
+| 2026-02-06 | Added systemd mount unit documentation (root cause of wrong disk mount) |
+| 2026-02-06 | Configured Windows clients: backup Users folder only with minimal exclusions |
 

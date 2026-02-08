@@ -1,66 +1,24 @@
 {
-  "timestamp": "2026-02-08T07:22:12Z",
+  "timestamp": "2026-02-08T07:48:20Z",
   "host": {
     "name": "Shipyard",
     "ip": "192.168.0.151",
     "cpu_load": [
-      "1.60",
-      "1.44",
-      "1.42"
+      "3.21",
+      "2.29",
+      "1.73"
     ],
     "memory_total_gb": 62,
-    "memory_used_gb": 27,
+    "memory_used_gb": 28,
     "uptime_days": 7
   },
   "storage": [
     {
-      "id": "local",
+      "id": "docker-data",
       "type": "dir",
-      "total_gb": 93,
-      "used_gb": 49,
-      "percent_used": 52
-    },
-    {
-      "id": "littlestorage",
-      "type": "lvmthin",
-      "total_gb": 1830,
-      "used_gb": 80,
-      "percent_used": 4
-    },
-    {
-      "id": "local-lvm",
-      "type": "lvmthin",
-      "total_gb": 348,
-      "used_gb": 206,
-      "percent_used": 59
-    },
-    {
-      "id": "smb-frigate",
-      "type": "dir",
-      "total_gb": 1006,
-      "used_gb": 417,
-      "percent_used": 41
-    },
-    {
-      "id": "smb-hometheater",
-      "type": "dir",
-      "total_gb": 29679,
-      "used_gb": 15309,
-      "percent_used": 51
-    },
-    {
-      "id": "smb-documents",
-      "type": "dir",
-      "total_gb": 921,
-      "used_gb": 0,
-      "percent_used": 0
-    },
-    {
-      "id": "smb-pictures",
-      "type": "dir",
-      "total_gb": 10158,
-      "used_gb": 2203,
-      "percent_used": 21
+      "total_gb": 2014,
+      "used_gb": 24,
+      "percent_used": 1
     },
     {
       "id": "backups",
@@ -70,11 +28,32 @@
       "percent_used": 39
     },
     {
-      "id": "birdnet",
+      "id": "smb-frigate",
       "type": "dir",
-      "total_gb": 228,
-      "used_gb": 5,
-      "percent_used": 2
+      "total_gb": 1006,
+      "used_gb": 419,
+      "percent_used": 41
+    },
+    {
+      "id": "smb-pictures",
+      "type": "dir",
+      "total_gb": 10158,
+      "used_gb": 2203,
+      "percent_used": 21
+    },
+    {
+      "id": "local",
+      "type": "dir",
+      "total_gb": 93,
+      "used_gb": 49,
+      "percent_used": 52
+    },
+    {
+      "id": "smb-documents",
+      "type": "dir",
+      "total_gb": 921,
+      "used_gb": 0,
+      "percent_used": 0
     },
     {
       "id": "container-backups",
@@ -84,11 +63,32 @@
       "percent_used": 55
     },
     {
-      "id": "docker-data",
+      "id": "littlestorage",
+      "type": "lvmthin",
+      "total_gb": 1830,
+      "used_gb": 80,
+      "percent_used": 4
+    },
+    {
+      "id": "smb-hometheater",
       "type": "dir",
-      "total_gb": 2014,
-      "used_gb": 24,
-      "percent_used": 1
+      "total_gb": 29679,
+      "used_gb": 15309,
+      "percent_used": 51
+    },
+    {
+      "id": "birdnet",
+      "type": "dir",
+      "total_gb": 228,
+      "used_gb": 5,
+      "percent_used": 2
+    },
+    {
+      "id": "local-lvm",
+      "type": "lvmthin",
+      "total_gb": 348,
+      "used_gb": 206,
+      "percent_used": 59
     }
   ],
   "networks": [
@@ -101,12 +101,36 @@
   ],
   "containers": [
     {
-      "ctid": 126,
-      "name": "tailscale",
-      "status": "stopped",
-      "ip": "192.168.0.126",
-      "cores": 1,
-      "memory_mb": 512
+      "ctid": 105,
+      "name": "unmanic",
+      "status": "running",
+      "ip": "",
+      "cores": 5,
+      "memory_mb": 32768
+    },
+    {
+      "ctid": 110,
+      "name": "sonarr",
+      "status": "running",
+      "ip": "192.168.0.24",
+      "cores": 2,
+      "memory_mb": 2048
+    },
+    {
+      "ctid": 115,
+      "name": "bazarr",
+      "status": "running",
+      "ip": "192.168.0.48",
+      "cores": 2,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 116,
+      "name": "tracearr",
+      "status": "running",
+      "ip": "",
+      "cores": 2,
+      "memory_mb": 2048
     },
     {
       "ctid": 103,
@@ -117,11 +141,51 @@
       "memory_mb": 2048
     },
     {
-      "ctid": 108,
-      "name": "zwave-js-ui",
+      "ctid": 121,
+      "name": "notifiarr",
+      "status": "stopped",
+      "ip": "192.168.0.96",
+      "cores": 1,
+      "memory_mb": 512
+    },
+    {
+      "ctid": 114,
+      "name": "uptimekuma",
       "status": "running",
-      "ip": "192.168.0.153",
+      "ip": "192.168.0.44",
+      "cores": 1,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 128,
+      "name": "komodo",
+      "status": "running",
+      "ip": "192.168.0.179",
+      "cores": 8,
+      "memory_mb": 32768
+    },
+    {
+      "ctid": 113,
+      "name": "jellyseerr",
+      "status": "running",
+      "ip": "192.168.0.43",
       "cores": 2,
+      "memory_mb": 2048
+    },
+    {
+      "ctid": 104,
+      "name": "samba",
+      "status": "running",
+      "ip": "192.168.0.176",
+      "cores": 2,
+      "memory_mb": 6144
+    },
+    {
+      "ctid": 112,
+      "name": "nginxproxymanager",
+      "status": "running",
+      "ip": "192.168.0.30",
+      "cores": 1,
       "memory_mb": 1024
     },
     {
@@ -133,70 +197,6 @@
       "memory_mb": 1024
     },
     {
-      "ctid": 114,
-      "name": "uptimekuma",
-      "status": "running",
-      "ip": "192.168.0.44",
-      "cores": 1,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 117,
-      "name": "wikijs",
-      "status": "running",
-      "ip": "192.168.0.57",
-      "cores": 1,
-      "memory_mb": 512
-    },
-    {
-      "ctid": 104,
-      "name": "samba",
-      "status": "running",
-      "ip": "192.168.0.176",
-      "cores": 2,
-      "memory_mb": 6144
-    },
-    {
-      "ctid": 110,
-      "name": "sonarr",
-      "status": "running",
-      "ip": "192.168.0.24",
-      "cores": 2,
-      "memory_mb": 2048
-    },
-    {
-      "ctid": 111,
-      "name": "urbackup",
-      "status": "running",
-      "ip": "192.168.0.209",
-      "cores": 2,
-      "memory_mb": 2048
-    },
-    {
-      "ctid": 113,
-      "name": "jellyseerr",
-      "status": "running",
-      "ip": "192.168.0.43",
-      "cores": 2,
-      "memory_mb": 2048
-    },
-    {
-      "ctid": 118,
-      "name": "homepage",
-      "status": "running",
-      "ip": "192.168.0.70",
-      "cores": 2,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 107,
-      "name": "radarr",
-      "status": "running",
-      "ip": "192.168.0.42",
-      "cores": 2,
-      "memory_mb": 2048
-    },
-    {
       "ctid": 109,
       "name": "tdarr",
       "status": "stopped",
@@ -205,20 +205,12 @@
       "memory_mb": 2048
     },
     {
-      "ctid": 105,
-      "name": "unmanic",
+      "ctid": 108,
+      "name": "zwave-js-ui",
       "status": "running",
-      "ip": "",
-      "cores": 5,
-      "memory_mb": 32768
-    },
-    {
-      "ctid": 128,
-      "name": "komodo",
-      "status": "running",
-      "ip": "192.168.0.179",
-      "cores": 8,
-      "memory_mb": 32768
+      "ip": "192.168.0.153",
+      "cores": 2,
+      "memory_mb": 1024
     },
     {
       "ctid": 102,
@@ -229,28 +221,12 @@
       "memory_mb": 4096
     },
     {
-      "ctid": 120,
-      "name": "pulse",
-      "status": "running",
-      "ip": "192.168.0.175",
-      "cores": 1,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 121,
-      "name": "notifiarr",
+      "ctid": 126,
+      "name": "tailscale",
       "status": "stopped",
-      "ip": "192.168.0.96",
+      "ip": "192.168.0.126",
       "cores": 1,
       "memory_mb": 512
-    },
-    {
-      "ctid": 115,
-      "name": "bazarr",
-      "status": "running",
-      "ip": "192.168.0.48",
-      "cores": 2,
-      "memory_mb": 1024
     },
     {
       "ctid": 124,
@@ -261,20 +237,44 @@
       "memory_mb": 12440
     },
     {
-      "ctid": 112,
-      "name": "nginxproxymanager",
+      "ctid": 118,
+      "name": "homepage",
       "status": "running",
-      "ip": "192.168.0.30",
-      "cores": 1,
+      "ip": "192.168.0.70",
+      "cores": 2,
       "memory_mb": 1024
     },
     {
-      "ctid": 116,
-      "name": "tracearr",
+      "ctid": 111,
+      "name": "urbackup",
       "status": "running",
-      "ip": "",
+      "ip": "192.168.0.209",
       "cores": 2,
       "memory_mb": 2048
+    },
+    {
+      "ctid": 107,
+      "name": "radarr",
+      "status": "running",
+      "ip": "192.168.0.42",
+      "cores": 2,
+      "memory_mb": 2048
+    },
+    {
+      "ctid": 117,
+      "name": "wikijs",
+      "status": "running",
+      "ip": "192.168.0.57",
+      "cores": 1,
+      "memory_mb": 512
+    },
+    {
+      "ctid": 120,
+      "name": "pulse",
+      "status": "running",
+      "ip": "192.168.0.175",
+      "cores": 1,
+      "memory_mb": 1024
     }
   ],
   "vms": [
@@ -291,272 +291,91 @@
   ],
   "docker": {
     "host_ctid": 128,
-    "containers": [
+    "stacks": [
       {
-        "name": "jellystat",
-        "image": "cyfershepard/jellystat:latest",
-        "ports": "0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp",
-        "state": "running",
-        "stack": "jellystat"
+        "name": "authentik",
+        "containers": 4,
+        "state": "running"
       },
       {
-        "name": "jellystat-db",
-        "image": "postgres:15.2",
-        "ports": "5432/tcp",
-        "state": "running",
-        "stack": "jellystat"
+        "name": "bento-pdf",
+        "containers": 1,
+        "state": "running"
       },
       {
         "name": "birdnet-go",
-        "image": "ghcr.io/tphakala/birdnet-go:nightly",
-        "ports": "80/tcp, 443/tcp, 8090/tcp, 0.0.0.0:8060->8080/tcp, [::]:8060->8080/tcp",
-        "state": "running",
-        "stack": ""
+        "containers": 1,
+        "state": "running"
       },
       {
-        "name": "prometheus",
-        "image": "prom/prometheus:latest",
-        "ports": "0.0.0.0:9092->9090/tcp, [::]:9092->9090/tcp",
-        "state": "running",
-        "stack": "prometheus"
-      },
-      {
-        "name": "alertmanager",
-        "image": "prom/alertmanager:latest",
-        "ports": "0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp",
-        "state": "running",
-        "stack": "prometheus"
-      },
-      {
-        "name": "cadvisor",
-        "image": "gcr.io/cadvisor/cadvisor:latest",
-        "ports": "0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp",
-        "state": "running",
-        "stack": "prometheus"
-      },
-      {
-        "name": "blackbox-exporter",
-        "image": "prom/blackbox-exporter:latest",
-        "ports": "0.0.0.0:9115->9115/tcp, [::]:9115->9115/tcp",
-        "state": "running",
-        "stack": "prometheus"
-      },
-      {
-        "name": "authentik-server",
-        "image": "ghcr.io/goauthentik/server:2025.12.1",
-        "ports": "0.0.0.0:9000->9000/tcp, [::]:9000->9000/tcp, 0.0.0.0:9443->9443/tcp, [::]:9443->9443/tcp",
-        "state": "running",
-        "stack": "authentik"
-      },
-      {
-        "name": "authentik-worker",
-        "image": "ghcr.io/goauthentik/server:2025.12.1",
-        "ports": "",
-        "state": "running",
-        "stack": "authentik"
-      },
-      {
-        "name": "authentik-postgres",
-        "image": "postgres:16-alpine",
-        "ports": "5432/tcp",
-        "state": "running",
-        "stack": "authentik"
-      },
-      {
-        "name": "authentik-redis",
-        "image": "redis:alpine",
-        "ports": "6379/tcp",
-        "state": "running",
-        "stack": "authentik"
-      },
-      {
-        "name": "mealie",
-        "image": "ghcr.io/mealie-recipes/mealie:v3.9.2",
-        "ports": "0.0.0.0:9925->9000/tcp, [::]:9925->9000/tcp",
-        "state": "running",
-        "stack": "mealie"
-      },
-      {
-        "name": "immich_microservices",
-        "image": "ghcr.io/immich-app/immich-server:v2.2.3",
-        "ports": "2283/tcp",
-        "state": "running",
-        "stack": "immich"
-      },
-      {
-        "name": "immich_server",
-        "image": "ghcr.io/immich-app/immich-server:v2.2.3",
-        "ports": "0.0.0.0:2283->2283/tcp, [::]:2283->2283/tcp",
-        "state": "running",
-        "stack": "immich"
-      },
-      {
-        "name": "immich_postgres",
-        "image": "ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0",
-        "ports": "5432/tcp",
-        "state": "running",
-        "stack": "immich"
-      },
-      {
-        "name": "immich_machine_learning",
-        "image": "ghcr.io/immich-app/immich-machine-learning:v2.2.3-openvino",
-        "ports": "",
-        "state": "running",
-        "stack": "immich"
-      },
-      {
-        "name": "immich_redis",
-        "image": "valkey/valkey:8-bookworm",
-        "ports": "6379/tcp",
-        "state": "running",
-        "stack": "immich"
-      },
-      {
-        "name": "komodo-core-1",
-        "image": "ghcr.io/moghtech/komodo-core:latest",
-        "ports": "0.0.0.0:9120->9120/tcp, [::]:9120->9120/tcp",
-        "state": "running",
-        "stack": "komodo"
-      },
-      {
-        "name": "komodo-ferretdb-1",
-        "image": "ghcr.io/ferretdb/ferretdb",
-        "ports": "8088/tcp, 27017-27018/tcp",
-        "state": "running",
-        "stack": "komodo"
-      },
-      {
-        "name": "komodo-postgres-1",
-        "image": "ghcr.io/ferretdb/postgres-documentdb",
-        "ports": "5432/tcp",
-        "state": "running",
-        "stack": "komodo"
-      },
-      {
-        "name": "komodo-periphery-1",
-        "image": "ghcr.io/moghtech/komodo-periphery:latest",
-        "ports": "0.0.0.0:8120->8120/tcp, [::]:8120->8120/tcp",
-        "state": "running",
-        "stack": "komodo"
-      },
-      {
-        "name": "file-server",
-        "image": "nginx:alpine",
-        "ports": "0.0.0.0:8100->80/tcp, [::]:8100->80/tcp",
-        "state": "running",
-        "stack": "sander"
-      },
-      {
-        "name": "tandoor-nginx",
-        "image": "nginx:alpine",
-        "ports": "",
-        "state": "exited",
-        "stack": "tandoor"
-      },
-      {
-        "name": "tandoor-web",
-        "image": "vabene1111/recipes:latest",
-        "ports": "",
-        "state": "exited",
-        "stack": "tandoor"
-      },
-      {
-        "name": "tandoor-db",
-        "image": "postgres:15-alpine",
-        "ports": "",
-        "state": "exited",
-        "stack": "tandoor"
+        "name": "fragments",
+        "containers": 2,
+        "state": "running"
       },
       {
         "name": "frigate",
-        "image": "ghcr.io/blakeblackshear/frigate:stable",
-        "ports": "0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp, 0.0.0.0:8554-8555->8554-8555/tcp, [::]:8554-8555->8554-8555/tcp, 0.0.0.0:8971->8971/tcp, [::]:8971->8971/tcp, 0.0.0.0:8555->8555/udp, [::]:8555->8555/udp",
-        "state": "running",
-        "stack": "frigate"
-      },
-      {
-        "name": "paperless-webserver",
-        "image": "ghcr.io/paperless-ngx/paperless-ngx:latest",
-        "ports": "0.0.0.0:8010->8000/tcp, [::]:8010->8000/tcp",
-        "state": "running",
-        "stack": "paperless"
-      },
-      {
-        "name": "paperless-db",
-        "image": "postgres:15",
-        "ports": "5432/tcp",
-        "state": "running",
-        "stack": "paperless"
-      },
-      {
-        "name": "paperless-broker",
-        "image": "redis:7",
-        "ports": "6379/tcp",
-        "state": "running",
-        "stack": "paperless"
-      },
-      {
-        "name": "paperless-gotenberg",
-        "image": "gotenberg/gotenberg:latest",
-        "ports": "3000/tcp",
-        "state": "running",
-        "stack": "paperless"
-      },
-      {
-        "name": "fragments-api",
-        "image": "fragments-api",
-        "ports": "3000/tcp",
-        "state": "running",
-        "stack": "fragments"
-      },
-      {
-        "name": "fragments-web",
-        "image": "nginx:1.25-alpine",
-        "ports": "0.0.0.0:8075->80/tcp, [::]:8075->80/tcp",
-        "state": "running",
-        "stack": "fragments"
-      },
-      {
-        "name": "sftpgo-server",
-        "image": "drakkan/sftpgo:latest",
-        "ports": "0.0.0.0:2022->2022/tcp, [::]:2022->2022/tcp, 0.0.0.0:8070->8080/tcp, [::]:8070->8080/tcp",
-        "state": "running",
-        "stack": "sftp"
-      },
-      {
-        "name": "paperless-ai",
-        "image": "clusterzx/paperless-ai:latest",
-        "ports": "0.0.0.0:3030->3000/tcp, [::]:3030->3000/tcp",
-        "state": "running",
-        "stack": "paperless-ai"
+        "containers": 1,
+        "state": "running"
       },
       {
         "name": "grafana",
-        "image": "70d9599b186c",
-        "ports": "0.0.0.0:3001->3000/tcp, [::]:3001->3000/tcp",
-        "state": "running",
-        "stack": "grafana"
+        "containers": 1,
+        "state": "running"
       },
       {
-        "name": "paperless-tika",
-        "image": "apache/tika:latest",
-        "ports": "9998/tcp",
-        "state": "running",
-        "stack": "paperless"
+        "name": "immich",
+        "containers": 5,
+        "state": "running"
+      },
+      {
+        "name": "jellystat",
+        "containers": 2,
+        "state": "running"
+      },
+      {
+        "name": "komodo",
+        "containers": 4,
+        "state": "running"
       },
       {
         "name": "manyfold",
-        "image": "ghcr.io/manyfold3d/manyfold-solo:latest",
-        "ports": "0.0.0.0:3214->3214/tcp, [::]:3214->3214/tcp",
-        "state": "running",
-        "stack": "manyfold"
+        "containers": 1,
+        "state": "running"
       },
       {
-        "name": "bentopdf",
-        "image": "bentopdf/bentopdf-simple:latest",
-        "ports": "0.0.0.0:8095->8080/tcp, [::]:8095->8080/tcp",
-        "state": "running",
-        "stack": "bento-pdf"
+        "name": "mealie",
+        "containers": 1,
+        "state": "running"
+      },
+      {
+        "name": "paperless",
+        "containers": 5,
+        "state": "running"
+      },
+      {
+        "name": "paperless-ai",
+        "containers": 1,
+        "state": "running"
+      },
+      {
+        "name": "prometheus",
+        "containers": 4,
+        "state": "running"
+      },
+      {
+        "name": "sander",
+        "containers": 1,
+        "state": "running"
+      },
+      {
+        "name": "sftp",
+        "containers": 1,
+        "state": "running"
+      },
+      {
+        "name": "tandoor",
+        "containers": 3,
+        "state": "stopped"
       }
     ]
   }

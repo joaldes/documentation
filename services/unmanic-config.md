@@ -55,7 +55,7 @@ Process media files for audio/subtitle standardization:
 
 ## Library Monitoring
 
-**Important**: inotify file monitoring may not detect all new files, especially when Sonarr/Radarr use hardlinks or atomic moves during import.
+**Important**: inotify file monitoring may miss files due to network filesystem delays, atomic moves, or other edge cases.
 
 **Recommended settings** (in Settings > Library):
 - **Enable inotify**: Yes (catches most file changes)
@@ -77,7 +77,8 @@ Without periodic scans, files can be missed and processing stops silently.
 4. Check logs: `/root/.unmanic/logs/unmanic.log`
 
 ### Files not being detected
-- Enable periodic library scans (inotify doesn't catch hardlinks)
+- Enable periodic library scans (inotify can miss files)
 - Check library path is correct and accessible
+- Verify mounts are working inside container
 
 Updated: 2026-02-08

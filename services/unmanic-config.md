@@ -53,10 +53,31 @@ Process media files for audio/subtitle standardization:
 - Library: 29TB total (15TB used, 14TB free)
 - Contains: Movies, TV Shows
 
-## To Enable
-1. Go to http://192.168.0.207:8888
-2. Settings > Libraries > Edit Home Theater
-3. Enable Library Scanner and/or File Monitor
-4. Save and processing will begin
+## Library Monitoring
 
-Updated: 2026-01-11
+**Important**: inotify file monitoring may not detect all new files, especially when Sonarr/Radarr use hardlinks or atomic moves during import.
+
+**Recommended settings** (in Settings > Library):
+- **Enable inotify**: Yes (catches most file changes)
+- **Enable Library Scanner**: Yes (periodic full scan as backup)
+- **Schedule full scan**: 30 minutes (catches files inotify missed)
+
+Without periodic scans, files can be missed and processing stops silently.
+
+## Worker Configuration
+- **Worker Group**: Zoljin
+- **Number of Workers**: 1 (increase for faster processing if CPU allows)
+
+## Troubleshooting
+
+### Processing stopped / No new tasks
+1. Check pending queue in web UI
+2. Verify worker count > 0 in Settings > Workers
+3. Trigger manual library scan in Settings > Library
+4. Check logs: `/root/.unmanic/logs/unmanic.log`
+
+### Files not being detected
+- Enable periodic library scans (inotify doesn't catch hardlinks)
+- Check library path is correct and accessible
+
+Updated: 2026-02-08

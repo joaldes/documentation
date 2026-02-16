@@ -32,6 +32,17 @@ Two RTL-SDR dongles connected via powered USB hub to Proxmox host (192.168.0.151
 - Protocol 70 in rtl_433
 - **No visible LED** - cannot visually confirm transmission (verify via control panel or rtl_433 logs)
 
+#### 5816WMWH Sensor Fields
+The sensor reports two separate contacts:
+
+| Field | Description | Purpose |
+|-------|-------------|---------|
+| `reed_open` | Internal magnetic reed switch | Built-in door/window detection |
+| `contact_open` | External wired contact terminals | Optional wired sensor input |
+| `state` | Derived from `contact_open` | Used by HA for binary_sensor |
+
+**Important**: The `state` field that Home Assistant uses is determined by `contact_open`, NOT `reed_open`. If you're only using the internal reed switch, the external contact terminals must be properly jumpered or the `contact_open` field may always show 0 (closed).
+
 ## Infrastructure
 
 ### Home Assistant
@@ -181,6 +192,21 @@ fuser -v /dev/bus/usb/003/*
 ```
 Should show `kvm` if passed through to HA VM.
 
+### Sensor Reports Only "Closed" State
+**Symptom**: Sensor transmits but `state` always shows closed, even when door/window opens
+**Cause**: The `state` field is derived from `contact_open` (wired terminals), not `reed_open` (internal reed switch)
+
+**Diagnosis**:
+Check raw MQTT messages - look for both fields:
+```json
+{"reed_open": 1, "contact_open": 0}  // Reed says open, but state = closed
+```
+
+**Fix**:
+- If using internal reed switch only: jumper the external contact terminals
+- If using external wired sensor: check wiring and sensor function
+- Verify NC/NO polarity matches sensor configuration
+
 ## Frequency Reference
 
 | Frequency | Bandwidth | Coverage |
@@ -200,7 +226,20 @@ Should show `kvm` if passed through to HA VM.
 | Location | Sensor ID (hex) | Sensor ID (dec) | Status |
 |----------|-----------------|-----------------|--------|
 | Laundry room | 60afe | 396030 | Working |
-| Front door | d5704 | 874244 | Working |
+| Front door | d5704 | 874244 | Receiving - wired contact issue (see below) |
+
+### Front Door Sensor Issue
+The front door sensor (d5704) is receiving and transmitting correctly, but `contact_open` always reports 0 (closed) even when door opens. The `reed_open` field changes correctly.
+
+**Cause**: The external wired contact terminals are either:
+- Not connected/jumpered
+- Connected to a broken external sensor
+- Wrong polarity (NC vs NO)
+
+**Fix Options**:
+1. Jumper the external contact terminals if not using external wired sensor
+2. Check/replace wired sensor if one is connected
+3. Verify NC (normally closed) vs NO (normally open) configuration
 
 ## MQTT Topics
 - Events: `rtl_433/9b13b3f4-rtl433/events`

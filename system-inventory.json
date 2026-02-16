@@ -1,52 +1,31 @@
 {
-  "timestamp": "2026-02-08T07:48:20Z",
+  "timestamp": "2026-02-15T21:00:01Z",
   "host": {
     "name": "Shipyard",
     "ip": "192.168.0.151",
     "cpu_load": [
-      "3.21",
-      "2.29",
-      "1.73"
+      "2.28",
+      "1.28",
+      "1.26"
     ],
     "memory_total_gb": 62,
-    "memory_used_gb": 28,
-    "uptime_days": 7
+    "memory_used_gb": 29,
+    "uptime_days": 14
   },
   "storage": [
     {
-      "id": "docker-data",
+      "id": "birdnet",
       "type": "dir",
-      "total_gb": 2014,
-      "used_gb": 24,
-      "percent_used": 1
+      "total_gb": 228,
+      "used_gb": 15,
+      "percent_used": 6
     },
     {
       "id": "backups",
       "type": "dir",
       "total_gb": 10158,
-      "used_gb": 4036,
-      "percent_used": 39
-    },
-    {
-      "id": "smb-frigate",
-      "type": "dir",
-      "total_gb": 1006,
-      "used_gb": 419,
-      "percent_used": 41
-    },
-    {
-      "id": "smb-pictures",
-      "type": "dir",
-      "total_gb": 10158,
-      "used_gb": 2203,
-      "percent_used": 21
-    },
-    {
-      "id": "local",
-      "type": "dir",
-      "total_gb": 93,
-      "used_gb": 49,
-      "percent_used": 52
+      "used_gb": 5130,
+      "percent_used": 50
     },
     {
       "id": "smb-documents",
@@ -56,39 +35,60 @@
       "percent_used": 0
     },
     {
+      "id": "local",
+      "type": "dir",
+      "total_gb": 93,
+      "used_gb": 49,
+      "percent_used": 52
+    },
+    {
+      "id": "smb-frigate",
+      "type": "dir",
+      "total_gb": 1006,
+      "used_gb": 592,
+      "percent_used": 58
+    },
+    {
       "id": "container-backups",
       "type": "dir",
       "total_gb": 1006,
-      "used_gb": 555,
-      "percent_used": 55
+      "used_gb": 551,
+      "percent_used": 54
     },
     {
       "id": "littlestorage",
       "type": "lvmthin",
       "total_gb": 1830,
-      "used_gb": 80,
+      "used_gb": 78,
       "percent_used": 4
     },
     {
       "id": "smb-hometheater",
       "type": "dir",
       "total_gb": 29679,
-      "used_gb": 15309,
-      "percent_used": 51
-    },
-    {
-      "id": "birdnet",
-      "type": "dir",
-      "total_gb": 228,
-      "used_gb": 5,
-      "percent_used": 2
+      "used_gb": 15594,
+      "percent_used": 52
     },
     {
       "id": "local-lvm",
       "type": "lvmthin",
       "total_gb": 348,
-      "used_gb": 206,
-      "percent_used": 59
+      "used_gb": 216,
+      "percent_used": 61
+    },
+    {
+      "id": "smb-pictures",
+      "type": "dir",
+      "total_gb": 10158,
+      "used_gb": 2345,
+      "percent_used": 23
+    },
+    {
+      "id": "docker-data",
+      "type": "dir",
+      "total_gb": 2014,
+      "used_gb": 26,
+      "percent_used": 1
     }
   ],
   "networks": [
@@ -101,12 +101,20 @@
   ],
   "containers": [
     {
-      "ctid": 105,
-      "name": "unmanic",
+      "ctid": 112,
+      "name": "nginxproxymanager",
       "status": "running",
-      "ip": "",
-      "cores": 5,
-      "memory_mb": 32768
+      "ip": "192.168.0.30",
+      "cores": 1,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 120,
+      "name": "pulse",
+      "status": "running",
+      "ip": "192.168.0.175",
+      "cores": 1,
+      "memory_mb": 1024
     },
     {
       "ctid": 110,
@@ -117,54 +125,6 @@
       "memory_mb": 2048
     },
     {
-      "ctid": 115,
-      "name": "bazarr",
-      "status": "running",
-      "ip": "192.168.0.48",
-      "cores": 2,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 116,
-      "name": "tracearr",
-      "status": "running",
-      "ip": "",
-      "cores": 2,
-      "memory_mb": 2048
-    },
-    {
-      "ctid": 103,
-      "name": "syncthing",
-      "status": "running",
-      "ip": "192.168.0.45",
-      "cores": 1,
-      "memory_mb": 2048
-    },
-    {
-      "ctid": 121,
-      "name": "notifiarr",
-      "status": "stopped",
-      "ip": "192.168.0.96",
-      "cores": 1,
-      "memory_mb": 512
-    },
-    {
-      "ctid": 114,
-      "name": "uptimekuma",
-      "status": "running",
-      "ip": "192.168.0.44",
-      "cores": 1,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 128,
-      "name": "komodo",
-      "status": "running",
-      "ip": "192.168.0.179",
-      "cores": 8,
-      "memory_mb": 32768
-    },
-    {
       "ctid": 113,
       "name": "jellyseerr",
       "status": "running",
@@ -173,82 +133,18 @@
       "memory_mb": 2048
     },
     {
-      "ctid": 104,
-      "name": "samba",
-      "status": "running",
-      "ip": "192.168.0.176",
-      "cores": 2,
-      "memory_mb": 6144
-    },
-    {
-      "ctid": 112,
-      "name": "nginxproxymanager",
-      "status": "running",
-      "ip": "192.168.0.30",
-      "cores": 1,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 101,
-      "name": "adguard",
-      "status": "running",
-      "ip": "192.168.0.11",
-      "cores": 1,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 109,
-      "name": "tdarr",
-      "status": "stopped",
-      "ip": "192.168.0.51",
-      "cores": 4,
-      "memory_mb": 2048
-    },
-    {
-      "ctid": 108,
-      "name": "zwave-js-ui",
-      "status": "running",
-      "ip": "192.168.0.153",
-      "cores": 2,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 102,
-      "name": "emby",
-      "status": "running",
-      "ip": "192.168.0.13",
-      "cores": 2,
-      "memory_mb": 4096
-    },
-    {
       "ctid": 126,
       "name": "tailscale",
-      "status": "stopped",
+      "status": "running",
       "ip": "192.168.0.126",
       "cores": 1,
       "memory_mb": 512
     },
     {
-      "ctid": 124,
-      "name": "claudeai",
+      "ctid": 116,
+      "name": "tracearr",
       "status": "running",
-      "ip": "192.168.0.180",
-      "cores": 2,
-      "memory_mb": 12440
-    },
-    {
-      "ctid": 118,
-      "name": "homepage",
-      "status": "running",
-      "ip": "192.168.0.70",
-      "cores": 2,
-      "memory_mb": 1024
-    },
-    {
-      "ctid": 111,
-      "name": "urbackup",
-      "status": "running",
-      "ip": "192.168.0.209",
+      "ip": "",
       "cores": 2,
       "memory_mb": 2048
     },
@@ -261,6 +157,70 @@
       "memory_mb": 2048
     },
     {
+      "ctid": 108,
+      "name": "zwave-js-ui",
+      "status": "running",
+      "ip": "192.168.0.153",
+      "cores": 2,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 115,
+      "name": "bazarr",
+      "status": "running",
+      "ip": "192.168.0.48",
+      "cores": 2,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 111,
+      "name": "urbackup",
+      "status": "running",
+      "ip": "192.168.0.209",
+      "cores": 2,
+      "memory_mb": 2048
+    },
+    {
+      "ctid": 114,
+      "name": "uptimekuma",
+      "status": "running",
+      "ip": "192.168.0.44",
+      "cores": 1,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 124,
+      "name": "claudeai",
+      "status": "running",
+      "ip": "192.168.0.180",
+      "cores": 2,
+      "memory_mb": 12440
+    },
+    {
+      "ctid": 109,
+      "name": "tdarr",
+      "status": "stopped",
+      "ip": "192.168.0.51",
+      "cores": 4,
+      "memory_mb": 2048
+    },
+    {
+      "ctid": 121,
+      "name": "notifiarr",
+      "status": "stopped",
+      "ip": "192.168.0.96",
+      "cores": 1,
+      "memory_mb": 512
+    },
+    {
+      "ctid": 102,
+      "name": "emby",
+      "status": "running",
+      "ip": "192.168.0.13",
+      "cores": 2,
+      "memory_mb": 4096
+    },
+    {
       "ctid": 117,
       "name": "wikijs",
       "status": "running",
@@ -269,114 +229,73 @@
       "memory_mb": 512
     },
     {
-      "ctid": 120,
-      "name": "pulse",
+      "ctid": 105,
+      "name": "unmanic",
       "status": "running",
-      "ip": "192.168.0.175",
+      "ip": "",
+      "cores": 5,
+      "memory_mb": 32768
+    },
+    {
+      "ctid": 118,
+      "name": "homepage",
+      "status": "running",
+      "ip": "192.168.0.70",
+      "cores": 2,
+      "memory_mb": 1024
+    },
+    {
+      "ctid": 103,
+      "name": "syncthing",
+      "status": "running",
+      "ip": "192.168.0.45",
+      "cores": 1,
+      "memory_mb": 2048
+    },
+    {
+      "ctid": 128,
+      "name": "komodo",
+      "status": "running",
+      "ip": "192.168.0.179",
+      "cores": 8,
+      "memory_mb": 32768
+    },
+    {
+      "ctid": 104,
+      "name": "samba",
+      "status": "running",
+      "ip": "192.168.0.176",
+      "cores": 2,
+      "memory_mb": 6144
+    },
+    {
+      "ctid": 101,
+      "name": "adguard",
+      "status": "running",
+      "ip": "192.168.0.11",
       "cores": 1,
       "memory_mb": 1024
     }
   ],
   "vms": [
     {
-      "vmid": 100,
-      "name": "homeassistant",
+      "vmid": 119,
+      "name": "Windows",
       "status": "running"
     },
     {
       "vmid": 106,
       "name": "WindowsXP",
       "status": "stopped"
+    },
+    {
+      "vmid": 100,
+      "name": "homeassistant",
+      "status": "running"
     }
   ],
   "docker": {
     "host_ctid": 128,
-    "stacks": [
-      {
-        "name": "authentik",
-        "containers": 4,
-        "state": "running"
-      },
-      {
-        "name": "bento-pdf",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "birdnet-go",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "fragments",
-        "containers": 2,
-        "state": "running"
-      },
-      {
-        "name": "frigate",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "grafana",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "immich",
-        "containers": 5,
-        "state": "running"
-      },
-      {
-        "name": "jellystat",
-        "containers": 2,
-        "state": "running"
-      },
-      {
-        "name": "komodo",
-        "containers": 4,
-        "state": "running"
-      },
-      {
-        "name": "manyfold",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "mealie",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "paperless",
-        "containers": 5,
-        "state": "running"
-      },
-      {
-        "name": "paperless-ai",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "prometheus",
-        "containers": 4,
-        "state": "running"
-      },
-      {
-        "name": "sander",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "sftp",
-        "containers": 1,
-        "state": "running"
-      },
-      {
-        "name": "tandoor",
-        "containers": 3,
-        "state": "stopped"
-      }
-    ]
+    "stacks": []
   }
 }

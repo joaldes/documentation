@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-16
 
 ---
 
@@ -32,6 +32,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [birdnet-go-setup.md](services/birdnet-go-setup.md) | BirdNET-Go Docker container on Komodo |
 | [birdnet-pi-audio-stream-rebuild.md](services/birdnet-pi-audio-stream-rebuild.md) | Historical: Pi audio stream rebuild (2026-02-04) |
 | [birdnet-pi-lxc-setup.md](services/birdnet-pi-lxc-setup.md) | DEPRECATED: BirdNET-Pi LXC setup |
+| [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
 
 ### Incidents
 

@@ -20,6 +20,7 @@ Password-protected nginx file server serving GoPro media from `/mnt/pictures/per
 - The `mp4` module enables video seeking/scrubbing for .mp4 files without downloading the entire file
 - A drag-and-drop upload page at `/upload` uses XMLHttpRequest PUT with progress bars
 - nginx workers run as root inside the container (via `sed` on startup) for write access to UID 1000 files
+- Custom styled header banner injected via `sub_filter` — replaces plain "Index of /" with a blue "Rey Day" header bar with upload link
 - Based on the same pattern as the `portrait` stack (port 8100, serves hometheater media)
 
 ## Proxy Chain
@@ -44,6 +45,7 @@ Internet → DNS (reyday.1701.me) → 76.159.199.214 (Comcast WAN)
 | `client_max_body_size 0` | Unlimited upload size |
 | `dav_methods PUT MKCOL` | Enables file upload and directory creation via WebDAV |
 | `create_full_put_path on` | Auto-creates subdirectories on upload |
+| `sub_filter` | Injects custom HTML/CSS header into autoindex pages |
 
 ## Upload Feature
 - **URL**: `/upload` — drag-and-drop page with progress bars
@@ -144,6 +146,10 @@ services:
             autoindex_localtime on;
             dav_methods PUT MKCOL;
             create_full_put_path on;
+            sub_filter '</head>' '<style>body{font-family:sans-serif;margin:0;padding:0;background:#fafafa}.header{background:#4a90d9;color:#fff;padding:20px 30px}.header h1{margin:0;font-size:1.5em}.header p{margin:5px 0 0;opacity:.85;font-size:.9em}.header a{color:#fff;margin-left:15px}pre{padding:10px 30px}</style></head>';
+            sub_filter '<h1>Index of /' '<div class="header"><h1>Rey Day</h1><p>GoPro media archive<a href="/upload">Upload files</a></p></div><h1 style="display:none">Index of /';
+            sub_filter_once off;
+            sub_filter_types text/html;
           }
           location ~* \.mp4$ {
             auth_basic "Restricted";

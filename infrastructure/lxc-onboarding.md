@@ -1,6 +1,6 @@
 # LXC Container Onboarding Guide
 
-**Last Updated**: 2026-01-26
+**Last Updated**: 2026-02-16
 **Proxmox Host**: 192.168.0.151 (Shipyard)
 
 ---
@@ -73,7 +73,18 @@ pct exec <CTID> -- systemctl daemon-reload
 
 ---
 
-### 5. Unattended Security Upgrades
+### 5. SSH Key for Claude AI (CT 124)
+
+```bash
+# Deploy Claude AI's public key for passwordless access
+pct exec <CTID> -- bash -c 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6bFl3Ti0W6ZY5zkqgdovFawDDQ/y3YvCGoIrVzDX28OnOCnQWg0H1xcwUB+6jjM51tFtLGXtNzWOu6L0m+G+Q4LLrwo6cDDIb5j2tr0Kse3TE0uJCZ2XEknpoXEDU2ttV+Mk18lwBhIxDDRdA7RggicwX88EY9vj0HqIipUr+SFX/rYkt7ky3t1EQhBvPVRugIXQPplG2+AJA7gdSCNnn1kAEyHgZS5AWR5X+tF6JkFPRkWZqcAEDxJJGEUxuDBIbxUxh7NKWUS7kFIRvrsnOabuK7zykyh8N5ZxO3pvBm+t+a2G1k6lWcz9WzHACwshrs/LVRhw6QE25Ev9LXnoc7HrTv9N9Z5EbrjogNyGnsEP5uQnL0z0b16pzvriWRuj8THBu9yG9Hp2BJluCLDClvX7QLUWezwT36deGrvF44lLBQ7svrYHLh9vPToLZWHDUkM0H6wOBviKv5SbgXzKGqap/EUnXY7UbHoWTRcEtkDcv4xCQl6qPAYH6/SGQSkE= claudeai@claudeai" >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys'
+```
+
+**Why**: Allows Claude AI (CT 124) to SSH into containers without passwords, enabling faster automation and management. The key is also deployed to the Proxmox host (`claude` user).
+
+---
+
+### 6. Unattended Security Upgrades
 
 ```bash
 pct exec <CTID> -- apt-get install -y unattended-upgrades apt-listchanges
@@ -126,8 +137,12 @@ ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I 115200,3840
 EOF'
 pct exec $CTID -- systemctl daemon-reload
 
-# 5. AppArmor (manual step)
-echo "[5/5] AppArmor..."
+# 5. Deploy Claude AI SSH key
+echo "[5/6] Deploying Claude AI SSH key..."
+pct exec $CTID -- bash -c 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && grep -qF "claudeai@claudeai" /root/.ssh/authorized_keys 2>/dev/null || echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6bFl3Ti0W6ZY5zkqgdovFawDDQ/y3YvCGoIrVzDX28OnOCnQWg0H1xcwUB+6jjM51tFtLGXtNzWOu6L0m+G+Q4LLrwo6cDDIb5j2tr0Kse3TE0uJCZ2XEknpoXEDU2ttV+Mk18lwBhIxDDRdA7RggicwX88EY9vj0HqIipUr+SFX/rYkt7ky3t1EQhBvPVRugIXQPplG2+AJA7gdSCNnn1kAEyHgZS5AWR5X+tF6JkFPRkWZqcAEDxJJGEUxuDBIbxUxh7NKWUS7kFIRvrsnOabuK7zykyh8N5ZxO3pvBm+t+a2G1k6lWcz9WzHACwshrs/LVRhw6QE25Ev9LXnoc7HrTv9N9Z5EbrjogNyGnsEP5uQnL0z0b16pzvriWRuj8THBu9yG9Hp2BJluCLDClvX7QLUWezwT36deGrvF44lLBQ7svrYHLh9vPToLZWHDUkM0H6wOBviKv5SbgXzKGqap/EUnXY7UbHoWTRcEtkDcv4xCQl6qPAYH6/SGQSkE= claudeai@claudeai" >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys'
+
+# 6. AppArmor (manual step)
+echo "[6/6] AppArmor..."
 if grep -q "lxc.apparmor.profile: unconfined" /etc/pve/lxc/${CTID}.conf 2>/dev/null; then
     echo "  AppArmor already disabled"
 else
@@ -204,34 +219,41 @@ When accessing containers, follow this priority:
 
 3. **SSH Direct** - For file transfers and persistent sessions
    ```bash
-   ssh root@<CONTAINER_IP>    # password: password
+   ssh root@<CONTAINER_IP>    # key auth from CT 124, or password: password
    scp file.txt root@<IP>:/tmp/
    ```
 
+**Note**: Claude AI (CT 124) has SSH key auth to the Proxmox host (`claude` user) and all containers (`root` user). No passwords needed from CT 124.
+
 ---
 
-## Current Container Status (2026-01-26)
+## Current Container Status (2026-02-16)
 
-| CTID | Name | IP | AppArmor | SSH | Upgrades | Password |
-|------|------|-----|----------|-----|----------|----------|
-| 101 | adguard | 192.168.0.11 | ✓ | ✓ | ✓ | ✓ |
-| 102 | emby | 192.168.0.13 | ✓ | ✓ | ✓ | ✓ |
-| 103 | syncthing | 192.168.0.45 | ✓ | ✓ | ✓ | ✓ |
-| 104 | samba | 192.168.0.176 | ✓ | ✓ | ✓ | ✓ |
-| 105 | unmanic | 192.168.0.207 | ✓ | ✓ | ✓ | ✓ |
-| 107 | radarr | 192.168.0.42 | ✓ | ✓ | ✓ | ✓ |
-| 108 | zwave-js-ui | 192.168.0.153 | ✓ | ✓ | ✓ | ✓ |
-| 110 | sonarr | 192.168.0.24 | ✓ | ✓ | ✓ | ✓ |
-| 111 | urbackup | 192.168.0.209 | ✓ | ✓ | ✓ | ✓ |
-| 112 | nginxproxymanager | 192.168.0.30 | ✓ | ✓ | ✓ | ✓ |
-| 113 | jellyseerr | 192.168.0.43 | ✓ | ✓ | ✓ | ✓ |
-| 114 | uptimekuma | 192.168.0.44 | ✓ | ✓ | ✓ | ✓ |
-| 115 | bazarr | 192.168.0.48 | ✓ | ✓ | ✓ | ✓ |
-| 117 | wikijs | 192.168.0.57 | ✓ | ✓ | ✓ | ✓ |
-| 118 | homepage | 192.168.0.70 | ✓ | ✓ | ✓ | ✓ |
-| 120 | pulse | 192.168.0.175 | ✓ | ✓ | ✓ | ✓ |
-| 124 | claude-ai | 192.168.0.180 | ✓ | ✓ | ✓ | ✓ |
-| 128 | komodo | 192.168.0.179 | ✓ | ✓ | ✓ | ✓ |
+| CTID | Name | IP | AppArmor | SSH | Upgrades | Password | SSH Key |
+|------|------|-----|----------|-----|----------|----------|---------|
+| 101 | adguard | 192.168.0.11 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 102 | emby | 192.168.0.13 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 103 | syncthing | 192.168.0.45 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 104 | samba | 192.168.0.176 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 105 | unmanic | 192.168.0.207 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 107 | radarr | 192.168.0.42 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 108 | zwave-js-ui | 192.168.0.153 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 110 | sonarr | 192.168.0.24 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 111 | urbackup | 192.168.0.209 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 112 | nginxproxymanager | 192.168.0.30 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 113 | jellyseerr | 192.168.0.43 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 114 | uptimekuma | 192.168.0.44 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 115 | bazarr | 192.168.0.48 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 116 | tracearr | — | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 117 | wikijs | 192.168.0.57 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 118 | homepage | 192.168.0.70 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 120 | pulse | 192.168.0.175 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 124 | claude-ai | 192.168.0.180 | ✓ | ✓ | ✓ | ✓ | — |
+| 126 | tailscale | 192.168.0.126 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 128 | komodo | 192.168.0.179 | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+**SSH Key** = Claude AI (CT 124) public key in `/root/.ssh/authorized_keys`
+**Proxmox host** also has the key in `claude` user's `authorized_keys`.
 
 **Stopped containers** (not audited):
 - 109 (tdarr)
@@ -262,6 +284,7 @@ When accessing containers, follow this priority:
 
 | Date | Change |
 |------|--------|
+| 2026-02-16 | Added SSH key deployment for Claude AI (CT 124) to onboarding checklist |
 | 2026-01-26 | Initial document created |
 | 2025-12-26 | Standards established (per CLAUDE.md) |
 | 2025-12-24 | AppArmor disabled on all containers |

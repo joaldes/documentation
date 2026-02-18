@@ -43,6 +43,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-02-06-urbackup-wrong-disk-mounted.md](incidents/2026-02-06-urbackup-wrong-disk-mounted.md) | UrBackup missing clients due to wrong disk mounted |
 | [2026-02-16-zwave-usb-passthrough-stale.md](incidents/2026-02-16-zwave-usb-passthrough-stale.md) | Z-Wave USB passthrough stale device number on CT 108 |
 | [2026-02-18-birdnet-iframe-blocked.md](incidents/2026-02-18-birdnet-iframe-blocked.md) | BirdNET-Go iframe blocked in Home Assistant by X-Frame-Options header |
+| [2026-02-18-uptime-kuma-iframe-blocked.md](incidents/2026-02-18-uptime-kuma-iframe-blocked.md) | Uptime Kuma iframe blocked in HA — fixed with native env var |
 
 ---
 

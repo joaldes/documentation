@@ -102,14 +102,77 @@ Post-processor for subtitle filename standardization. Converts extracted subtitl
 
 ## Library Monitoring
 
-**Important**: inotify file monitoring may miss files due to network filesystem delays, atomic moves, or other edge cases.
+### inotify Limitations on mergerfs
+The library path `/library` is a mergerfs FUSE mount (host: `/mnt/hometheater`, two ext4 disks merged). inotify has a **known limitation**: FUSE does not propagate `IN_CREATE` events for `link()` (hardlink) operations. Since Sonarr/Radarr hardlink `.mkv` files during import, Unmanic's watchdog never sees them. Small files like `.nfo` and `.jpg` are written fresh and trigger events normally.
 
-**Recommended settings** (in Settings > Library):
-- **Enable inotify**: Yes (catches most file changes)
-- **Enable Library Scanner**: Yes (periodic full scan as backup)
-- **Schedule full scan**: 30 minutes (catches files inotify missed)
+### Sonarr/Radarr API Notify (Fix for Hardlink Issue)
+Post-import scripts on Sonarr (CT 110) and Radarr (CT 107) call Unmanic's REST API to add files directly to the pending queue, bypassing inotify.
 
-Without periodic scans, files can be missed and processing stops silently.
+**Flow:**
+```
+Sonarr/Radarr imports file (hardlink on mergerfs)
+  → Custom Script Connect fires /scripts/fix-ownership.sh
+  → Script translates path: /mnt/hometheater → /library
+  → POST to Unmanic API: /unmanic/api/v2/pending/create
+  → File appears in Unmanic pending queue
+```
+
+**Path translation** (containers mount the same host path differently):
+
+| Container | Mount Path |
+|-----------|-----------|
+| Sonarr (CT 110, 192.168.0.24) | `/mnt/hometheater` |
+| Radarr (CT 107, 192.168.0.42) | `/mnt/hometheater` |
+| Unmanic (CT 105, 192.168.0.207) | `/library` |
+
+**Sonarr script** — `/scripts/fix-ownership.sh` on CT 110:
+```bash
+#!/bin/bash
+[ "$sonarr_eventtype" != "Download" ] && exit 0
+UNMANIC_API="http://192.168.0.207:8888/unmanic/api/v2/pending/create"
+notify_unmanic() {
+    local UNMANIC_PATH="${1/\/mnt\/hometheater/\/library}"
+    curl -s -X POST "$UNMANIC_API" \
+      -H "Content-Type: application/json" \
+      -d "{\"path\": \"$UNMANIC_PATH\"}" \
+      --max-time 10 >/dev/null 2>&1 &
+}
+if [ -n "$sonarr_episodefile_path" ]; then
+    chown 1000:1000 "$sonarr_episodefile_path"
+    chown 1000:1000 "$(dirname "$sonarr_episodefile_path")"
+    notify_unmanic "$sonarr_episodefile_path"
+elif [ -n "$sonarr_episodefile_paths" ]; then
+    IFS='|' read -ra FILES <<< "$sonarr_episodefile_paths"
+    for f in "${FILES[@]}"; do
+        chown 1000:1000 "$f"
+        chown 1000:1000 "$(dirname "$f")"
+        notify_unmanic "$f"
+    done
+fi
+```
+
+**Radarr script** — `/scripts/fix-ownership.sh` on CT 107:
+```bash
+#!/bin/bash
+UNMANIC_API="http://192.168.0.207:8888/unmanic/api/v2/pending/create"
+if [ -n "$radarr_moviefile_path" ]; then
+    chown 1000:1000 "$radarr_moviefile_path"
+    chown 1000:1000 "$(dirname "$radarr_moviefile_path")"
+    UNMANIC_PATH="${radarr_moviefile_path/\/mnt\/hometheater/\/library}"
+    curl -s -X POST "$UNMANIC_API" \
+      -H "Content-Type: application/json" \
+      -d "{\"path\": \"$UNMANIC_PATH\"}" \
+      --max-time 10 >/dev/null 2>&1 &
+fi
+```
+
+**Connect entries** (pre-existing, no config changes needed):
+- Sonarr: Notification ID 4 → `/scripts/fix-ownership.sh` (onDownload, onUpgrade)
+- Radarr: Notification ID 3 → `/scripts/fix-ownership.sh` (onDownload, onUpgrade)
+
+### inotify Settings
+- **Enable inotify**: Yes (catches direct writes and Samba copies)
+- **Library Scanner**: Available but scans the entire library — use only as a last resort
 
 ## Worker Configuration
 - **Worker Group**: Zoljin
@@ -123,10 +186,17 @@ Without periodic scans, files can be missed and processing stops silently.
 3. Trigger manual library scan in Settings > Library
 4. Check logs: `/root/.unmanic/logs/unmanic.log`
 
-### Files not being detected
-- Enable periodic library scans (inotify can miss files)
+### Files not being detected after Sonarr/Radarr import
+- Verify `/scripts/fix-ownership.sh` exists and is executable on CT 110 (Sonarr) and CT 107 (Radarr)
+- Test API connectivity: `curl -s -o /dev/null -w '%{http_code}' http://192.168.0.207:8888/unmanic/api/v2/pending/create -X POST -H 'Content-Type: application/json' -d '{"path":"/tmp/test"}'` — expect 400
+- Check path translation: the script replaces `/mnt/hometheater` with `/library`
+- Add a file manually via API to verify Unmanic processes it
+- Root cause is likely mergerfs + hardlinks — see Library Monitoring section above
+
+### Files not being detected (general)
 - Check library path is correct and accessible
 - Verify mounts are working inside container
+- For non-Sonarr/Radarr sources (Samba copies), inotify should work — check watchdog is running in logs
 
 ### Muxer errors on files with attachments
 - Symptom: `[matroska] Received a packet for an attachment stream` / `Error submitting a packet to the muxer: Invalid argument`
@@ -158,4 +228,4 @@ curl -s -X DELETE http://192.168.0.207:8888/unmanic/api/v2/workers/worker/termin
   -H "Content-Type: application/json" -d '{"worker_id": "Zoljin-0"}'
 ```
 
-Updated: 2026-02-10
+Updated: 2026-02-16

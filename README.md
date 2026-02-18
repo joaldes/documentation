@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-02-18
 
 ---
 
@@ -42,6 +42,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-02-04-ha-cpu-spike-piper-bootloop.md](incidents/2026-02-04-ha-cpu-spike-piper-bootloop.md) | Home Assistant CPU spike from Piper add-on boot loop |
 | [2026-02-06-urbackup-wrong-disk-mounted.md](incidents/2026-02-06-urbackup-wrong-disk-mounted.md) | UrBackup missing clients due to wrong disk mounted |
 | [2026-02-16-zwave-usb-passthrough-stale.md](incidents/2026-02-16-zwave-usb-passthrough-stale.md) | Z-Wave USB passthrough stale device number on CT 108 |
+| [2026-02-18-birdnet-iframe-blocked.md](incidents/2026-02-18-birdnet-iframe-blocked.md) | BirdNET-Go iframe blocked in Home Assistant by X-Frame-Options header |
 
 ---
 

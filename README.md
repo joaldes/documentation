@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-19
 
 ---
 
@@ -18,6 +18,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [proxmox-changelog.md](infrastructure/proxmox-changelog.md) | System change history |
 | [emergency-procedures.md](infrastructure/emergency-procedures.md) | Emergency response runbook |
 | [backups-samba-share.md](infrastructure/backups-samba-share.md) | Backups disk Samba share + Mac HFS+ data copy |
+| [local-home-domains.md](infrastructure/local-home-domains.md) | Local .home domain setup (AdGuard DNS + NPM routing) |
 
 ### Services
 

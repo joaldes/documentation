@@ -34,6 +34,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [birdnet-pi-audio-stream-rebuild.md](services/birdnet-pi-audio-stream-rebuild.md) | Historical: Pi audio stream rebuild (2026-02-04) |
 | [birdnet-pi-lxc-setup.md](services/birdnet-pi-lxc-setup.md) | DEPRECATED: BirdNET-Pi LXC setup |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
+| [dashy-investigation.md](services/dashy-investigation.md) | Dashy dashboard investigation (vs Homepage, NPS theme, config reference) |
 
 ### Incidents
 

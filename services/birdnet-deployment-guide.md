@@ -1,6 +1,6 @@
 # BirdNET Deployment Guide
 
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-22
 **Related Systems**: Raspberry Pi (192.168.0.136), Komodo CT 128 (192.168.0.179), Home Assistant VM 100 (192.168.0.154)
 
 ---
@@ -38,9 +38,10 @@ Two components:
 | **BirdNET-Go Data** | /mnt/birdnet/birdnet-go |
 | **Location** | 32.4107, -110.9361 (Tucson, AZ) |
 | **MQTT** | Disabled (can enable to 192.168.0.154:1883) |
-| **Mic Gain** | 6/15 (~9dB) via ALSA — saved with `alsactl store 3` |
+| **Mic Gain** | 6/15 (~9dB) via ALSA card 3 numid=3 — card can shift after reboot, check `arecord -l` |
 | **Normalization** | Disabled (was boosting noise floor at night) |
-| **Equalizer** | HighPass 500Hz + LowPass 12kHz (filters pool/traffic noise) |
+| **Equalizer** | Disabled (previously tested HighPass 500Hz + LowPass 12kHz) |
+| **Prometheus** | http://192.168.0.179:7828/metrics (80+ metrics) |
 
 ---
 
@@ -53,7 +54,8 @@ The Pi's only job is to capture USB mic audio and serve it as an RTSP stream.
 - **Raspberry Pi 4** (arm64), Raspberry Pi OS Bookworm, Wi-Fi
 - **USB Microphone**: UAC 1.0 device at ALSA `hw:3,0` (natively stereo, downmixed to mono)
   - Movo M1 USB Lavalier (20ft cable, recommended) or NowTH USB Lavalier (6.5ft cable)
-  - **Mic gain**: 6/15 (~9dB) — ALSA `Mic Capture Volume` (numid=3, range 0-15, 0-22.39dB)
+  - **Mic gain**: 6/15 (~9dB) — ALSA `Mic Capture Volume` (numid=3 on card 3, range 0-15, 0-22.39dB)
+  - **Card number can shift** after reboot — always verify with `arecord -l` first
   - Default gain (15/15) is way too hot — causes clipping and amplifies electrical hum
   - Gain is persisted with `sudo alsactl store 3` on the Pi
 
@@ -187,67 +189,78 @@ docker run -d --name birdnet-go \
 1. Open http://192.168.0.179:8060
 2. Go to **Settings**
 3. Configure RTSP source: `rtsp://192.168.0.136:8554/birdmic` with TCP transport
-4. Set threshold: 0.7
+4. Set threshold: 0.8 (not 0.7 — tuned for low false positives)
 5. Verify location: 32.4107, -110.9361
+6. See **Key Settings in config.yaml** below for full tuning details
 
 ### Key Settings in config.yaml
 
-The config lives at `/mnt/birdnet/birdnet-go/config/config.yaml` (or `/config/config.yaml` inside the container). Key sections:
+The config lives at `/mnt/docker/birdnet-go/config/config.yaml` (or `/config/config.yaml` inside the container). Key detection settings (tuned 2026-02-22 for minimal false positives):
 
 ```yaml
 birdnet:
-  threshold: 0.7
+  sensitivity: 1.0       # Default; optimal for desert environment
+  threshold: 0.8          # Raised from 0.7 — cuts low-confidence noise
+  overlap: 1.5            # Requires 2 confirmations per detection
   latitude: 32.4107
   longitude: -110.9361
+  rangefilter:
+    model: latest
+    threshold: 0.03       # Raised from 0.01 — filters marginal species
 realtime:
   audio:
     export:
       normalization:
         enabled: false    # Disabled 2026-02-05 — was boosting noise floor at night
     equalizer:
-      enabled: true
-      filters:
-        - type: HighPass
-          frequency: 500
-          q: 0.1
-        - type: LowPass
-          frequency: 12000
-          q: 0.1
+      enabled: false      # Previously tested HighPass 500Hz + LowPass 12kHz
+  dynamicthreshold:
+    enabled: true
+    trigger: 0.9          # Only high-confidence detections lower the bar
+    min: 0.2
+    validhours: 12        # Reduced from 24 — matches dawn/dusk cycle
+  falsepositivefilter:
+    level: 2              # Raised from 0 — moderate built-in FP filtering
+  privacyfilter:
+    enabled: true
+    confidence: 0.08      # Raised from 0.05
+  dogbarkfilter:
+    enabled: true
+    confidence: 0.3       # Raised from 0.1
+    remember: 30          # Raised from 5 — covers full barking episodes
+    species:
+      - Great Horned Owl
+      - Western Screech-Owl
+      - Elf Owl
+  species:
+    exclude:
+      - Common Loon
+      - Gadwall
+      - Mallard
+      - Canada Goose
+      - Painted Redstart
+      - Downy Woodpecker
   rtsp:
     streams:
-      - name: Birdmic
+      - name: rPi in Gazebo
         url: rtsp://192.168.0.136:8554/birdmic
         type: rtsp
         transport: tcp
+  telemetry:
+    enabled: true
+    listen: 0.0.0.0:7828
 ```
 
-### Audio Equalizer
-
-The equalizer filters environmental noise before BirdNET analysis. Currently configured with:
-
-- **HighPass 500Hz** — filters out low-frequency noise (pool water trickling, traffic rumble, HVAC). Most bird vocalizations are above 1kHz.
-- **LowPass 12000Hz** — filters out ultrasonic noise. BirdNET analyzes up to ~12kHz.
-
-To adjust, edit `/mnt/birdnet/birdnet-go/config/config.yaml` (the `equalizer` section under `realtime.audio`) and restart:
-```bash
-docker restart birdnet-go
-```
-
-> **Warning**: When editing config.yaml by hand, be careful with `sed` — the file has many `enabled:` fields. Always use line-number-specific edits or edit via the web UI to avoid accidentally enabling unrelated features.
+> **Warning**: When editing config.yaml by hand, be careful with `sed` — the file has many `enabled:` fields. Always use targeted edits to avoid accidentally toggling unrelated features.
 
 ### Shared Storage
 
-BirdNET-Go data lives on a dedicated 250GB partition:
+BirdNET-Go data lives on Komodo's Docker storage:
 
 ```
-/mnt/birdnet/birdnet-go/
+/mnt/docker/birdnet-go/
 ├── config/    # config.yaml
 └── data/      # clips/, birdnet.db, logs/
-```
-
-Host mount in `/etc/pve/lxc/128.conf`:
-```conf
-mp5: /mnt/birdnet/birdnet-go,mp=/mnt/birdnet
 ```
 
 ### Management Commands
@@ -259,13 +272,16 @@ docker logs -f birdnet-go
 # Restart
 docker restart birdnet-go
 
-# Update
-docker pull ghcr.io/tphakala/birdnet-go:nightly
-docker stop birdnet-go && docker rm birdnet-go
-# Re-run the docker run command above
+# Update (via Komodo stack)
+cd /etc/komodo/stacks/birdnet-go
+docker compose pull
+docker compose up -d
 
 # Health check
 docker inspect birdnet-go --format='{{.State.Health.Status}}'
+
+# Check Prometheus metrics
+curl -s http://192.168.0.179:7828/metrics | grep birdnet_detections
 ```
 
 ---
@@ -335,7 +351,10 @@ Investigated 2026-02-05. Root cause was the **Pi's mechanical cooling fan** vibr
 
 **To adjust gain remotely:**
 ```bash
-# Set gain (0-15, currently 6)
+# First verify card number (can shift after reboot!)
+SSHPASS='9773' sshpass -e ssh alec@192.168.0.136 "arecord -l"
+
+# Set gain (0-15, currently 6, on card 3 — adjust card number if shifted)
 SSHPASS='9773' sshpass -e ssh alec@192.168.0.136 "amixer -c 3 cset numid=3 <VALUE> && sudo alsactl store 3"
 ```
 

@@ -1,12 +1,12 @@
 # BirdNET-Go Docker Setup
 
 **Created**: 2026-02-03
-**Updated**: 2026-02-05
+**Updated**: 2026-02-22
 **Status**: Complete and operational
 
 ## Summary
 
-BirdNET-Go running as a Docker container on Komodo (CT 128), providing bird detection with a simpler, more modern interface than BirdNET-Pi.
+BirdNET-Go running as a Docker container on Komodo (CT 128), providing bird detection with a simpler, more modern interface than BirdNET-Pi. Managed as a Komodo stack.
 
 ## Configuration
 
@@ -16,63 +16,191 @@ BirdNET-Go running as a Docker container on Komodo (CT 128), providing bird dete
 | Host IP | 192.168.0.179 |
 | Web UI Port | 8060 |
 | Web UI URL | http://192.168.0.179:8060 |
+| Prometheus Metrics | http://192.168.0.179:7828/metrics |
 | Image | `ghcr.io/tphakala/birdnet-go:nightly` |
-| Data Storage | /mnt/birdnet/birdnet-go |
+| Config Path | /mnt/docker/birdnet-go/config/config.yaml |
+| Data Path | /mnt/docker/birdnet-go/data |
 | Location | 32.4107, -110.9361 (Tucson, AZ) |
 
 BirdNET-Go is the sole bird detection system. BirdNET-Pi (CT 122) was deprecated and destroyed on 2026-02-03. BirdNET-Pi was also removed from the Raspberry Pi on 2026-02-04 during the audio stream rebuild.
 
 ---
 
-## Installation
+## Compose File (Komodo Stack)
 
-### Prerequisites
+Located at `/etc/komodo/stacks/birdnet-go/compose.yaml` on Komodo:
 
-- Docker host (Komodo CT 128 in this setup)
-- RTSP audio stream available
-- Shared storage partition mounted (optional)
+```yaml
+name: birdnet-go
 
-### Create Data Directories
+services:
+  birdnet-go:
+    image: ghcr.io/tphakala/birdnet-go:nightly
+    container_name: birdnet-go
+    restart: unless-stopped
+    ports:
+      - "8060:8080"
+      - "7828:7828"
+    volumes:
+      - /mnt/docker/birdnet-go/config:/config
+      - /mnt/docker/birdnet-go/data:/data
+    environment:
+      TZ: America/Phoenix
+      BIRDNET_UID: 1000
+      BIRDNET_GID: 1000
+      BIRDNET_LATITUDE: 32.4107
+      BIRDNET_LONGITUDE: -110.9361
+      BIRDNET_LOCALE: en-uk
+    tmpfs:
+      - /config/hls:exec,size=50M,uid=1000,gid=1000,mode=0755
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - birdnet-net
 
-```bash
-mkdir -p /mnt/birdnet/birdnet-go/config
-mkdir -p /mnt/birdnet/birdnet-go/data
-chown -R 1000:1000 /mnt/birdnet/birdnet-go
-```
-
-### Deploy Container
-
-```bash
-docker run -d --name birdnet-go \
-  --restart unless-stopped \
-  -p 8060:8080 \
-  -e BIRDNET_LATITUDE=32.4107 \
-  -e BIRDNET_LONGITUDE=-110.9361 \
-  -e BIRDNET_LOCALE=en-uk \
-  -e TZ=America/Phoenix \
-  -v /mnt/birdnet/birdnet-go/config:/config \
-  -v /mnt/birdnet/birdnet-go/data:/data \
-  ghcr.io/tphakala/birdnet-go:nightly
-```
-
-### Verify Running
-
-```bash
-docker ps | grep birdnet-go
+networks:
+  birdnet-net:
+    driver: bridge
 ```
 
 ---
 
-## Environment Variables
+## Detection Settings (Tuned 2026-02-22)
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| BIRDNET_LATITUDE | 32.4107 | Location latitude |
-| BIRDNET_LONGITUDE | -110.9361 | Location longitude |
-| BIRDNET_LOCALE | en-uk | Bird name language |
-| TZ | America/Phoenix | Timezone |
-| BIRDNET_UID | 1000 | User ID for file permissions |
-| BIRDNET_GID | 1000 | Group ID for file permissions |
+Settings optimized for minimal false positives while maintaining good detection for Tucson, AZ (Sonoran Desert). Config path: `/mnt/docker/birdnet-go/config/config.yaml`
+
+### Core BirdNET Settings
+
+```yaml
+birdnet:
+  sensitivity: 1.0      # Default; optimal for desert environment
+  threshold: 0.8         # Raised from 0.7 — cuts low-confidence noise
+  overlap: 1.5           # Requires 2 confirmations per detection
+  latitude: 32.4107
+  longitude: -110.9361
+  locale: en-uk
+  rangefilter:
+    model: latest
+    threshold: 0.03      # Raised from 0.01 — filters marginal species, preserves migrants
+```
+
+### Dynamic Threshold
+
+```yaml
+dynamicthreshold:
+  enabled: true
+  trigger: 0.9           # Only very high-confidence triggers lowering
+  min: 0.2               # Safety floor
+  validhours: 12         # Reduced from 24 — better matches dawn/dusk activity cycle
+```
+
+### False Positive Filter
+
+```yaml
+falsepositivefilter:
+  level: 2               # Raised from 0 (off) — moderate built-in FP filtering
+```
+
+### Privacy Filter
+
+```yaml
+privacyfilter:
+  enabled: true
+  confidence: 0.08       # Raised from 0.05 — less likely to discard real birds from ambient noise
+```
+
+### Dog Bark Filter
+
+```yaml
+dogbarkfilter:
+  enabled: true
+  confidence: 0.3        # Raised from 0.1 — reduces false bark triggers
+  remember: 30           # Raised from 5 — covers full barking episodes
+  species:               # Was empty! Must list species confused with barks
+    - Great Horned Owl
+    - Western Screech-Owl
+    - Elf Owl
+```
+
+### Species Exclude List
+
+Species impossible or near-impossible for a Tucson residential backyard:
+
+```yaml
+species:
+  exclude:
+    - Common Loon
+    - Gadwall
+    - Mallard
+    - Canada Goose
+    - Painted Redstart
+    - Downy Woodpecker
+```
+
+### Settings Rationale
+
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| threshold 0.8 | Up from 0.7 | 46.5% of 18,575 detections were below 0.60 confidence — mostly noise |
+| rangefilter 0.03 | Up from 0.01 | Filters species with <3% probability for this location/season |
+| FP filter level 2 | Up from 0 | Enables BirdNET-Go's built-in false positive detection |
+| dogbarkfilter species | Was empty | Filter was enabled but doing nothing without a species list |
+| dogbarkfilter remember 30 | Up from 5 | Dog barking episodes last 30+ seconds |
+| validhours 12 | Down from 24 | Desert bird activity is dawn/dusk concentrated |
+| Exclude list | 6 species | Waterfowl, Downy Woodpecker (Ladder-backed look-alike), Painted Redstart (mountain species) |
+
+---
+
+## Audio Configuration
+
+### Normalization
+
+**Disabled** (as of 2026-02-05). It was boosting the quiet nighttime noise floor to -23 LUFS, which amplified the Pi's cooling fan buzz and mic self-noise.
+
+### Equalizer
+
+Currently **disabled** in config. Previously tested with HighPass 500Hz + LowPass 12kHz.
+
+### RTSP Source
+
+```yaml
+rtsp:
+  streams:
+    - name: rPi in Gazebo
+      url: rtsp://192.168.0.136:8554/birdmic
+      type: rtsp
+      transport: tcp
+```
+
+---
+
+## Prometheus Telemetry
+
+Enabled on port 7828. Exposes 80+ metrics including:
+- Detection counts per species
+- Model prediction performance
+- Audio levels and octave band analysis
+- Weather data (via yr.no)
+- Disk usage
+- Database statistics
+
+Scraped by Prometheus with job `birdnet-go` (see prometheus-config.yaml).
+
+Grafana dashboard includes a dedicated BirdNET-Go section with weather, audio, and detection panels.
+
+### Known Issue: Suncalc Metrics
+
+As of nightly-20260118, `suncalc_*` metrics are registered but always return 0 (cache_size=0). This is a bug in the nightly build — the suncalc calculation code is never triggered. Weather metrics work fine. A newer build may fix this.
 
 ---
 
@@ -80,33 +208,8 @@ docker ps | grep birdnet-go
 
 | Container Path | Host Path | Purpose |
 |----------------|-----------|---------|
-| /config | /mnt/birdnet/birdnet-go/config | Configuration files |
-| /data | /mnt/birdnet/birdnet-go/data | Detection clips and database |
-
----
-
-## Shared Storage Setup
-
-BirdNET-Go data lives on a dedicated partition:
-
-```
-/mnt/birdnet (250GB partition - /dev/sde5)
-└── birdnet-go/      # Used by Docker in CT 128
-    ├── config/
-    └── data/
-```
-
-### Host Mount Configuration
-
-On Proxmox host (`/etc/fstab`):
-```
-LABEL=birdnet-data /mnt/birdnet ext4 defaults 0 2
-```
-
-In Komodo container config (`/etc/pve/lxc/128.conf`):
-```conf
-mp5: /mnt/birdnet/birdnet-go,mp=/mnt/birdnet
-```
+| /config | /mnt/docker/birdnet-go/config | Configuration files |
+| /data | /mnt/docker/birdnet-go/data | Detection clips and database |
 
 ---
 
@@ -124,21 +227,15 @@ docker restart birdnet-go
 
 ### Update to Latest Version
 ```bash
-docker pull ghcr.io/tphakala/birdnet-go:nightly
-docker stop birdnet-go
-docker rm birdnet-go
-# Re-run the docker run command above
+# Via Komodo UI, or:
+cd /etc/komodo/stacks/birdnet-go
+docker compose pull
+docker compose up -d
 ```
 
-### Stop Container
+### Health Check
 ```bash
-docker stop birdnet-go
-```
-
-### Remove Container
-```bash
-docker stop birdnet-go
-docker rm birdnet-go
+docker inspect birdnet-go --format='{{.State.Health.Status}}'
 ```
 
 ---
@@ -151,106 +248,9 @@ Access at: **http://192.168.0.179:8060**
 - Real-time spectrogram
 - Detection list with confidence scores
 - Audio playback of detected clips
-- Species statistics
+- Species statistics and tracking
 - Settings configuration
-
-### Configuration via Web UI
-1. Navigate to Settings
-2. Configure audio input (RTSP stream)
-3. Set detection thresholds
-4. Configure notification options (if desired)
-
----
-
-## RTSP Audio Configuration
-
-BirdNET-Go can use the same RTSP feed as BirdNET-Pi:
-```
-rtsp://192.168.0.136:8554/birdmic
-```
-
-Configure in the web UI under Settings → Audio Input.
-
----
-
-## Audio Normalization
-
-Normalization is **disabled** (as of 2026-02-05). It was boosting the quiet nighttime noise floor to -23 LUFS, which amplified the Pi's cooling fan buzz and mic self-noise.
-
-```yaml
-normalization:
-  enabled: false
-```
-
-If re-enabled, the settings were: target -23 LUFS, loudness range 7, true peak -2.
-
----
-
-## Audio Equalizer
-
-An equalizer is enabled to filter environmental noise before analysis:
-
-```yaml
-equalizer:
-  enabled: true
-  filters:
-    - type: HighPass
-      frequency: 500
-      q: 0.1
-    - type: LowPass
-      frequency: 12000
-      q: 0.1
-```
-
-- **HighPass 500Hz**: Filters pool water trickling, traffic rumble, HVAC
-- **LowPass 12kHz**: Filters ultrasonic noise above BirdNET's analysis range
-
-Config location: `/mnt/birdnet/birdnet-go/config/config.yaml` → `realtime.audio.equalizer`
-
-Restart after changes: `docker restart birdnet-go`
-
----
-
-## Troubleshooting
-
-### Container Shows "unhealthy"
-This is normal during startup while the model loads. Check logs:
-```bash
-docker logs birdnet-go | tail -20
-```
-
-### No Detections
-1. Verify RTSP stream is configured
-2. Check audio input in web UI
-3. Verify location coordinates are correct
-
-### Permission Denied on Data Directory
-```bash
-chown -R 1000:1000 /mnt/birdnet/birdnet-go
-```
-
-### Container Won't Start
-```bash
-# Check for port conflicts
-netstat -tlnp | grep 8060
-
-# Check Docker logs
-docker logs birdnet-go
-```
-
-### Update Container After Config Change
-```bash
-docker restart birdnet-go
-```
-
----
-
-## Health Check
-
-The container includes a built-in health check. View status:
-```bash
-docker inspect birdnet-go --format='{{.State.Health.Status}}'
-```
+- Weather data display
 
 ---
 
@@ -264,12 +264,6 @@ Base URL: `http://192.168.0.179:8060`
 |--------|----------|-------------|
 | GET | `/health` | Service health, version, uptime |
 
-### App
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/app/config` | Application configuration |
-
 ### Analytics
 
 | Method | Endpoint | Description |
@@ -278,17 +272,8 @@ Base URL: `http://192.168.0.179:8060`
 | GET | `/api/v2/analytics/species/daily/batch?dates=&limit=` | Batch daily data |
 | GET | `/api/v2/analytics/species/detections/new` | New species detections |
 | GET | `/api/v2/analytics/species/summary` | Species summary |
-| GET | `/api/v2/analytics/species/thumbnails` | Species thumbnails |
 | GET | `/api/v2/analytics/time/daily` | Daily time analytics |
-| GET | `/api/v2/analytics/time/daily/batch` | Batch daily time analytics |
 | GET | `/api/v2/analytics/time/distribution/hourly` | Hourly distribution |
-| GET | `/api/v2/analytics/time/hourly/batch` | Batch hourly analytics |
-
-### Audio
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/audio/{detectionId}` | Download detection audio clip |
 
 ### Detections
 
@@ -298,127 +283,36 @@ Base URL: `http://192.168.0.179:8060`
 | GET | `/api/v2/detections/recent?limit=&includeWeather=` | Recent detections |
 | GET | `/api/v2/detections/{id}` | Single detection detail |
 | POST | `/api/v2/detections/ignore` | Ignore/unignore a species |
-| POST | `/api/v2/detections/{id}/lock` | Lock/unlock a detection |
 | DELETE | `/api/v2/detections/{id}` | Delete a detection |
 | SSE | `/api/v2/detections/stream` | Real-time detection stream |
 
-### Media
+### Audio & Media
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/api/v2/audio/{detectionId}` | Download detection audio clip |
 | GET | `/api/v2/media/species-image?name={scientificName}` | Species image |
-| GET | `/api/v2/media/audio/{id}` | Audio media file |
 | GET | `/api/v2/spectrogram/{id}?size=md&raw=true` | Spectrogram image |
 
-### Species
+### Settings & System
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v2/species?scientific_name=` | Species info |
-| GET | `/api/v2/species/taxonomy?scientific_name=` | Taxonomy lookup |
-
-### Search
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/search` | Search detections |
-
-### Notifications
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/notifications?limit=&status=` | List notifications |
-| PUT | `/api/v2/notifications/{id}/read` | Mark as read |
-| POST | `/api/v2/notifications/{id}/acknowledge` | Acknowledge notification |
-| DELETE | `/api/v2/notifications/{id}` | Delete notification |
-| POST | `/api/v2/notifications/test/new-species` | Test notification |
-| SSE | `/api/v2/notifications/stream` | Real-time notification stream |
-
-### Streams (Live Audio)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| SSE | `/api/v2/streams/audio-level` | Audio level meter |
-| POST | `/api/v2/streams/hls/{source}/start` | Start HLS stream |
-| POST | `/api/v2/streams/hls/{source}/stop` | Stop HLS stream |
-| GET | `/api/v2/streams/hls/{source}/playlist.m3u8` | HLS playlist |
-| POST | `/api/v2/streams/hls/heartbeat` | Keep stream alive |
-| GET | `/api/v2/streams/health` | Stream health check |
-| SSE | `/api/v2/streams/health/stream` | Stream health SSE |
-| SSE | `/api/v2/soundlevels/stream` | Sound level SSE |
-
-### Weather
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/weather/sun/{location}` | Sunrise/sunset times |
-| GET | `/api/v2/weather/hourly/{location}` | Hourly forecast |
-| GET | `/api/v2/weather/detection/{id}` | Weather at detection time |
-
-### Settings
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/settings/dashboard` | Dashboard settings |
-| GET | `/api/v2/settings/locales` | Available locales |
-| GET | `/api/v2/settings/imageproviders` | Image providers |
-| GET | `/api/v2/settings/notification` | Notification settings |
-| GET | `/api/v2/settings/systemid` | System ID |
-
-### System
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+| GET | `/api/v2/settings` | Full settings (JSON) |
 | GET | `/api/v2/system/info` | System information |
 | GET | `/api/v2/system/resources` | Resource usage |
-| GET | `/api/v2/system/disks` | Disk info |
-| GET | `/api/v2/system/processes` | Process list (`?all=true` for all) |
-| GET | `/api/v2/system/temperature/cpu` | CPU temperature |
-| GET | `/api/v2/system/audio/devices` | Audio devices |
-| GET | `/api/v2/system/audio/equalizer/config` | Equalizer config |
 | GET | `/api/v2/system/database/stats` | Database stats |
-| GET | `/api/v2/support/generate` | Generate support bundle |
-
-### Dynamic Thresholds
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/dynamic-thresholds?limit=` | List thresholds |
-| GET | `/api/v2/dynamic-thresholds/stats` | Threshold stats |
-| DELETE | `/api/v2/dynamic-thresholds/{species}` | Delete threshold |
-| POST | `/api/v2/dynamic-thresholds?confirm=true` | Update thresholds |
-
-### Range Filter
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v2/range/species/count` | Species count in range |
-| GET | `/api/v2/range/species/list` | List species in range |
-| GET | `/api/v2/range/species/csv` | CSV export |
-| POST | `/api/v2/range/species/test` | Test range filter |
+| GET | `/api/v2/dynamic-thresholds?limit=` | List dynamic thresholds |
+| GET | `/api/v2/range/species/list` | Species in range filter |
 
 ### Integrations
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v2/integrations/birdweather/test` | Test BirdWeather connection |
-| POST | `/api/v2/integrations/mqtt/test` | Test MQTT connection |
-| POST | `/api/v2/integrations/mqtt/homeassistant/discovery` | Trigger HA MQTT discovery |
 | POST | `/api/v2/integrations/weather/test` | Test weather integration |
+| POST | `/api/v2/integrations/mqtt/test` | Test MQTT connection |
 
-### Auth
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v2/auth/login` | Login |
-| POST | `/api/v2/auth/logout` | Logout |
-| GET | `/auth/google` | Google OAuth |
-| GET | `/auth/github` | GitHub OAuth |
-| GET | `/auth/microsoftonline` | Microsoft OAuth |
-| GET | `/auth/kakao` | Kakao OAuth |
-| GET | `/auth/line` | LINE OAuth |
-
-> **Note**: Extracted from frontend JS bundles (nightly-20260118). Server-side-only endpoints may exist beyond what the UI calls.
+> **Note**: Extracted from frontend JS bundles (nightly-20260118). Additional endpoints may exist.
 
 ---
 

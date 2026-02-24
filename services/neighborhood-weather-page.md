@@ -204,14 +204,14 @@ Empty day returns `[]`.
 The HTML template uses the National Park Service (NPS) design system:
 
 - **Black band header** with white arrowhead logo
-- **Brown identification band** with sunrise/sunset and current temperature
+- **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
 - **Main content**: 12-cell weather grid (temperature, humidity, wind, pressure, UV, air quality, rain, solar, sun events, high/low)
 - **Right-side collapsible drawer** with 3 tabs:
   - Weather Station: all 12 metric cells
   - 24-Hour Charts: temperature and wind/gust line charts
   - Radar: NWS KEMX radar loop GIF
-- **Bottom bird drawer**: grid of today's detected species with Wikipedia thumbnails, detection counts, first/last heard times, and "New" badges for first-time species
-- **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the brown band stays static — it shows when the *data* was last refreshed server-side.
+- **Bottom bird drawer**: horizontal scroll strip of today's detected species with Wikipedia thumbnails, detection counts, and "New" badges for first-time species
+- **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the identification band stays static — it shows when the *data* was last refreshed server-side.
 - **Font switcher**: toggles between historical NPS typefaces (1935 style, 1945 signage, 2026 modern)
 - **Responsive**: works on mobile at 375px width
 

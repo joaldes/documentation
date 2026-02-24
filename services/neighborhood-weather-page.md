@@ -5,7 +5,7 @@
 
 ## Summary
 
-A static weather dashboard for the neighborhood, styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun events via the astral library, and NWS radar imagery every 15 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. Runs as a Docker Compose stack on Komodo.
+A static weather dashboard for the neighborhood, styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun events via the astral library, and NWS radar imagery every 5 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
 
 ## Architecture
 
@@ -13,14 +13,12 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 ┌──────────────────────────────────────────────────────────┐
 │  Komodo Stack: neighborhood-page (CT 128, 192.168.0.179) │
 │                                                          │
-│  ┌─ generator (python:3.12-slim + cron) ──────────────┐  │
+│  ┌─ generator (python:3.12-slim) ─────────────────────┐  │
 │  │  entrypoint.sh:                                     │  │
 │  │    1. Copy fonts to /output/fonts/                  │  │
-│  │    2. Export env vars for cron (/etc/environment)   │  │
-│  │    3. Run generate.py (initial generation)          │  │
-│  │    4. Start cron daemon + tail log                  │  │
+│  │    2. while true: run generate.py, sleep 300        │  │
 │  │                                                     │  │
-│  │  generate.py (every 15 min via cron):               │  │
+│  │  generate.py (every 5 min via sleep loop):          │  │
 │  │    ├─ Ecowitt API v3  → current weather + 24h hist  │  │
 │  │    ├─ BirdNET-Go API  → today's bird detections     │  │
 │  │    ├─ astral library  → dawn/sunrise/sunset/dusk    │  │
@@ -40,7 +38,7 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 │         ▼                                                 │
 │  ┌─ web (nginx:alpine) ── port 8076 ──────────────────┐  │
 │  │  Static file server with cache headers              │  │
-│  │  HTML: no-cache | PNG/GIF: 15min | fonts: 1 year    │  │
+│  │  HTML: no-cache | PNG/GIF: 5min | fonts: 1 year     │  │
 │  └─────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -49,11 +47,11 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 
 | Source | Protocol | Data | Update Frequency |
 |--------|----------|------|-----------------|
-| Ecowitt API v3 (realtime) | HTTPS | Temperature, humidity, wind, pressure, UV, PM2.5, rain | Every 15 min |
-| Ecowitt API v3 (history) | HTTPS | 24h rolling temperature + wind speed/gust series | Every 15 min |
-| BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | Every 15 min |
-| astral (Python lib) | Local calculation | Dawn, sunrise, noon, sunset, dusk, day length | Every 15 min |
-| NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | Every 15 min |
+| Ecowitt API v3 (realtime) | HTTPS | Temperature, humidity, wind, pressure, UV, PM2.5, rain | Every 5 min |
+| Ecowitt API v3 (history) | HTTPS | 24h rolling temperature + wind speed/gust series | Every 5 min |
+| BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | Every 5 min |
+| astral (Python lib) | Local calculation | Dawn, sunrise, noon, sunset, dusk, day length | Every 5 min |
+| NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | Every 5 min |
 
 ## Access
 
@@ -72,8 +70,8 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 /mnt/docker/neighborhood-page/
 ├── .env                 # API keys + coordinates (loaded by compose env_file)
 ├── .dockerignore        # Excludes output/ and nginx.conf from build
-├── Dockerfile           # python:3.12-slim + cron + matplotlib
-├── entrypoint.sh        # Font copy, env export, initial gen, cron start
+├── Dockerfile           # python:3.12-slim + matplotlib
+├── entrypoint.sh        # Font copy + sleep loop (runs generate.py every 5 min)
 ├── generate.py          # Main generator script (~280 lines)
 ├── template.html        # Jinja2 HTML template (~1450 lines, NPS design)
 ├── requirements.txt     # Python dependencies
@@ -119,7 +117,7 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 - **Port**: 8076 (port 8075 is taken by fragments-web)
 - **Memory limits**: Generator 512MB, nginx 128MB
 - **Health checks**:
-  - Generator: `find /output/index.html -mmin -20` (file updated within 20 min)
+  - Generator: `find /output/index.html -mmin -20` (file updated within 20 min, covers 5-min interval with margin)
   - Web: `wget --spider http://localhost:80/health`
 - **Logging**: json-file driver, max 10MB x 3 files per container
 - **Restart policy**: `unless-stopped`
@@ -213,6 +211,7 @@ The HTML template uses the National Park Service (NPS) design system:
   - 24-Hour Charts: temperature and wind/gust line charts
   - Radar: NWS KEMX radar loop GIF
 - **Bottom bird drawer**: grid of today's detected species with Wikipedia thumbnails, detection counts, first/last heard times, and "New" badges for first-time species
+- **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the brown band stays static — it shows when the *data* was last refreshed server-side.
 - **Font switcher**: toggles between historical NPS typefaces (1935 style, 1945 signage, 2026 modern)
 - **Responsive**: works on mobile at 375px width
 
@@ -256,16 +255,24 @@ Browser → weather.1701.me
       → nginx container → static files from page-output volume
 ```
 
-## Cron & Environment
+## Scheduling
 
-The generator runs on a 15-minute cron schedule inside the container. Docker env vars are not available to cron jobs by default, so the entrypoint handles this:
+The generator uses a simple `while true; sleep 300` loop in entrypoint.sh instead of cron. This is intentional — cron inside Docker doesn't inherit env vars from `env_file`, which caused `KeyError` crashes. The sleep loop inherits Docker's env directly and logs to stdout (visible via `docker logs`).
 
-1. `entrypoint.sh` writes Docker env vars to `/etc/environment`
-2. The cron entry sources `/etc/environment` before running:
-   ```
-   */15 * * * * . /etc/environment; cd /app && python3 generate.py >> /var/log/cron.log 2>&1
-   ```
-3. `docker logs` works because the entrypoint tails `/var/log/cron.log`
+```bash
+# entrypoint.sh (complete)
+#!/bin/bash
+set -e
+mkdir -p /output/fonts
+cp -f /app/fonts/*.woff2 /output/fonts/ 2>/dev/null || true
+echo "[$(date)] Starting neighborhood-page generator (every 300s)..."
+while true; do
+    python3 /app/generate.py || echo "[$(date)] generate.py failed (exit $?)" >&2
+    sleep 300
+done
+```
+
+The `|| echo` prevents `set -e` from killing the loop if generate.py fails — it logs the error and retries in 5 minutes. `restart: unless-stopped` is the outer safety net.
 
 ## Operations
 
@@ -328,7 +335,7 @@ docker logs neighborhood-page-generator --tail 20
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `KeyError: 'ECOWITT_APP_KEY'` | Cron not sourcing env vars | Ensure cron entry starts with `. /etc/environment;` — rebuild image |
+| `KeyError: 'ECOWITT_APP_KEY'` | Missing env vars in .env file | Check `/mnt/docker/neighborhood-page/.env` has all required keys |
 | `Ecowitt error 40000: wind_speed_unitid must between 6 - 11` | Wrong v3 unit ID | Use IDs from the unit table above — v3 IDs differ from v2 |
 | `Ecowitt error {code}: {msg}` | API auth or rate limit | Check .env keys, wait for rate limit reset |
 | `BirdNET-Go unavailable` | BirdNET-Go container down | Check `docker ps` for birdnet-go on Komodo |
@@ -355,7 +362,7 @@ The web container starts only after the generator is healthy (`depends_on: condi
 
 1. **Ecowitt API v3 unit IDs are NOT the same as v2.** The v2 docs say wind_speed unit 4 = mph, but v3 says unit 4 is invalid (valid range 6-11, where 9 = mph). Always verify against v3 docs or test empirically.
 
-2. **Cron inside Docker loses all environment variables.** The Docker `ENV` and `env_file` directives only apply to the entrypoint process. Cron spawns jobs with a clean environment. Solution: write vars to `/etc/environment` and source it in the cron entry.
+2. **Don't use cron inside Docker.** Cron spawns jobs with a clean environment that doesn't inherit Docker `ENV` or `env_file` vars. Forwarding env via `/etc/environment` is fragile. A simple `while true; sleep N` loop in the entrypoint inherits env directly and is the standard Docker-idiomatic pattern for periodic tasks.
 
 3. **Ecowitt API always returns HTTP 200**, even on error. Must check `response['code'] == 0` before accessing data. On error, `data` is `[]`, not a dict — accessing dict keys on a list will raise a different error than expected.
 

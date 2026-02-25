@@ -1,11 +1,11 @@
 # Neighborhood Weather & Wildlife Page
 
 **Last Updated**: 2026-02-24
-**Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, AdGuard (CT 101), NPM (CT 112)
+**Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
 ## Summary
 
-A static weather dashboard for the neighborhood, styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun events via the astral library, and NWS radar imagery every 5 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
+A static weather dashboard for the neighborhood, styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, visible planet data, and a daily NPS park — every 5 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
 
 ## Architecture
 
@@ -21,19 +21,24 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 │  │  generate.py (every 5 min via sleep loop):          │  │
 │  │    ├─ Ecowitt API v3  → current weather + 24h hist  │  │
 │  │    ├─ BirdNET-Go API  → today's bird detections     │  │
-│  │    ├─ astral library  → dawn/sunrise/sunset/dusk    │  │
+│  │    ├─ astral library  → sun events + moon phase     │  │
 │  │    ├─ NWS KEMX        → radar loop GIF              │  │
+│  │    ├─ Frigate API     → driveway camera snapshot    │  │
+│  │    ├─ visibleplanets  → currently visible planets   │  │
+│  │    ├─ NPS API         → park of the day (cached)    │  │
 │  │    ├─ matplotlib      → temp + wind 24h charts      │  │
 │  │    └─ Jinja2 render   → /output/index.html          │  │
 │  └─────────────────────────────────────────────────────┘  │
 │         │ writes to                                       │
 │         ▼                                                 │
 │  [ page-output named volume ]                             │
-│    /output/index.html      (rendered page)                │
-│    /output/temp-chart.png  (24h temperature chart)        │
-│    /output/wind-chart.png  (24h wind speed chart)         │
-│    /output/radar.gif       (NWS KEMX radar loop)          │
-│    /output/fonts/*.woff2   (NPS typefaces)                │
+│    /output/index.html           (rendered page)           │
+│    /output/temp-chart.png       (24h temperature chart)   │
+│    /output/wind-chart.png       (24h wind speed chart)    │
+│    /output/radar.gif            (NWS KEMX radar loop)     │
+│    /output/driveway.jpg         (Frigate camera snapshot) │
+│    /output/nps_parks_cache.json (daily park cache)        │
+│    /output/fonts/*.woff2        (NPS typefaces)           │
 │         │ read by                                         │
 │         ▼                                                 │
 │  ┌─ web (nginx:alpine) ── port 8076 ──────────────────┐  │
@@ -50,8 +55,11 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 | Ecowitt API v3 (realtime) | HTTPS | Temperature, humidity, wind, pressure, UV, PM2.5, rain | Every 5 min |
 | Ecowitt API v3 (history) | HTTPS | 24h rolling temperature + wind speed/gust series | Every 5 min |
 | BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | Every 5 min |
-| astral (Python lib) | Local calculation | Dawn, sunrise, noon, sunset, dusk, day length | Every 5 min |
+| astral (Python lib) | Local calculation | Sun events + moon phase/illumination | Every 5 min |
 | NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | Every 5 min |
+| Frigate (local) | HTTP | Driveway camera snapshot + today's event count | Every 5 min |
+| visibleplanets.dev | HTTPS | Currently visible planets + constellations | Every 5 min |
+| NPS API | HTTPS | Park of the day (name, description, image) | Cached daily |
 
 ## Access
 
@@ -72,8 +80,8 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 ├── .dockerignore        # Excludes output/ and nginx.conf from build
 ├── Dockerfile           # python:3.12-slim + matplotlib
 ├── entrypoint.sh        # Font copy + sleep loop (runs generate.py every 5 min)
-├── generate.py          # Main generator script (~280 lines)
-├── template.html        # Jinja2 HTML template (~1450 lines, NPS design)
+├── generate.py          # Main generator script (~370 lines)
+├── template.html        # Jinja2 HTML template (~1780 lines, NPS design)
 ├── requirements.txt     # Python dependencies
 ├── nginx.conf           # Cache headers + health endpoint
 └── fonts/
@@ -94,6 +102,8 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 ├── temp-chart.png       # 24h temperature line chart
 ├── wind-chart.png       # 24h wind speed + gust chart
 ├── radar.gif            # NWS KEMX radar loop
+├── driveway.jpg         # Frigate camera snapshot
+├── nps_parks_cache.json # Daily park cache (avoids repeated API calls)
 └── fonts/               # Copied from build at startup
     └── *.woff2
 ```
@@ -111,6 +121,8 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 | `LATITUDE` | Station latitude | `32.4107` |
 | `LONGITUDE` | Station longitude | `-110.9361` |
 | `TIMEZONE` | IANA timezone | `America/Phoenix` |
+| `FRIGATE_URL` | Frigate base URL | `http://192.168.0.179:5000` |
+| `NPS_API_KEY` | NPS Developer API key (free) | `zNb7hFy...` |
 
 ### Docker Compose
 
@@ -205,11 +217,13 @@ The HTML template uses the National Park Service (NPS) design system:
 
 - **Black band header** with white arrowhead logo
 - **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
-- **Collapsible services section**: clickable black "SERVICES" bar in main content area expands to reveal 36 service bookmark cards (all `.home` domains) organized into 4 subsections — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Each card shows the service name with a descriptive label below. Uses existing `.service-card` component with colored overbars. Starts collapsed.
-- **Right-side collapsible drawer** with 3 tabs:
+- **Collapsible bookmarks section**: clickable black "BOOKMARKS" bar expands to reveal 36 service bookmark cards (all `.home` domains) organized into 4 groups — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Each card has a colored overbar and shows name + category. Includes an A-Z/Grouped toggle button to sort alphabetically or by group. Starts collapsed, pushed to the bottom of the page.
+- **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page below bookmarks. Night Sky shows current moon phase (emoji + name + illumination %) and visible planets as tags. Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
+- **Right-side collapsible drawer** with 4 tabs:
   - Weather Station: all 12 metric cells
   - 24-Hour Charts: temperature and wind/gust line charts
   - Radar: NWS KEMX radar loop GIF
+  - Camera: Frigate driveway snapshot (links to frigate.home) + today's event count
 - **Bottom bird drawer**: horizontal scroll strip of today's detected species with Wikipedia thumbnails, detection counts, and "New" badges for first-time species
 - **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the identification band stays static — it shows when the *data* was last refreshed server-side.
 - **Font switcher**: toggles between historical NPS typefaces (1935 style, 1945 signage, 2026 modern)

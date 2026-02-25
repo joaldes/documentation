@@ -205,7 +205,7 @@ The HTML template uses the National Park Service (NPS) design system:
 
 - **Black band header** with white arrowhead logo
 - **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
-- **Main content**: 12-cell weather grid (temperature, humidity, wind, pressure, UV, air quality, rain, solar, sun events, high/low)
+- **Collapsible services section**: clickable black "SERVICES" bar in main content area expands to reveal 36 service bookmark cards (all `.home` domains) organized into 4 subsections — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Each card shows the service name with a descriptive label below. Uses existing `.service-card` component with colored overbars. Starts collapsed.
 - **Right-side collapsible drawer** with 3 tabs:
   - Weather Station: all 12 metric cells
   - 24-Hour Charts: temperature and wind/gust line charts

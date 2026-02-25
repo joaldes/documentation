@@ -229,16 +229,152 @@ The HTML template uses the National Park Service (NPS) design system:
 - **Font switcher**: toggles between historical NPS typefaces (1935 style, 1945 signage, 2026 modern)
 - **Responsive**: works on mobile at 375px width
 
-### Fonts
+## Design Guidelines
 
-| Font | Usage | Source |
-|------|-------|--------|
-| Frutiger | Primary sans-serif (modern NPS) | Local woff2 |
-| NationalPark | Variable-weight NPS typeface | Local woff2 |
-| NPS1935 | Historical 1935-era style | Local woff2 |
-| NPSSignage1945 | Historical highway signage style | Local woff2 |
-| Cabin | Google Fonts fallback sans | Google Fonts CDN |
-| Lora | Serif for accent text | Google Fonts CDN |
+This page is inspired by the NPS design system but is not a strict replica. We use the Unigrid system's visual language — black bands, colored overbars, structured grids — while keeping text readable and traditional. The key principle: **NPS structural elements for organization, normal readable typography for content.**
+
+### NPS Design Heritage
+
+The National Park Service design system has two lineages we draw from:
+
+**The Unigrid System (1977)**: Created by Massimo Vignelli and Vincent Gleason for NPS brochures. Won the inaugural Presidential Design Award in 1985. Key elements we use:
+- **Black band headers** — the signature 100-point black edge bar with white reversed type
+- **Colored overbars** — 4px color bars above cards for category coding
+- **Grid-based layouts** — modular, structured content areas
+- **Black divider bars** — 25-point bars to separate sections
+
+**NPS Typography (2001 update)**: The NPS replaced Helvetica and Clarendon with:
+- **Frutiger** — sans-serif for identity elements (park names, labels, structural UI)
+- **NPS Rawlinson** — serif for body/reading text (not publicly available; we substitute Lora)
+
+The NPS's own rule: Frutiger for structural/identity text, serif for content meant to be read. We follow this principle.
+
+### Font Families
+
+| CSS Variable | Stack | Role |
+|---|---|---|
+| `--font-np` / `--font-sans` | Frutiger → Cabin → system sans | Structural: headers, labels, buttons, navigation |
+| `--font-serif` | Lora → Georgia → system serif | Content: titles, descriptions, body text meant to be read |
+
+**When to use which:**
+- **Sans-serif (`--font-np`)**: Section header bars, eyebrow labels, category tags, status pills, buttons, navigation tabs, footer text, weather stat labels — anything that organizes or identifies
+- **Serif (`--font-serif`)**: Card titles (park name, moon phase name, service names), descriptions, body paragraphs — anything the user actually reads as content
+
+| Font File | Era | Notes |
+|---|---|---|
+| `frutiger.woff2` | Modern NPS (2001+) | Primary sans-serif, used in current NPS brochures |
+| `nationalpark.woff2` | 2020s display face | Variable-weight, inspired by NPS signage (not official NPS) |
+| `nps1935.woff2` | 1935 CCC era | Evokes hand-carved Depression-era park signs |
+| `nps-signage-1945.woff2` | 1945 highway signs | Pre-Interstate highway signage style |
+| Cabin (Google Fonts) | Fallback | Metric-compatible Frutiger substitute |
+| Lora (Google Fonts) | Fallback | Serif for content text, substituting NPS Rawlinson |
+
+### Type Scale
+
+Use these sizes consistently. Avoid inventing new sizes.
+
+| Role | Size | Weight | Example |
+|---|---|---|---|
+| **Site title** | `1.9rem` | 700 | "OV HOUSE" in black band |
+| **Data value** | `1.65rem` | 700 | "72°F", "4.2 mph" |
+| **Card/content title** | `1.15–1.2rem` | 700 | Park name, moon phase, service card name |
+| **Section header bar** | `1.1rem` | 700 | "BOOKMARKS", "NIGHT SKY" |
+| **Data value (text)** | `1.15rem` | 700 | "11h 42m" (day length) |
+| **Body text** | `0.9–0.95rem` | 400 | Descriptions, paragraphs |
+| **Label / metadata** | `0.85rem` | 600 | "Visible planets", stat labels, bird names |
+| **Small label** | `0.8rem` | 600 | Footer text, chart captions, panel stat labels |
+| **Eyebrow / category** | `0.68–0.72rem` | 600–700 | "BIRD ID", "CAMERAS", status pills |
+| **Badge / micro** | `0.5–0.62rem` | 700 | "NEW" badge, detection counts |
+
+### Capitalization Rules
+
+**Use uppercase (`text-transform: uppercase`) for:**
+- Section header bar titles ("BOOKMARKS", "NIGHT SKY")
+- Eyebrow/category labels ("BIRD ID", "CAMERAS", "SUBTITLES")
+- Status pills ("LOW", "MODERATE", "HIGH")
+- Navigation buttons and tabs ("WEATHER STATION", "A–Z")
+- Identification band location text
+- Weather stat labels ("TEMPERATURE", "HUMIDITY")
+
+**Use normal case for:**
+- Card titles and content names (park names, moon phase, service names)
+- Descriptions and body text
+- Data values and units
+- Links with readable text ("Visit NPS.gov")
+- Supplementary metadata ("Visible planets", "62% illuminated")
+
+**The rule**: Uppercase is for structural/organizational elements that label and categorize. Normal case is for content the user reads. This follows the actual NPS practice — park names on brochures are title case ("Acadia National Park"), not all-caps.
+
+### Letter-Spacing
+
+Three tiers only:
+
+| Tier | Value | Use |
+|---|---|---|
+| **Wide** | `0.18–0.22em` | Eyebrows, category tags, tiny badges |
+| **Medium** | `0.1–0.12em` | Section headers, buttons, navigation tabs |
+| **None** | `0` (default) | All content text, titles, descriptions, links |
+
+Never add letter-spacing to serif text or body text. Letter-spacing is only for uppercase sans-serif labels.
+
+### Text Colors
+
+Use the warm NPS palette. Avoid neutral grays (#666, #888, #999) — they clash with the warm brown tones.
+
+| Role | Color | Hex |
+|---|---|---|
+| **Primary text** | near-black | `--nps-black` (#000) or `#333` |
+| **Secondary text** | warm dark gray | `#4a4035` |
+| **Tertiary / metadata** | warm mid-gray | `#6a5a4a` or `--nps-brown-light` (#6F4930) |
+| **Disabled / empty state** | warm light gray | `--nps-warm-gray` (#E0DDD8) |
+| **Reversed (on dark bg)** | white/cream | `--nps-white` or `--nps-cream` |
+
+### Color Coding (Overbars & Groups)
+
+| Color | CSS Class | Meaning |
+|---|---|---|
+| Green (`--nps-green-dark`) | `.green` | Home & Automation |
+| Copper (`--nps-copper`) | `.copper` | Media |
+| Brown (`--nps-brown`) | `.brown` | Documents & Files |
+| Blue (`--nps-blue-dark`) | `.blue` | Infrastructure |
+| Red (`--nps-red`) | `.red` | Alerts / safety (unused currently) |
+
+### Spacing & Layout
+
+- **Grid gap**: `2px` between cards (tight, Unigrid-style)
+- **Card padding**: `10–16px` — compact but readable
+- **Section header margin**: `40px` top, `16px` bottom
+- **Bottom-row cards**: two-column grid, stacks on mobile (<700px)
+- **Side drawer**: fixed right edge, `min(620px, calc(100vw - 60px))` wide
+
+### NPS Design System References
+
+**Official NPS Sources:**
+- [NPS Graphic Identity and Style Guides](https://www.nps.gov/subjects/hfc/nps-graphic-identity-and-style-guides.htm) — Harpers Ferry Center
+- [A Brief History of the Unigrid](https://www.nps.gov/subjects/hfc/a-brief-history-of-the-unigrid.htm)
+- [Unigrid Design Specifications (PDF)](https://npshistory.com/brochures/unigrid.pdf) — original 1977 Vignelli specs
+- [HFC Editorial Style Guide](https://www.nps.gov/subjects/hfc/hfc-editorial-style-guide.htm)
+- [NPS Arrowhead Artwork](https://www.nps.gov/subjects/hfc/arrowhead-artwork.htm)
+
+**Typography History:**
+- [NPS Rawlinson Roadway — Wikipedia](https://en.wikipedia.org/wiki/NPS_Rawlinson_Roadway) — typeface development, replacing Clarendon in 2001
+- [Terminal Design: NPS Roadway](https://www.terminaldesign.com/customfonts/nps-roadway/) — the foundry that created NPS Rawlinson
+- [Fonts In Use: US National Parks](https://fontsinuse.com/tags/975/us-national-parks)
+- [Field Notes: "What Font is That?"](https://fieldnotesbrand.com/dispatches/what-font-is-that)
+- [National Park Typeface](https://nationalparktypeface.com/) — the open-source display face we use
+
+**Sign & Color Standards:**
+- [NPS UniGuide Standards Manual (PDF)](https://cd3abd6beebec142023d-31d81c9257c2834bed6081c9f3253cbd.ssl.cf2.rackcdn.com/custom-signs/nps/national-park-service-uniguide-standards.pdf)
+- [NPS UniGuide Color Standards (PDF)](https://www.generalstaff.org/BBOW/Colors/NPS_uniguide_standards_extracted_color.pdf)
+- [NPS UniGuide Program — SEGD](https://segd.org/projects/nps-uniguide-program/)
+- [Complete Guide to National Park Signs — Parks & Trips](https://parksandtrips.com/the-complete-guide-to-national-park-signs/)
+
+**Design History:**
+- [Best of Design: Vignelli NPS — Google Arts & Culture](https://artsandculture.google.com/story/best-of-design-vignelli-national-park-service/4wKi8PWDRfXQKQ)
+- [Raising the Bar — NPCA](https://www.npca.org/articles/963-raising-the-bar)
+- [Unigrids — Wikipedia](https://en.wikipedia.org/wiki/Unigrids)
+- [Standards Manual: Parks](https://standardsmanual.com/products/parks)
+- [Made in Figma: NPS Goes From Paper to Pixels](https://www.figma.com/blog/made-in-figma-the-national-park-service-goes-from-paper-to-pixels/)
 
 ## DNS & Reverse Proxy
 

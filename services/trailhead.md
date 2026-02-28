@@ -1,6 +1,6 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-02-28
+**Last Updated**: 2026-02-27
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
 ## Summary
@@ -218,7 +218,9 @@ Whitespace is normalized with `' '.join(match.group(1).split())`.
 
 ### Display
 
-Rendered as a full-width bar above the Night Sky / Park row. Italic serif font for the forecast text, small uppercase sans-serif attribution line ("NWS TUCSON FORECAST DISCUSSION"). Hidden if API fails (`{% if synopsis %}`).
+Rendered as a left-aligned static text block on a warm gray background (`var(--nps-warm-gray)`) above the Night Sky / Park row. Large italic serif font (1.15rem) for the forecast text. Small uppercase sans-serif attribution link to the [NWS Tucson AFD page](https://forecast.weather.gov/product.php?site=TWC&issuedby=TWC&product=AFD). Hidden if API fails (`{% if synopsis %}`).
+
+**Note**: A scrolling ticker version (`.synopsis-ticker-*` CSS) is preserved in the template but unused — available for future reuse.
 
 ## BirdNET-Go API Reference
 
@@ -251,8 +253,8 @@ The HTML template uses the National Park Service (NPS) design system:
 
 - **Black band header** with white arrowhead logo
 - **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
-- **Left bookmark sidebar**: fixed-position left-edge panel mirroring the right-side weather drawer. A 40px brown tab strip with vertical "Bookmarks" label expands to a 280px scrolling panel. 40 service bookmark cards across 4 groups — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Cards are compact horizontal rows: 4px colored left accent bar + title/category + Local/Remote links stacked vertically in a fixed-width column. Group labels are sticky at the top while scrolling. Includes A-Z/Grouped toggle. Auto-opens on screens wider than 900px; click outside to close. On mobile (≤700px), transforms to a bottom-anchored tab expanding upward.
-- **NWS Synopsis bar**: full-width italic serif forecast summary above the bottom row. Attribution line in small uppercase sans-serif. Hidden gracefully if the NWS API is unavailable.
+- **Left bookmark sidebar**: fixed-position left-edge panel with dark background (`#3D3D3C`, matching the ident band's computed color). A 40px dark tab strip with vertical "Bookmarks" label expands to a 280px scrolling panel with a black header bar. 40 service bookmark cards across 4 groups — Home & Automation, Media, Documents & Files, Infrastructure. Cards are compact horizontal rows: title/category + Local/Remote links stacked vertically in a fixed-width column (color-coded overbars removed for cleaner look). White card backgrounds on dark panel surround. Group labels are sticky at the top while scrolling. Includes A-Z/Grouped toggle. Auto-opens on screens wider than 900px; click outside to close. On mobile (≤700px), transforms to a bottom-anchored tab expanding upward.
+- **NWS Synopsis block**: left-aligned italic serif forecast text (1.15rem) on a warm gray background. Attribution links to the NWS Tucson AFD page. Hidden gracefully if the NWS API is unavailable. A scrolling ticker variant (CSS preserved but unused) is available for future use.
 - **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page below bookmarks. Night Sky shows current moon phase (emoji + name + illumination %), visible planets as tags, and next sky event (ISS pass or Vandenberg launch with twilight visibility indicator). Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
 - **Right-side collapsible drawer** with 4 tabs:
   - Weather Station: all 12 metric cells

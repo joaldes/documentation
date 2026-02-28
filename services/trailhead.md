@@ -1,6 +1,6 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-02-28
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
 ## Summary
@@ -251,7 +251,7 @@ The HTML template uses the National Park Service (NPS) design system:
 
 - **Black band header** with white arrowhead logo
 - **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
-- **Collapsible bookmarks section**: clickable black "BOOKMARKS" bar expands to reveal 36 service bookmark cards (all `.home` domains) organized into 4 groups — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Each card has a colored overbar and shows name + category. Includes an A-Z/Grouped toggle button to sort alphabetically or by group. Starts collapsed, pushed to the bottom of the page.
+- **Left bookmark sidebar**: fixed-position left-edge panel mirroring the right-side weather drawer. A 40px brown tab strip with vertical "Bookmarks" label expands to a 280px scrolling panel. 40 service bookmark cards across 4 groups — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Cards are compact horizontal rows: 4px colored left accent bar + title/category + Local/Remote links stacked vertically in a fixed-width column. Group labels are sticky at the top while scrolling. Includes A-Z/Grouped toggle. Auto-opens on screens wider than 900px; click outside to close. On mobile (≤700px), transforms to a bottom-anchored tab expanding upward.
 - **NWS Synopsis bar**: full-width italic serif forecast summary above the bottom row. Attribution line in small uppercase sans-serif. Hidden gracefully if the NWS API is unavailable.
 - **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page below bookmarks. Night Sky shows current moon phase (emoji + name + illumination %), visible planets as tags, and next sky event (ISS pass or Vandenberg launch with twilight visibility indicator). Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
 - **Right-side collapsible drawer** with 4 tabs:
@@ -380,7 +380,8 @@ Use the warm NPS palette. Avoid neutral grays (#666, #888, #999) — they clash 
 - **Card padding**: `10–16px` — compact but readable
 - **Section header margin**: `40px` top, `16px` bottom
 - **Bottom-row cards**: two-column grid, stacks on mobile (<700px)
-- **Side drawer**: fixed right edge, `min(620px, calc(100vw - 60px))` wide
+- **Right side drawer**: fixed right edge, `min(620px, calc(100vw - 60px))` wide
+- **Left bookmark sidebar**: fixed left edge, 40px tab + 280px panel; z-index 85 (below weather drawer 90, header 100)
 
 ### NPS Design System References
 
@@ -560,4 +561,6 @@ The web container starts only after the generator is healthy (`depends_on: condi
 
 7. **NWS AFD sections are separated by `&&`**, not newlines or `$`. The regex must use `&&` as a section terminator. The `.SYNOPSIS...` header uses literal `...` (three dots) as part of the NWS format.
 
-8. **Fixed-position overlays don't mix well with expandable page content.** The bird drawer was originally `position: fixed; bottom: 0` but overlapped collapsible bookmark sections. Moving it to normal document flow (removing fixed positioning entirely) and using `pointer-events: none/auto` for click-through solved the overlap issue cleanly.
+8. **`letter-spacing` breaks `justify-content: center`.** Letter-spacing adds trailing space after the last character, making centered text appear shifted left. Override `letter-spacing: 0` when precise centering matters (e.g., compact link buttons in the sidebar).
+
+9. **Fixed-position overlays don't mix well with expandable page content.** The bird drawer was originally `position: fixed; bottom: 0` but overlapped collapsible bookmark sections. Moving it to normal document flow (removing fixed positioning entirely) and using `pointer-events: none/auto` for click-through solved the overlap issue cleanly.

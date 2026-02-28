@@ -1,17 +1,19 @@
-# Neighborhood Weather & Wildlife Page
+# Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-02-24
+**Last Updated**: 2026-02-27
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
 ## Summary
 
-A static weather dashboard for the neighborhood, styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, visible planet data, and a daily NPS park — every 5 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
+A static weather dashboard styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, visible planet data, NWS forecast synopsis, and a daily NPS park — every 5 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
+
+Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Komodo Stack: neighborhood-page (CT 128, 192.168.0.179) │
+│  Komodo Stack: trailhead (CT 128, 192.168.0.179)         │
 │                                                          │
 │  ┌─ generator (python:3.12-slim) ─────────────────────┐  │
 │  │  entrypoint.sh:                                     │  │
@@ -23,21 +25,25 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 │  │    ├─ BirdNET-Go API  → today's bird detections     │  │
 │  │    ├─ astral library  → sun events + moon phase     │  │
 │  │    ├─ NWS KEMX        → radar loop GIF              │  │
+│  │    ├─ NWS AFD/TWC     → forecast synopsis (1h TTL)  │  │
 │  │    ├─ Frigate API     → driveway camera snapshot    │  │
-│  │    ├─ visibleplanets  → currently visible planets   │  │
-│  │    ├─ NPS API         → park of the day (cached)    │  │
+│  │    ├─ N2YO API        → ISS pass predictions        │  │
+│  │    ├─ Launch Library  → Vandenberg launches (1h TTL) │  │
+│  │    ├─ NPS API         → park of the day (daily TTL) │  │
 │  │    ├─ matplotlib      → temp + wind 24h charts      │  │
 │  │    └─ Jinja2 render   → /output/index.html          │  │
 │  └─────────────────────────────────────────────────────┘  │
 │         │ writes to                                       │
 │         ▼                                                 │
-│  [ page-output named volume ]                             │
+│  [ trailhead_page-output named volume ]                   │
 │    /output/index.html           (rendered page)           │
 │    /output/temp-chart.png       (24h temperature chart)   │
 │    /output/wind-chart.png       (24h wind speed chart)    │
 │    /output/radar.gif            (NWS KEMX radar loop)     │
 │    /output/driveway.jpg         (Frigate camera snapshot) │
 │    /output/nps_parks_cache.json (daily park cache)        │
+│    /output/launch_cache.json    (1h launch cache)         │
+│    /output/synopsis_cache.json  (1h NWS synopsis cache)   │
 │    /output/fonts/*.woff2        (NPS typefaces)           │
 │         │ read by                                         │
 │         ▼                                                 │
@@ -50,16 +56,18 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 
 ### Data Flow
 
-| Source | Protocol | Data | Update Frequency |
-|--------|----------|------|-----------------|
-| Ecowitt API v3 (realtime) | HTTPS | Temperature, humidity, wind, pressure, UV, PM2.5, rain | Every 5 min |
-| Ecowitt API v3 (history) | HTTPS | 24h rolling temperature + wind speed/gust series | Every 5 min |
-| BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | Every 5 min |
-| astral (Python lib) | Local calculation | Sun events + moon phase/illumination | Every 5 min |
-| NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | Every 5 min |
-| Frigate (local) | HTTP | Driveway camera snapshot + today's event count | Every 5 min |
-| visibleplanets.dev | HTTPS | Currently visible planets + constellations | Every 5 min |
-| NPS API | HTTPS | Park of the day (name, description, image) | Cached daily |
+| Source | Protocol | Data | Cache |
+|--------|----------|------|-------|
+| Ecowitt API v3 (realtime) | HTTPS | Temperature, humidity, wind, pressure, UV, PM2.5, rain | None (every 5 min) |
+| Ecowitt API v3 (history) | HTTPS | 24h rolling temperature + wind speed/gust series | None (every 5 min) |
+| BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | None (every 5 min) |
+| astral (Python lib) | Local calculation | Sun events + moon phase/illumination | None (every 5 min) |
+| NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | None (every 5 min) |
+| NWS AFD/TWC | HTTPS | Area Forecast Discussion synopsis | 1 hour |
+| Frigate (local) | HTTP | Driveway camera snapshot + today's event count | None (every 5 min) |
+| N2YO API | HTTPS | Next visible ISS pass | None (every 5 min) |
+| Launch Library 2 | HTTPS | Next Vandenberg launch (non-Starlink) | 1 hour |
+| NPS API | HTTPS | Park of the day (name, description, image) | Daily |
 
 ## Access
 
@@ -75,12 +83,12 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 ### On Komodo (192.168.0.179)
 
 ```
-/mnt/docker/neighborhood-page/
+/mnt/docker/trailhead/
 ├── .env                 # API keys + coordinates (loaded by compose env_file)
 ├── .dockerignore        # Excludes output/ and nginx.conf from build
 ├── Dockerfile           # python:3.12-slim + matplotlib
 ├── entrypoint.sh        # Font copy + sleep loop (runs generate.py every 5 min)
-├── generate.py          # Main generator script (~370 lines)
+├── generate.py          # Main generator script (~500 lines)
 ├── template.html        # Jinja2 HTML template (~1780 lines, NPS design)
 ├── requirements.txt     # Python dependencies
 ├── nginx.conf           # Cache headers + health endpoint
@@ -90,7 +98,7 @@ A static weather dashboard for the neighborhood, styled after the National Park 
     ├── nps1935.woff2
     └── nps-signage-1945.woff2
 
-/etc/komodo/stacks/neighborhood-page/
+/etc/komodo/stacks/trailhead/
 └── compose.yaml         # Docker Compose (generator + nginx)
 ```
 
@@ -104,6 +112,8 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 ├── radar.gif            # NWS KEMX radar loop
 ├── driveway.jpg         # Frigate camera snapshot
 ├── nps_parks_cache.json # Daily park cache (avoids repeated API calls)
+├── launch_cache.json    # 1h Vandenberg launch cache
+├── synopsis_cache.json  # 1h NWS synopsis cache
 └── fonts/               # Copied from build at startup
     └── *.woff2
 ```
@@ -123,17 +133,19 @@ A static weather dashboard for the neighborhood, styled after the National Park 
 | `TIMEZONE` | IANA timezone | `America/Phoenix` |
 | `FRIGATE_URL` | Frigate base URL | `http://192.168.0.179:5000` |
 | `NPS_API_KEY` | NPS Developer API key (free) | `zNb7hFy...` |
+| `N2YO_API_KEY` | N2YO satellite tracking API key | `abc123...` |
 
 ### Docker Compose
 
-- **Port**: 8076 (port 8075 is taken by fragments-web)
+- **Port**: 8076
 - **Memory limits**: Generator 512MB, nginx 128MB
 - **Health checks**:
   - Generator: `find /output/index.html -mmin -20` (file updated within 20 min, covers 5-min interval with margin)
-  - Web: `wget --spider http://localhost:80/health`
+  - Web: `wget --spider http://127.0.0.1:80/health` (uses 127.0.0.1, not localhost — see Lessons Learned)
 - **Logging**: json-file driver, max 10MB x 3 files per container
 - **Restart policy**: `unless-stopped`
 - **Network**: Isolated `page-net` bridge
+- **Volume mounts**: Source files (generate.py, template.html, fonts, entrypoint.sh, nginx.conf) are bind-mounted from `/mnt/docker/trailhead/` — no rebuild needed for code changes, just restart the generator
 
 ## Ecowitt API v3 Reference
 
@@ -186,6 +198,28 @@ data['outdoor']['temperature']['list']
 
 Today's high/low are derived as `max()`/`min()` of the temperature history values — there is no dedicated realtime high/low endpoint.
 
+## NWS Synopsis (AFD)
+
+The NWS Area Forecast Discussion (AFD) synopsis is a short paragraph summarizing the weather outlook for the Tucson region. Fetched from the NWS API (no key needed), cached for 1 hour.
+
+### API Flow
+
+1. `GET https://api.weather.gov/products/types/AFD/locations/TWC` → list of recent AFD products
+2. `GET https://api.weather.gov/products/{id}` → `productText` field
+3. Parse `.SYNOPSIS...` section from the text
+
+### Parsing
+
+AFD sections are separated by `&&`. The synopsis regex:
+```python
+re.search(r'\.SYNOPSIS\.\.\.\s*(.*?)\s*(?=&&|\.\w+\.\.\.)', text, re.DOTALL)
+```
+Whitespace is normalized with `' '.join(match.group(1).split())`.
+
+### Display
+
+Rendered as a full-width bar above the Night Sky / Park row. Italic serif font for the forecast text, small uppercase sans-serif attribution line ("NWS TUCSON FORECAST DISCUSSION"). Hidden if API fails (`{% if synopsis %}`).
+
 ## BirdNET-Go API Reference
 
 ### Daily Species
@@ -218,13 +252,14 @@ The HTML template uses the National Park Service (NPS) design system:
 - **Black band header** with white arrowhead logo
 - **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
 - **Collapsible bookmarks section**: clickable black "BOOKMARKS" bar expands to reveal 36 service bookmark cards (all `.home` domains) organized into 4 groups — Home & Automation (green), Media (copper), Documents & Files (brown), Infrastructure (blue). Each card has a colored overbar and shows name + category. Includes an A-Z/Grouped toggle button to sort alphabetically or by group. Starts collapsed, pushed to the bottom of the page.
-- **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page below bookmarks. Night Sky shows current moon phase (emoji + name + illumination %) and visible planets as tags. Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
+- **NWS Synopsis bar**: full-width italic serif forecast summary above the bottom row. Attribution line in small uppercase sans-serif. Hidden gracefully if the NWS API is unavailable.
+- **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page below bookmarks. Night Sky shows current moon phase (emoji + name + illumination %), visible planets as tags, and next sky event (ISS pass or Vandenberg launch with twilight visibility indicator). Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
 - **Right-side collapsible drawer** with 4 tabs:
   - Weather Station: all 12 metric cells
   - 24-Hour Charts: temperature and wind/gust line charts
   - Radar: NWS KEMX radar loop GIF
   - Camera: Frigate driveway snapshot (links to frigate.home) + today's event count
-- **Bottom bird drawer**: horizontal scroll strip of today's detected species with Wikipedia thumbnails, detection counts, and "New" badges for first-time species
+- **Bottom bird drawer**: horizontal scroll strip of today's detected species with Wikipedia thumbnails, detection counts, and "New" badges for first-time species. In normal document flow (not fixed-position) — stays anchored at the bottom of the page and scrolls with content. Translucent black background (`rgba(0, 0, 0, 0.75)`) matching the identification band.
 - **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the identification band stays static — it shows when the *data* was last refreshed server-side.
 - **Font switcher**: toggles between historical NPS typefaces (1935 style, 1945 signage, 2026 modern)
 - **Responsive**: works on mobile at 375px width
@@ -385,8 +420,6 @@ Use the warm NPS palette. Avoid neutral grays (#666, #888, #999) — they clash 
 | `*.1701.me` | `192.168.0.30` | Wildcard — all `.1701.me` domains resolve locally to NPM, bypassing hairpin NAT |
 | `weather.home` | `192.168.0.30` | Local `.home` domain → NPM |
 
-The `*.1701.me` wildcard was added during this deployment. It benefits all services using `.1701.me` domains, not just this one.
-
 ### NPM Proxy Hosts (CT 112, 192.168.0.30:81)
 
 | Domain | Forward To | ID |
@@ -415,7 +448,7 @@ The generator uses a simple `while true; sleep 300` loop in entrypoint.sh instea
 set -e
 mkdir -p /output/fonts
 cp -f /app/fonts/*.woff2 /output/fonts/ 2>/dev/null || true
-echo "[$(date)] Starting neighborhood-page generator (every 300s)..."
+echo "[$(date)] Starting trailhead generator (every 300s)..."
 while true; do
     python3 /app/generate.py || echo "[$(date)] generate.py failed (exit $?)" >&2
     sleep 300
@@ -426,11 +459,27 @@ The `|| echo` prevents `set -e` from killing the loop if generate.py fails — i
 
 ## Operations
 
-### Rebuild & Redeploy
+### Quick Code Change (no rebuild)
+
+Source files are bind-mounted. To update generate.py or template.html:
+
+```bash
+# Copy updated files
+scp generate.py template.html root@192.168.0.179:/mnt/docker/trailhead/
+
+# Restart generator to pick up changes (web container stays up)
+ssh root@192.168.0.179 "docker restart trailhead-generator"
+```
+
+No `docker compose build` needed — the bind mounts mean the container sees the new files immediately on restart.
+
+### Full Rebuild & Redeploy
+
+Only needed if Dockerfile, requirements.txt, or entrypoint.sh change:
 
 ```bash
 # From Komodo (192.168.0.179)
-cd /etc/komodo/stacks/neighborhood-page
+cd /etc/komodo/stacks/trailhead
 docker compose build --no-cache
 docker compose up -d
 ```
@@ -439,37 +488,23 @@ docker compose up -d
 
 ```bash
 # Container health
-docker ps --filter name=neighborhood-page
+docker ps --filter name=trailhead
 
 # Generator logs
-docker logs neighborhood-page-generator --tail 30
+docker logs trailhead-generator --tail 30
 
 # Verify output freshness
-docker exec neighborhood-page-generator ls -la /output/index.html
+docker exec trailhead-generator ls -la /output/index.html
 
 # Test endpoints
 curl http://192.168.0.179:8076/health
 curl -s http://192.168.0.179:8076/ | grep -oE '\d+\.\d+°F'
 ```
 
-### Edit Config and Redeploy
-
-Files live at `/mnt/docker/neighborhood-page/` on Komodo. After editing:
-
-```bash
-cd /etc/komodo/stacks/neighborhood-page
-
-# If you changed generate.py, template.html, Dockerfile, or entrypoint.sh:
-docker compose build --no-cache && docker compose up -d
-
-# If you only changed compose.yaml, nginx.conf, or .env:
-docker compose up -d
-```
-
 ### Force Immediate Regeneration
 
 ```bash
-docker exec neighborhood-page-generator python3 /app/generate.py
+docker exec trailhead-generator python3 /app/generate.py
 ```
 
 ## Troubleshooting
@@ -478,18 +513,19 @@ docker exec neighborhood-page-generator python3 /app/generate.py
 
 **Check generator logs first:**
 ```bash
-docker logs neighborhood-page-generator --tail 20
+docker logs trailhead-generator --tail 20
 ```
 
 **Common causes:**
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `KeyError: 'ECOWITT_APP_KEY'` | Missing env vars in .env file | Check `/mnt/docker/neighborhood-page/.env` has all required keys |
+| `KeyError: 'ECOWITT_APP_KEY'` | Missing env vars in .env file | Check `/mnt/docker/trailhead/.env` has all required keys |
 | `Ecowitt error 40000: wind_speed_unitid must between 6 - 11` | Wrong v3 unit ID | Use IDs from the unit table above — v3 IDs differ from v2 |
 | `Ecowitt error {code}: {msg}` | API auth or rate limit | Check .env keys, wait for rate limit reset |
 | `BirdNET-Go unavailable` | BirdNET-Go container down | Check `docker ps` for birdnet-go on Komodo |
 | `Radar download failed` | NWS outage or timeout | Non-fatal — page still generates, just no radar.gif |
+| `NWS synopsis fetch failed` | NWS API outage or timeout | Non-fatal — synopsis bar hidden via `{% if synopsis %}` |
 
 ### Page Not Accessible via Domain
 
@@ -519,3 +555,9 @@ The web container starts only after the generator is healthy (`depends_on: condi
 4. **BirdNET-Go `is_new_species`** is a key that's absent, not false, when the species isn't new. Use `.get()` in templates.
 
 5. **python:3.12-slim, not Alpine**, for matplotlib. Alpine uses musl libc and has no pre-built matplotlib wheels — building from source takes 10+ minutes. Debian slim has wheels available.
+
+6. **Use `127.0.0.1`, not `localhost`, in Docker healthchecks.** Alpine-based containers (like nginx:alpine) resolve `localhost` to `::1` (IPv6) when no server is listening on IPv6, causing `wget --spider` to fail. Using `127.0.0.1` forces IPv4.
+
+7. **NWS AFD sections are separated by `&&`**, not newlines or `$`. The regex must use `&&` as a section terminator. The `.SYNOPSIS...` header uses literal `...` (three dots) as part of the NWS format.
+
+8. **Fixed-position overlays don't mix well with expandable page content.** The bird drawer was originally `position: fixed; bottom: 0` but overlapped collapsible bookmark sections. Moving it to normal document flow (removing fixed positioning entirely) and using `pointer-events: none/auto` for click-through solved the overlap issue cleanly.

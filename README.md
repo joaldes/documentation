@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-03-01
 
 ---
 
@@ -36,6 +36,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
 | [dashy-investigation.md](services/dashy-investigation.md) | Dashy dashboard investigation (vs Homepage, NPS theme, config reference) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + NPS design) |
+| [trailhead-permissions.md](services/trailhead-permissions.md) | Trailhead — Per-user bookmarks via Authentik SSO forward auth |
 
 ### Incidents
 

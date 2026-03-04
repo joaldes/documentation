@@ -100,7 +100,9 @@ docker cp /mnt/docker/authentik/media/custom/trailhead-logo.svg authentik-server
 
 The identification stage (`default-authentication-identification`) has `password_stage` set to `default-authentication-password`, which shows both username and password fields on a single page.
 
-The "Login to continue to Trailhead." subtitle was suppressed by editing `/web/dist/chunks/XROP4FSD.js` inside the container (changed `this.challenge.applicationPre?` to `false?`). This edit is also lost on container rebuild.
+The "Login to continue to Trailhead." subtitle was suppressed by editing `/web/dist/chunks/XROP4FSD.js` inside the container (changed `this.challenge.applicationPre?` to `false?`). This edit is lost on container rebuild.
+
+The logout page was customized by editing `/web/dist/src/flow/providers/chunks/52MQAQ3X.js` to remove the "Go back to overview" and "Log out of Trailhead" buttons, keeping only "Log back into Trailhead". Also backed up at `/mnt/docker/authentik/media/custom/52MQAQ3X.js`. This edit is also lost on container rebuild.
 
 ### Custom CSS
 
@@ -145,10 +147,11 @@ a { color: #C56C39 !important; }                           /* Copper links */
 ### Things Lost on Container Rebuild
 
 After an Authentik update/rebuild, re-apply:
-1. **Logo SVG**: `docker cp` the SVG back into the container
+1. **Logo SVG**: `docker cp /mnt/docker/authentik/media/custom/trailhead-logo.svg authentik-server:/web/dist/assets/icons/trailhead-logo.svg`
 2. **Subtitle suppression**: Re-edit `XROP4FSD.js` (the chunk filename may change between versions)
-3. **Brand CSS + settings**: Persisted in the database, survives rebuilds
-4. **Flow title + password_stage**: Persisted in the database, survives rebuilds
+3. **Logout page buttons**: `docker cp /mnt/docker/authentik/media/custom/52MQAQ3X.js authentik-server:/web/dist/src/flow/providers/chunks/52MQAQ3X.js` (chunk filename may change between versions)
+4. **Brand CSS + settings**: Persisted in the database, survives rebuilds
+5. **Flow title + password_stage**: Persisted in the database, survives rebuilds
 
 ## Files
 
@@ -202,18 +205,27 @@ location @goauthentik_proxy_signin {
 
 ### Logout
 
-Logout clears the proxy cookie and redirects to Authentik's invalidation flow:
+Logout clears the proxy cookie and redirects to the OIDC end-session endpoint:
 
 ```nginx
 location = /logout {
     add_header Set-Cookie 'authentik_proxy_ee210d03=; Path=/; Max-Age=0' always;
-    return 302 http://192.168.0.179:9000/if/flow/default-invalidation-flow/?next=http://home.1701.me/;
+    return 302 http://192.168.0.179:9000/application/o/trailhead/end-session/?post_logout_redirect_uri=http://home.1701.me/;
 }
 ```
 
-The `?next=http://home.1701.me/` parameter tells Authentik where to redirect after session invalidation, so the user returns to the Trailhead login page.
+This uses the standard OIDC RP-Initiated Logout endpoint (`/application/o/trailhead/end-session/`), which:
+1. Invalidates the Authentik server session
+2. Shows a "You've logged out of Trailhead" page with a "Log back into Trailhead" button
+3. The `post_logout_redirect_uri` parameter is accepted because `http://home.1701.me` matches the provider's `external_host`
 
-**Known issue**: The outpost's `/sign_out` endpoint returns 502 when the browser has a valid proxy session cookie — the outpost prematurely closes the TCP connection. This is an Authentik outpost bug (tested on v2025.12.1), not a proxy configuration issue. The workaround is to use the direct invalidation flow URL instead.
+The logout page buttons were customized by editing `52MQAQ3X.js` inside the Authentik container to show only "Log back into Trailhead" (removed "Go back to overview" and "Log out of Trailhead"). This edit is lost on container rebuild — see "Things Lost on Container Rebuild" below.
+
+**Why not other approaches**:
+- `?next=` on invalidation flows rejects external URLs ("Invalid next URL")
+- `default_application` on the brand only redirects `UserTypes.EXTERNAL` users (admin/internal users go to Authentik dashboard)
+- The outpost `/sign_out` endpoint doesn't work for forward-auth mode (it's designed for proxy mode only)
+- Brand CSS can't hide the buttons because the `ak-stage-session-end` component's shadow DOM doesn't adopt brand stylesheets
 
 ### Other Critical Settings
 

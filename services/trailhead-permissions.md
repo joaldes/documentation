@@ -11,15 +11,18 @@ Per-user access filtering on the Trailhead weather dashboard using Authentik SSO
 ## Architecture
 
 ```
-Browser → trailhead-web (:8076)
+Browser → NPM (192.168.0.30) → trailhead-web (:8076)
   nginx auth_request → Authentik embedded outpost (192.168.0.179:9000)
-    401 → redirect to Authentik login page
+    401 → redirect to http://home.1701.me/outpost.goauthentik.io/start (hardcoded domain)
     200 → auth_request_set captures $authentik_username
          → sub_filter injects username into TWO placeholders (dropdown + JS var)
+         → sub_filter injects $network_type (Local/Remote) from X-Forwarded-For
          → try_files /index.html (single file for all users)
-         → JS reads TRAILHEAD_USERNAME + TRAILHEAD_USER_GROUPS
+         → JS reads TRAILHEAD_USERNAME + TRAILHEAD_USER_GROUPS (case-insensitive lookup)
          → JS hides cards where data-access doesn't match user's groups
 ```
+
+**Domain routing**: AdGuard DNS (192.168.0.11) rewrites `*.1701.me → 192.168.0.30` (NPM reverse proxy). NPM proxies `home.1701.me → 192.168.0.179:8076`. Users must access via `home.1701.me`, not the IP:port directly.
 
 ## Access Groups
 
@@ -37,12 +40,12 @@ Each card has an `access` field:
 - `access: [admin, media]` — visible to users in `admin` OR `media`
 - `access: [admin, family]` — visible to users in `admin` OR `family`
 
-At generation time, access_groups is inverted to `user_groups`:
+At generation time, access_groups is inverted to `user_groups` with **lowercase keys**:
 ```json
 {"alec": ["admin", "media", "family"], "akadmin": ["admin", "media"]}
 ```
 
-This JSON is embedded in the HTML. At serve time, nginx injects the username, and JS filters cards.
+This JSON is embedded in the HTML. At serve time, nginx injects the username, and JS filters cards using a **case-insensitive** lookup (`TRAILHEAD_USERNAME.toLowerCase()`).
 
 ## Sidebar Tabs
 
@@ -59,6 +62,7 @@ Configured via API. Components created:
 
 - **Proxy Provider**: `trailhead` — forward auth single application, external host `http://home.1701.me`
 - **Application**: `Trailhead`, slug `trailhead`, pk `4c8c0fb6-c9ab-4ca2-aa19-4a17e4a21087`
+  - `launch_url`: `http://home.1701.me` (must match external host, not IP:port)
 - **Embedded outpost**: Trailhead provider assigned
 - **Brand**: UUID `e137649b-f669-43e7-abdf-6e52a6b7e952` (default brand, customized)
 - **Authentication flow**: `default-authentication-flow` — title "Welcome, please login", identification + password on one page
@@ -154,22 +158,64 @@ Compose file at `/etc/komodo/stacks/trailhead/compose.yaml`.
 | File | Purpose |
 |------|---------|
 | `trailhead.yaml` | Access groups + tabs with per-card access fields |
-| `generate.py` | Renders single `index.html` with all cards + user_groups JSON |
-| `template.html` | Multi-tab sidebar, data-access attributes, JS filtering logic |
-| `nginx.conf` | Authentik forward auth, `sub_filter_once off`, `try_files /index.html` |
+| `generate.py` | Renders single `index.html` with all cards + user_groups JSON (lowercase keys) |
+| `template.html` | Multi-tab sidebar, data-access attributes, JS filtering, Local/Remote badge |
+| `nginx.conf` | Authentik forward auth, network type detection, `sub_filter_once off`, `try_files /index.html` |
 | `compose.yaml` | Generator + nginx services, healthcheck on `index.html` |
 
 ## nginx.conf — Key Details
 
-No more `map` block. Single-file serving:
+### Network Type Detection
+
+A `map` block classifies clients as Local or Remote based on the `X-Forwarded-For` header set by NPM:
+
+```nginx
+map $http_x_forwarded_for $network_type {
+    ~^192\.168\.  Local;
+    ~^10\.        Local;
+    default       Remote;
+}
+```
+
+The `$network_type` variable is injected into HTML via `sub_filter`:
 
 ```nginx
 sub_filter '<!--AUTHENTIK_USERNAME-->' $authentik_username;
-sub_filter_once off;    # TWO replacements: dropdown + JS var
+sub_filter '<!--NETWORK_TYPE-->' $network_type;
+sub_filter_once off;    # Multiple replacements: username (dropdown + JS var) + network type
 try_files /index.html =404;
 ```
 
-Critical deployment fixes:
+### Auth Redirect (Hardcoded Domain)
+
+The `@goauthentik_proxy_signin` location **must** hardcode `home.1701.me`:
+
+```nginx
+location @goauthentik_proxy_signin {
+    internal;
+    add_header Set-Cookie $auth_cookie;
+    return 302 http://home.1701.me/outpost.goauthentik.io/start?rd=http://home.1701.me$request_uri;
+}
+```
+
+**Why hardcoded**: If the user accesses via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`, using `$http_host` would produce a redirect URL with the wrong domain. The outpost compares the redirect URI against `external_host` (`http://home.1701.me`) and rejects mismatches with "redirect URI did not contain external host". This caused callback failures (HTTP 400), session mismatches, and users ending up at the Authentik dashboard instead of Trailhead.
+
+### Logout
+
+Logout clears the proxy cookie and redirects to Authentik's invalidation flow:
+
+```nginx
+location = /logout {
+    add_header Set-Cookie 'authentik_proxy_ee210d03=; Path=/; Max-Age=0' always;
+    return 302 http://192.168.0.179:9000/if/flow/default-invalidation-flow/?next=http://home.1701.me/;
+}
+```
+
+The `?next=http://home.1701.me/` parameter tells Authentik where to redirect after session invalidation, so the user returns to the Trailhead login page.
+
+**Known issue**: The outpost's `/sign_out` endpoint returns 502 when the browser has a valid proxy session cookie — the outpost prematurely closes the TCP connection. This is an Authentik outpost bug (tested on v2025.12.1), not a proxy configuration issue. The workaround is to use the direct invalidation flow URL instead.
+
+### Other Critical Settings
 
 - **`absolute_redirect off`** — Required because nginx inside Docker listens on :80 but is exposed as :8076.
 - **`Host home.1701.me`** (hardcoded in outpost location) — The Authentik outpost routes by host matching. Internal DNS rewrite in AdGuard resolves `*.1701.me` → `192.168.0.30` (reverse proxy).
@@ -179,15 +225,19 @@ Critical deployment fixes:
 ## Client-Side Filtering (JS)
 
 ```javascript
-var TRAILHEAD_USER_GROUPS = {"alec": ["admin","media","family"], ...};  // embedded at generation
+var TRAILHEAD_USER_GROUPS = {"alec": ["admin","media","family"], ...};  // embedded at generation (lowercase keys)
 var TRAILHEAD_USERNAME = '<!--AUTHENTIK_USERNAME-->';  // replaced by nginx sub_filter
 
 // On page load:
-// 1. Look up user's groups
+// 1. Look up user's groups using TRAILHEAD_USERNAME.toLowerCase() (case-insensitive)
 // 2. Hide cards where data-access doesn't include any of user's groups
 // 3. Hide empty group labels
 // 4. Hide empty sidebar tabs
 ```
+
+### Network Badge
+
+The template displays a "Local" or "Remote" badge in the header based on the `$network_type` variable injected by nginx. The badge is styled with green (Local) or orange (Remote) colors. This is purely informational — access control is not affected by network location.
 
 ## User Menu
 
@@ -195,7 +245,7 @@ A user icon in the black band header opens a dropdown with:
 
 - **Username display** — injected at serve time by nginx `sub_filter`
 - **Change Password** — links to Authentik user settings (`http://192.168.0.179:9000/if/user/`)
-- **Log Out** — hits `/outpost.goauthentik.io/sign_out` to end the session
+- **Log Out** — hits `/logout` which clears proxy cookie and redirects to Authentik invalidation flow
 
 ## Security
 
@@ -203,20 +253,30 @@ A user icon in the black band header opens a dropdown with:
 - **Cards in source**: All cards are in the HTML source. Any authenticated user could view-source and see all URLs. This is fine because each service has its own auth — the access control here is UI cleanliness, not a security boundary.
 - **Static assets protected**: Camera snapshot (`driveway.jpg`) requires auth
 - **Health check open**: `/health` has no auth (required for Docker healthcheck)
+- **Domain enforcement**: Auth redirect hardcodes `home.1701.me` to prevent OAuth callback failures when accessed via IP:port
 
 ## Troubleshooting
 
 ### User sees wrong bookmarks
-Check `access_groups` in `trailhead.yaml`. The user must be listed in a group that matches the card's `access` field. After changes, rebuild the generator.
+Check `access_groups` in `trailhead.yaml`. The user must be listed in a group that matches the card's `access` field. Usernames are matched case-insensitively. After changes, rebuild the generator.
 
 ### Infinite login loop
 Cookie passthrough is missing or broken. Ensure `auth_request_set $auth_cookie $upstream_http_set_cookie` and `add_header Set-Cookie $auth_cookie` are present on every auth-protected location block.
 
-### 502 or 500 errors
+### Post-login redirects to Authentik dashboard (not Trailhead)
+The user likely accessed via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`. The OAuth callback fails because the redirect URI doesn't match `external_host`. Check:
+1. `@goauthentik_proxy_signin` has hardcoded `home.1701.me` (not `$http_host`)
+2. Authentik application `launch_url` is `http://home.1701.me` (not the IP:port)
+3. User bookmarks point to `http://home.1701.me` (not the IP)
+
+### Logout 502 error
+The outpost `/sign_out` endpoint has a known bug (v2025.12.1) where it returns 502 when the browser has a valid proxy session cookie. The current workaround redirects to the invalidation flow directly instead. Do NOT attempt to proxy to `/outpost.goauthentik.io/sign_out` — it won't work.
+
+### 502 or 500 errors (general)
 Authentik may be down or the outpost may not have the provider assigned. Check:
 ```bash
 docker logs authentik-server --tail 20
-curl -s -o /dev/null -w '%{http_code}' -H 'Host: 192.168.0.179:8076' http://192.168.0.179:9000/outpost.goauthentik.io/auth/nginx
+curl -s -o /dev/null -w '%{http_code}' -H 'Host: home.1701.me' http://192.168.0.179:9000/outpost.goauthentik.io/auth/nginx
 ```
 
 ### Adding a new user

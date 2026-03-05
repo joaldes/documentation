@@ -1,11 +1,12 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-03-04
+
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
 ## Summary
 
-A static weather dashboard styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, visible planet data, NWS forecast synopsis, and a daily NPS park — every 5 minutes. It renders a Jinja2 HTML template with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
+A static weather dashboard styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, sky event data (ISS passes, launches, meteor showers, eclipses), NWS forecast synopsis, and a daily NPS park — every 5 minutes. It renders two Jinja2 HTML templates (dashboard + sky events reference page) with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
 
 Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 
@@ -27,16 +28,20 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 │  │    ├─ NWS KEMX        → radar loop GIF              │  │
 │  │    ├─ NWS AFD/TWC     → forecast synopsis (1h TTL)  │  │
 │  │    ├─ Frigate API     → driveway camera snapshot    │  │
-│  │    ├─ N2YO API        → ISS pass predictions        │  │
+│  │    ├─ N2YO API        → ISS pass predictions (filtered)│  │
 │  │    ├─ Launch Library  → Vandenberg launches (1h TTL) │  │
+│  │    ├─ Meteor showers  → hardcoded annual calendar    │  │
+│  │    ├─ Curated events  → eclipses, conjunctions, etc. │  │
 │  │    ├─ NPS API         → park of the day (daily TTL) │  │
 │  │    ├─ matplotlib      → temp + wind 24h charts      │  │
-│  │    └─ Jinja2 render   → /output/index.html          │  │
+│  │    ├─ Jinja2 render   → /output/index.html          │  │
+│  │    └─ Jinja2 render   → /output/sky.html            │  │
 │  └─────────────────────────────────────────────────────┘  │
 │         │ writes to                                       │
 │         ▼                                                 │
 │  [ trailhead_page-output named volume ]                   │
-│    /output/index.html           (rendered page)           │
+│    /output/index.html           (rendered dashboard)      │
+│    /output/sky.html             (sky events ref page)     │
 │    /output/temp-chart.png       (24h temperature chart)   │
 │    /output/wind-chart.png       (24h wind speed chart)    │
 │    /output/radar.gif            (NWS KEMX radar loop)     │
@@ -61,12 +66,14 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 | Ecowitt API v3 (realtime) | HTTPS | Temperature, humidity, wind, pressure, UV, PM2.5, rain | None (every 5 min) |
 | Ecowitt API v3 (history) | HTTPS | 24h rolling temperature + wind speed/gust series | None (every 5 min) |
 | BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | None (every 5 min) |
-| astral (Python lib) | Local calculation | Sun events + moon phase/illumination | None (every 5 min) |
+| astral (Python lib) | Local calculation | Sun events + moon phase/illumination/trend | None (every 5 min) |
 | NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | None (every 5 min) |
 | NWS AFD/TWC | HTTPS | Area Forecast Discussion synopsis | 1 hour |
 | Frigate (local) | HTTP | Driveway camera snapshot + today's event count | None (every 5 min) |
-| N2YO API | HTTPS | Next visible ISS pass | None (every 5 min) |
+| N2YO API | HTTPS | ISS passes filtered for excellent viewing (maxEl>=40°, mag<=-1.5) | None (every 5 min) |
 | Launch Library 2 | HTTPS | Next Vandenberg launch (non-Starlink) | 1 hour |
+| Meteor showers | Hardcoded | 8 major annual showers, shown ±3 days from peak | Static |
+| Curated sky events | Hardcoded | Eclipses, conjunctions, supermoons, oppositions (2026-2027) | Static |
 | NPS API | HTTPS | Park of the day (name, description, image) | Daily |
 
 ## Access
@@ -74,6 +81,7 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 | Method | URL |
 |--------|-----|
 | Direct IP | `http://192.168.0.179:8076` |
+| Sky events page | `http://192.168.0.179:8076/sky` |
 | Local domain | `http://weather.home` |
 | External domain | `http://weather.1701.me` |
 | Health check | `http://192.168.0.179:8076/health` |
@@ -86,12 +94,14 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 /mnt/docker/trailhead/
 ├── .env                 # API keys + coordinates (loaded by compose env_file)
 ├── .dockerignore        # Excludes output/ and nginx.conf from build
-├── Dockerfile           # python:3.12-slim + matplotlib
+├── Dockerfile           # python:3.12-slim + matplotlib, non-root user
 ├── entrypoint.sh        # Font copy + sleep loop (runs generate.py every 5 min)
-├── generate.py          # Main generator script (~500 lines)
-├── template.html        # Jinja2 HTML template (~1780 lines, NPS design)
+├── generate.py          # Main generator script
+├── template.html        # Jinja2 HTML template (NPS design)
+├── sky-events.html      # Jinja2 template for /sky reference page
 ├── requirements.txt     # Python dependencies
-├── nginx.conf           # Cache headers + health endpoint
+├── trailhead.yaml       # Access groups + sidebar tab/card definitions
+├── nginx.conf           # Authentik forward auth + sub_filter + security headers
 └── fonts/
     ├── frutiger.woff2
     ├── nationalpark.woff2
@@ -106,7 +116,8 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 
 ```
 /output/
-├── index.html           # Rendered HTML page
+├── index.html           # Rendered dashboard page
+├── sky.html             # Rendered sky events reference page
 ├── temp-chart.png       # 24h temperature line chart
 ├── wind-chart.png       # 24h wind speed + gust chart
 ├── radar.gif            # NWS KEMX radar loop
@@ -138,13 +149,14 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 ### Docker Compose
 
 - **Port**: 8076
-- **Memory limits**: Generator 512MB, nginx 128MB
+- **Resource limits**: Generator 1 CPU / 512MB, nginx 0.5 CPU / 128MB
 - **Health checks**:
   - Generator: `find /output/index.html -mmin -20` (file updated within 20 min, covers 5-min interval with margin)
   - Web: `wget --spider http://127.0.0.1:80/health` (uses 127.0.0.1, not localhost — see Lessons Learned)
 - **Logging**: json-file driver, max 10MB x 3 files per container
 - **Restart policy**: `unless-stopped`
 - **Network**: Isolated `page-net` bridge
+- **Security**: Generator runs as non-root `appuser` (not root). Jinja2 autoescape enabled. NWS product URL validated. nginx returns `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and hides server version (`server_tokens off`). Python dependencies pinned to exact versions.
 - **Volume mounts**: Source files (generate.py, template.html, fonts, entrypoint.sh, nginx.conf) are bind-mounted from `/mnt/docker/trailhead/` — no rebuild needed for code changes, just restart the generator
 
 ## Ecowitt API v3 Reference
@@ -185,6 +197,24 @@ All values are **strings** — must cast to `float()` or `int()` before use. Eac
 
 **Error handling**: API always returns HTTP 200. Check `response['code'] == 0` before accessing `response['data']`. On error, `data` is `[]` (empty list), not a dict.
 
+**Crash protection**: Both the realtime and history fetches are wrapped in try-except. If either fails, the generator continues with empty dicts. All weather values in the template context are extracted via the `_wx()` safe accessor helper:
+
+```python
+def _wx(data, *keys, default='--'):
+    """Safely traverse nested Ecowitt data dict."""
+    val = data
+    for k in keys:
+        if isinstance(val, dict):
+            val = val.get(k)
+        else:
+            return default
+    return val if val is not None else default
+
+# Usage: 'temp': _wx(wx, 'outdoor', 'temperature', 'value')
+```
+
+This means the page renders with `--` fallback values if Ecowitt is completely unavailable, instead of crashing the generator.
+
 ### History Endpoint
 
 `GET https://api.ecowitt.net/api/v3/device/history?cycle_type=5min`
@@ -218,9 +248,35 @@ Whitespace is normalized with `' '.join(match.group(1).split())`.
 
 ### Display
 
-Rendered as a left-aligned static text block on a warm gray background (`var(--nps-warm-gray)`) above the Night Sky / Park row. Large italic serif font (1.15rem) for the forecast text. Small uppercase sans-serif attribution link to the [NWS Tucson AFD page](https://forecast.weather.gov/product.php?site=TWC&issuedby=TWC&product=AFD). Hidden if API fails (`{% if synopsis %}`).
+Rendered as a left-aligned static text block on a warm gray background (`var(--nps-warm-gray)`) above the Night Sky / Park row. Large italic serif font (1.15rem) for the forecast text. Right-aligned attribution line: link to the [NWS Tucson AFD page](https://forecast.weather.gov/product.php?site=TWC&issuedby=TWC&product=AFD) followed by a pipe separator and the issued date/time (converted to local Arizona time, e.g., "3/1 1:35 PM"). Hidden if API fails (`{% if synopsis %}`).
 
 **Note**: A scrolling ticker version (`.synopsis-ticker-*` CSS) is preserved in the template but unused — available for future reuse.
+
+## Sky Events
+
+### Dashboard Card
+
+The Night Sky card shows the moon on the left (SVG disc with computed arc geometry) and a list of upcoming sky events on the right. Events are sorted by time and stacked vertically with thin separators.
+
+**Event sources:**
+- **ISS passes** (N2YO API): Filtered for excellent viewing — only passes with maxEl >= 40° AND magnitude <= -1.5. Shows "Visible" badge.
+- **Meteor showers** (hardcoded): 8 major annual showers (Quadrantids, Lyrids, Eta Aquariids, Delta Aquariids, Perseids, Orionids, Leonids, Geminids). Appear on the dashboard ±3 days from peak date.
+- **Launches** (Launch Library 2): Next non-routine Vandenberg launch. Skips Starlink/OneWeb/Kuiper. Shows "Visible" badge during twilight windows.
+- **Curated events** (hardcoded): Eclipses, conjunctions, supermoons, oppositions, planet parades. Appear on the dashboard within their configured `days_before` window.
+
+### Reference Page (`/sky`)
+
+A standalone NPS-styled page at `/sky` listing all tracked astronomical events. Accessible via the "View all" link in the Night Sky card header.
+
+**Sections:**
+- **Moon**: Current phase with SVG disc, illumination %, and trend
+- **Coming Up**: Active dashboard events (anything currently within its display window)
+- **Meteor Showers [year]**: All 8 major showers with peak dates, ZHR rates, and visual intensity bars. Past showers grayed out, active showers highlighted with "Active" badge.
+- **Sky Events [year]**: Curated events grouped by year (2026, 2027). Past events grayed out, imminent events highlighted with "Soon" badge. Each links to its source.
+
+**Adding events**: Edit `_CURATED_SKY_EVENTS` in `generate.py`, add a dict with `label`, `detail`, `date` (ISO), `url`, and `days_before` (how many days before the event to show it on the dashboard). Rebuild with `docker compose build generator && docker compose up -d`.
+
+**Adding meteor showers**: Edit `_METEOR_SHOWERS` in `generate.py`. These are the 8 major annual showers — they repeat every year automatically.
 
 ## BirdNET-Go API Reference
 
@@ -251,16 +307,15 @@ Empty day returns `[]`.
 
 The HTML template uses the National Park Service (NPS) design system:
 
-- **Black band header** with white arrowhead logo
+- **Black band header** with white arrowhead logo and **user menu** (person icon → dropdown with username, Change Password, Log Out). Username injected at serve time via nginx `sub_filter` (see [trailhead-permissions.md](trailhead-permissions.md)).
 - **Semi-transparent black identification band** (matching NPS website style) with sunrise/sunset and current temperature
-- **Left bookmark sidebar**: fixed-position left-edge panel with dark background (`#3D3D3C`, matching the ident band's computed color). A 40px dark tab strip with vertical "Bookmarks" label expands to a 280px scrolling panel with a black header bar. 40 service bookmark cards across 4 groups — Home & Automation, Media, Documents & Files, Infrastructure. Cards are compact horizontal rows: title/category + Local/Remote links stacked vertically in a fixed-width column (color-coded overbars removed for cleaner look). White card backgrounds on dark panel surround. Group labels are sticky at the top while scrolling. Includes A-Z/Grouped toggle. Auto-opens on screens wider than 900px; click outside to close. On mobile (≤700px), transforms to a bottom-anchored tab expanding upward.
-- **NWS Synopsis block**: left-aligned italic serif forecast text (1.15rem) on a warm gray background. Attribution links to the NWS Tucson AFD page. Hidden gracefully if the NWS API is unavailable. A scrolling ticker variant (CSS preserved but unused) is available for future use.
-- **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page below bookmarks. Night Sky shows current moon phase (emoji + name + illumination %), visible planets as tags, and next sky event (ISS pass or Vandenberg launch with twilight visibility indicator). Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
-- **Right-side collapsible drawer** with 4 tabs:
-  - Weather Station: all 12 metric cells
-  - 24-Hour Charts: temperature and wind/gust line charts
-  - Radar: NWS KEMX radar loop GIF
-  - Camera: Frigate driveway snapshot (links to frigate.home) + today's event count
+- **Left multi-tab sidebar**: fixed-position left-edge panel with dark background (`var(--sidebar-bg)`), extends from header to footer (stops at footer top edge). A 40px icon tab strip (Bookmarks + Cameras) with copper left-border on active tab. Clicking a tab icon opens/toggles a 280px scrolling panel. **Bookmarks tab**: ~40 service bookmark cards across 4 groups — Home & Automation, Media, Documents & Files, Infrastructure. Cards separated by `2px solid var(--nps-brown-light)` dividers. Compact horizontal rows: title/category + Local/Remote links stacked vertically in a fixed-width column. White card backgrounds on dark panel surround. Group labels are sticky at the top while scrolling. Includes A-Z/Grouped toggle — **defaults to A-Z sort on page load**. **Cameras tab**: full-width camera snapshot cards with label and event count. Per-card access filtering via `data-access` attributes — client-side JS hides cards based on user's group memberships (see [trailhead-permissions.md](trailhead-permissions.md)). Empty tabs auto-hide. Auto-opens on screens wider than 900px; click outside to close. On mobile (≤700px), transforms to a bottom-anchored horizontal tab bar expanding upward.
+- **NWS Synopsis block**: left-aligned italic serif forecast text (1.15rem) on a warm gray background. Right-aligned attribution line: `NWS Tucson Forecast Discussion | 3/1 1:35 PM` (link + issued date/time, converted to local Arizona time). Hidden gracefully if the NWS API is unavailable. A scrolling ticker variant (CSS preserved but unused) is available for future use.
+- **Inline weather section**: a collapsible tabbed bar in the main content flow (below synopsis, above Night Sky / Park row). Dark blue (`var(--nps-blue-dark)`) tab bar with 3 tabs — Station, Charts, Radar. Clicking a tab expands the section and shows that tab's content; clicking the active tab collapses the section. Clicking outside the section also collapses it. Starts collapsed on page load. Content panels use `max-height` CSS transition for smooth expand/collapse animation.
+  - **Station**: 6 weather metric cells in a 3x2 grid (Temperature, Humidity, Wind, Rain Today, Rain This Month, Rain This Year)
+  - **Charts**: 24h temperature and wind/gust line charts (conditionally shown — hidden if chart generation failed)
+  - **Radar**: NWS KEMX radar loop GIF
+- **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page. Night Sky shows an SVG moon disc (computed arc path with radial gradients, CSS `scaleX(-1)` flip for waning phases) on the left with name, illumination %, and trend arrow (copper ▲ brightening / gray ▼ dimming). On the right, multiple sky events stack vertically with thin separators: ISS passes (filtered for excellent viewing — maxEl>=40°, mag<=-1.5, shown with green "Visible" badge), Vandenberg launches (with twilight visibility indicator), meteor showers (shown ±3 days from peak), and curated astronomical events (eclipses, conjunctions, supermoons, oppositions). A "View all" link in the card header navigates to `/sky`. Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
 - **Bottom bird drawer**: horizontal scroll strip of today's detected species with Wikipedia thumbnails, detection counts, and "New" badges for first-time species. In normal document flow (not fixed-position) — stays anchored at the bottom of the page and scrolls with content. Translucent black background (`rgba(0, 0, 0, 0.75)`) matching the identification band.
 - **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the identification band stays static — it shows when the *data* was last refreshed server-side.
 - **Font switcher**: toggles between historical NPS typefaces (1935 style, 1945 signage, 2026 modern)
@@ -291,7 +346,7 @@ The NPS's own rule: Frutiger for structural/identity text, serif for content mea
 | CSS Variable | Stack | Role |
 |---|---|---|
 | `--font-np` / `--font-sans` | Frutiger → Cabin → system sans | Structural: headers, labels, buttons, navigation |
-| `--font-serif` | Lora → Georgia → system serif | Content: titles, descriptions, body text meant to be read |
+| `--font-serif` | Lora → Georgia → system serif | **Default body font**. Content: titles, descriptions, body text meant to be read |
 
 **When to use which:**
 - **Sans-serif (`--font-np`)**: Section header bars, eyebrow labels, category tags, status pills, buttons, navigation tabs, footer text, weather stat labels — anything that organizes or identifies
@@ -356,15 +411,16 @@ Never add letter-spacing to serif text or body text. Letter-spacing is only for 
 
 ### Text Colors
 
-Use the warm NPS palette. Avoid neutral grays (#666, #888, #999) — they clash with the warm brown tones.
+Use the warm NPS palette via CSS custom properties defined in `:root`. Avoid hardcoded hex values — always use the semantic variables. Avoid neutral grays (#888, #999) — they clash with the warm brown tones.
 
-| Role | Color | Hex |
+| Role | Color | CSS Variable |
 |---|---|---|
-| **Primary text** | near-black | `--nps-black` (#000) or `#333` |
-| **Secondary text** | warm dark gray | `#4a4035` |
-| **Tertiary / metadata** | warm mid-gray | `#6a5a4a` or `--nps-brown-light` (#6F4930) |
-| **Disabled / empty state** | warm light gray | `--nps-warm-gray` (#E0DDD8) |
-| **Reversed (on dark bg)** | white/cream | `--nps-white` or `--nps-cream` |
+| **Primary text** | near-black (#333) | `var(--text-primary)` |
+| **Secondary text** | warm dark gray (#4a4035) | `var(--text-secondary)` |
+| **Muted text** | gray (#666) | `var(--text-muted)` |
+| **Tertiary / metadata** | warm mid-gray | `var(--nps-brown-light)` (#6F4930) |
+| **Disabled / empty state** | warm light gray | `var(--nps-warm-gray)` (#E0DDD8) |
+| **Reversed (on dark bg)** | white/cream | `var(--nps-white)` or `var(--nps-cream)` |
 
 ### Color Coding (Overbars & Groups)
 
@@ -382,8 +438,8 @@ Use the warm NPS palette. Avoid neutral grays (#666, #888, #999) — they clash 
 - **Card padding**: `10–16px` — compact but readable
 - **Section header margin**: `40px` top, `16px` bottom
 - **Bottom-row cards**: two-column grid, stacks on mobile (<700px)
-- **Right side drawer**: fixed right edge, `min(620px, calc(100vw - 60px))` wide
-- **Left bookmark sidebar**: fixed left edge, 40px tab + 280px panel; z-index 85 (below weather drawer 90, header 100)
+- **Inline weather section**: full-width in main content flow, `max-width: 1280px`, collapsible via `max-height` transition
+- **Left multi-tab sidebar**: fixed left edge, 40px icon tab strip + 280px panel; z-index 85 (below header 100). Bottom edge stops at footer top (JS sets `bottom` to footer height)
 
 ### NPS Design System References
 
@@ -538,8 +594,10 @@ docker logs trailhead-generator --tail 20
 
 ### Charts Not Rendering
 
-Charts are matplotlib PNGs generated server-side. If missing:
-- Check generator logs for matplotlib errors
+Charts are matplotlib PNGs generated server-side. Chart generation is wrapped in try-except with success tracking (`temp_chart_ok`, `wind_chart_ok` booleans). The template conditionally shows chart images only when generation succeeded (`{% if temp_chart_ok %}`), preventing broken image icons.
+
+If charts are missing from the page:
+- Check generator logs for matplotlib errors or "chart generation failed" warnings
 - Verify history API returns data (may be empty if station was offline)
 - Charts require the `Agg` backend (`matplotlib.use('Agg')`) — no display server needed
 
@@ -566,3 +624,13 @@ The web container starts only after the generator is healthy (`depends_on: condi
 8. **`letter-spacing` breaks `justify-content: center`.** Letter-spacing adds trailing space after the last character, making centered text appear shifted left. Override `letter-spacing: 0` when precise centering matters (e.g., compact link buttons in the sidebar).
 
 9. **Fixed-position overlays don't mix well with expandable page content.** The bird drawer was originally `position: fixed; bottom: 0` but overlapped collapsible bookmark sections. Moving it to normal document flow (removing fixed positioning entirely) and using `pointer-events: none/auto` for click-through solved the overlap issue cleanly.
+
+10. **`datetime` objects are not JSON serializable.** The launch cache was logging `Object of type datetime is not JSON serializable` every 5 minutes. Fixed by excluding `sort_time` from the cached dict and storing it separately as an ISO string (`sort_time_iso`), then restoring it with `datetime.fromisoformat()` on cache read.
+
+11. **Centralize colors as CSS custom properties early.** Hardcoded hex values like `#4a4035` and `#666` appeared in 13+ places. Adding semantic variables (`--text-primary`, `--text-secondary`, `--text-muted`, `--sidebar-bg`, `--sidebar-bg-hover`) to `:root` and replacing all hardcoded values makes future theming trivial and prevents color drift.
+
+12. **Duplicate CSS variables cause confusion.** `--nps-gold` was identical to `--nps-copper` and `--nps-green-light` was identical to `--nps-green-mid`. Removed the duplicates and updated all references to use the canonical names.
+
+13. **Run containers as non-root.** The generator initially ran as root (Docker default). Adding `USER appuser` to the Dockerfile required also pre-creating `/output` with correct ownership, setting `MPLCONFIGDIR=/tmp/matplotlib` (matplotlib needs a writable config dir), and fixing volume file ownership on first deploy (`docker exec -u root ... chown`).
+
+14. **Jinja2 does NOT autoescape by default.** `Environment(loader=FileSystemLoader('/app'))` renders all `{{ var }}` unescaped. Must explicitly add `autoescape=select_autoescape(default_for_string=True, default=True)`. Unicode (emoji) passes through fine — autoescape only escapes `<>&"'`.

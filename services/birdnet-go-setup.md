@@ -1,7 +1,7 @@
 # BirdNET-Go Docker Setup
 
 **Created**: 2026-02-03
-**Updated**: 2026-02-22
+**Updated**: 2026-03-05
 **Status**: Complete and operational
 
 ## Summary
@@ -75,23 +75,30 @@ networks:
 
 ---
 
-## Detection Settings (Tuned 2026-02-22)
+## Detection Settings (Tuned 2026-03-05)
 
-Settings optimized for minimal false positives while maintaining good detection for Tucson, AZ (Sonoran Desert). Config path: `/mnt/docker/birdnet-go/config/config.yaml`
+Settings optimized based on multi-agent research review of BirdNET literature, Cornell Lab recommendations, and Tucson-specific considerations. Config path: `/mnt/docker/birdnet-go/config/config.yaml`
 
 ### Core BirdNET Settings
 
 ```yaml
 birdnet:
-  sensitivity: 1.0      # Default; optimal for desert environment
-  threshold: 0.8         # Raised from 0.7 — cuts low-confidence noise
-  overlap: 1.5           # Requires 2 confirmations per detection
+  sensitivity: 1.0      # Cornell recommended sweet spot
+  threshold: 0.75        # Balanced — cuts low-confidence floods, keeps real mid-confidence birds
+  overlap: 1.5           # ~3 confirmations per detection; saves Pi 4 CPU vs 2.0
   latitude: 32.4107
   longitude: -110.9361
-  locale: en-uk
+  locale: en-us
   rangefilter:
     model: latest
-    threshold: 0.03      # Raised from 0.01 — filters marginal species, preserves migrants
+    threshold: 0.01      # Inclusive — captures migrants; excellent eBird coverage for Tucson
+```
+
+### Deduplication Interval
+
+```yaml
+realtime:
+  interval: 60           # 60s between same-species detections (was 15s default)
 ```
 
 ### Dynamic Threshold
@@ -100,15 +107,15 @@ birdnet:
 dynamicthreshold:
   enabled: true
   trigger: 0.9           # Only very high-confidence triggers lowering
-  min: 0.2               # Safety floor
-  validhours: 12         # Reduced from 24 — better matches dawn/dusk activity cycle
+  min: 0.35              # Raised from 0.2 — still catches owls but cuts garbage
+  validhours: 12         # Covers a full night or morning cycle without stale unlocks
 ```
 
 ### False Positive Filter
 
 ```yaml
 falsepositivefilter:
-  level: 2               # Raised from 0 (off) — moderate built-in FP filtering
+  level: 1               # Light filtering; raise to 2 in June for cicada season
 ```
 
 ### Privacy Filter
@@ -116,7 +123,7 @@ falsepositivefilter:
 ```yaml
 privacyfilter:
   enabled: true
-  confidence: 0.08       # Raised from 0.05 — less likely to discard real birds from ambient noise
+  confidence: 0.05       # Aggressively filters human speech in residential yard
 ```
 
 ### Dog Bark Filter
@@ -124,40 +131,43 @@ privacyfilter:
 ```yaml
 dogbarkfilter:
   enabled: true
-  confidence: 0.3        # Raised from 0.1 — reduces false bark triggers
-  remember: 30           # Raised from 5 — covers full barking episodes
-  species:               # Was empty! Must list species confused with barks
-    - Great Horned Owl
-    - Western Screech-Owl
-    - Elf Owl
+  confidence: 0.8        # High confidence required to trigger
+  remember: 1            # Short suppression window
+  species: []            # Empty — NOT adding owls (would suppress real GHO/WSO detections)
 ```
 
 ### Species Exclude List
 
-Species impossible or near-impossible for a Tucson residential backyard:
+Non-bird sounds and impossible species:
 
 ```yaml
 species:
   exclude:
-    - Common Loon
-    - Gadwall
-    - Mallard
-    - Canada Goose
-    - Painted Redstart
-    - Downy Woodpecker
+    - Common Loon        # Inland desert — impossible
+    - Siren              # Emergency vehicle noise
+    - Gun                # Gunfire / backfire noise
+    - Engine             # Mechanical noise
 ```
 
 ### Settings Rationale
 
 | Setting | Value | Rationale |
 |---------|-------|-----------|
-| threshold 0.8 | Up from 0.7 | 46.5% of 18,575 detections were below 0.60 confidence — mostly noise |
-| rangefilter 0.03 | Up from 0.01 | Filters species with <3% probability for this location/season |
-| FP filter level 2 | Up from 0 | Enables BirdNET-Go's built-in false positive detection |
-| dogbarkfilter species | Was empty | Filter was enabled but doing nothing without a species list |
-| dogbarkfilter remember 30 | Up from 5 | Dog barking episodes last 30+ seconds |
-| validhours 12 | Down from 24 | Desert bird activity is dawn/dusk concentrated |
-| Exclude list | 6 species | Waterfowl, Downy Woodpecker (Ladder-backed look-alike), Painted Redstart (mountain species) |
+| threshold 0.75 | Down from 0.8 | BirdNET-Go balanced default is 0.8; 0.75 preserves mid-confidence real birds |
+| rangefilter 0.01 | Inclusive | Tucson is a major migration corridor — captures legitimate rare visitors |
+| dedup interval 60s | Up from 15s | Prevents database flood (306 goldfinch/day → ~70) without losing species data |
+| dynamic min 0.35 | Up from 0.2 | 0.2 let garbage through; 0.35 preserves nocturnal owls (525 GHO detections in Feb) |
+| validhours 12 | Down from 24 | Morning trigger resets before evening; prevents stale afternoon phantom detections |
+| privacy filter 0.05 | Down from 0.5 | Aggressively rejects speech — 0.5 was too lenient for residential yard |
+| dog bark species empty | Cleared | Adding owls to bark filter suppresses real owl detections when dogs bark nearby |
+| FP filter level 1 | Light | Reserve level 2 for June-Sept cicada season |
+| exclude list | 4 items | Non-bird noise classes + impossible species |
+
+### Seasonal Notes
+
+- **June-September (cicada season)**: Raise `falsepositivefilter.level` to 2. Cicadas produce broadband noise that degrades afternoon detection quality. Revert to 1 in October.
+- **April-May (spring migration)**: Peak species diversity. Current settings are optimized for this — 0.01 rangefilter captures migrants.
+- **Nocturnal detection**: Working well — 525 Great Horned Owl, 60 Barn Owl detections in February. Keep 24/7 recording enabled.
 
 ---
 
@@ -169,7 +179,19 @@ species:
 
 ### Equalizer
 
-Currently **disabled** in config. Previously tested with HighPass 500Hz + LowPass 12kHz.
+**Enabled** with two filters:
+
+```yaml
+equalizer:
+  enabled: true
+  filters:
+    - type: HighPass
+      frequency: 500     # Cuts wind, traffic, HVAC rumble; owl harmonics above 500Hz preserved
+      q: 0.1
+    - type: LowPass
+      frequency: 15000   # Cuts ultrasonic artifacts
+      q: 0.1
+```
 
 ### RTSP Source
 

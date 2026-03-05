@@ -1,6 +1,6 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-03-04
+**Last Updated**: 2026-03-05
 
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
@@ -9,6 +9,77 @@
 A static weather dashboard styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, sky event data (ISS passes, launches, meteor showers, eclipses), NWS forecast synopsis, and a daily NPS park — every 5 minutes. It renders two Jinja2 HTML templates (dashboard + sky events reference page) with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
 
 Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
+
+## Quick Reference
+
+### Stack
+
+Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python generator runs every 5 minutes via `while true; sleep 300` loop, writes static HTML + charts to a shared volume. nginx serves the output.
+
+| Service | Image | Role | Limits |
+|---------|-------|------|--------|
+| `generator` | python:3.12-slim | Fetches data, renders HTML + charts every 5 min | 1 CPU / 512MB |
+| `web` | nginx:alpine | Static file server on :8076 with Authentik forward auth | 0.5 CPU / 128MB |
+
+### Source Files (`/mnt/docker/trailhead/`)
+
+| File | Purpose |
+|------|---------|
+| `generate.py` | Main Python generator — fetches all data, renders Jinja2, generates matplotlib charts |
+| `template.html` | Jinja2 template for main dashboard |
+| `sky-events.html` | Jinja2 template for `/sky` reference page |
+| `trailhead.yaml` | Access groups + sidebar tab/card definitions |
+| `.env` | API keys (Ecowitt, NPS, N2YO, etc.) + coordinates |
+| `entrypoint.sh` | Font copy + `while true; sleep 300` loop |
+| `Dockerfile` | Python 3.12-slim, runs as non-root `appuser` |
+| `nginx.conf` | Static server + Authentik forward auth + security headers |
+| `logged-out.html` | Static logout landing page with 5s redirect countdown |
+| `requirements.txt` | Pinned Python dependencies |
+| `fonts/` | NPS typefaces (Frutiger, National Park, NPS 1935, NPS 1945 signage) |
+
+Compose file: `/etc/komodo/stacks/trailhead/compose.yaml`
+
+### Data Sources
+
+| Source | Data | Cache |
+|--------|------|-------|
+| Ecowitt API v3 (realtime) | Temp, humidity, wind, pressure, UV, PM2.5, rain | 5 min |
+| Ecowitt API v3 (history) | 24h rolling temp + wind (288 points) | 5 min |
+| BirdNET-Go (local) | Top 20 bird species detected today | 5 min |
+| astral (Python lib) | Sun events + moon phase/illumination | 5 min |
+| NWS KEMX | Radar loop GIF (Tucson region) | 5 min |
+| NWS AFD/TWC | Area Forecast Discussion synopsis | 1 hour |
+| NWS Forecast | 7-day high/low/rain% | 1 hour |
+| Frigate (local) | Driveway camera snapshot + event count | 5 min |
+| N2YO API | ISS passes (filtered: maxEl>=40°, mag<=-1.5) | 5 min |
+| Launch Library 2 | Next Vandenberg launch (non-Starlink) | 1 hour |
+| Meteor showers | 8 major annual showers (±3 days from peak) | Static |
+| Curated sky events | Eclipses, conjunctions, supermoons, oppositions | Static |
+| NPS API | Park of the day (name, description, image) | Daily |
+
+### Generated Output (`/output/` shared volume)
+
+`index.html`, `sky.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
+
+### Quick Commands
+
+```bash
+# Code change (no rebuild needed — source is bind-mounted)
+scp generate.py template.html root@192.168.0.179:/mnt/docker/trailhead/
+ssh root@192.168.0.179 "docker restart trailhead-generator"
+
+# Full rebuild (only for Dockerfile/requirements.txt/entrypoint.sh)
+cd /etc/komodo/stacks/trailhead && docker compose build --no-cache && docker compose up -d
+
+# Logs & status
+docker logs trailhead-generator --tail 30
+docker ps --filter name=trailhead
+
+# Force immediate regeneration
+docker exec trailhead-generator python3 /app/generate.py
+```
+
+---
 
 ## Architecture
 
@@ -27,6 +98,7 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 │  │    ├─ astral library  → sun events + moon phase     │  │
 │  │    ├─ NWS KEMX        → radar loop GIF              │  │
 │  │    ├─ NWS AFD/TWC     → forecast synopsis (1h TTL)  │  │
+│  │    ├─ NWS Forecast    → 7-day high/low/rain% (1h)  │  │
 │  │    ├─ Frigate API     → driveway camera snapshot    │  │
 │  │    ├─ N2YO API        → ISS pass predictions (filtered)│  │
 │  │    ├─ Launch Library  → Vandenberg launches (1h TTL) │  │
@@ -46,6 +118,7 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 │    /output/wind-chart.png       (24h wind speed chart)    │
 │    /output/radar.gif            (NWS KEMX radar loop)     │
 │    /output/driveway.jpg         (Frigate camera snapshot) │
+│    /output/forecast_cache.json  (1h NWS forecast cache)   │
 │    /output/nps_parks_cache.json (daily park cache)        │
 │    /output/launch_cache.json    (1h launch cache)         │
 │    /output/synopsis_cache.json  (1h NWS synopsis cache)   │
@@ -69,6 +142,7 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 | astral (Python lib) | Local calculation | Sun events + moon phase/illumination/trend | None (every 5 min) |
 | NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | None (every 5 min) |
 | NWS AFD/TWC | HTTPS | Area Forecast Discussion synopsis | 1 hour |
+| NWS Forecast | HTTPS | 7-day forecast (high, low, rain%) | 1 hour |
 | Frigate (local) | HTTP | Driveway camera snapshot + today's event count | None (every 5 min) |
 | N2YO API | HTTPS | ISS passes filtered for excellent viewing (maxEl>=40°, mag<=-1.5) | None (every 5 min) |
 | Launch Library 2 | HTTPS | Next Vandenberg launch (non-Starlink) | 1 hour |
@@ -102,6 +176,7 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 ├── requirements.txt     # Python dependencies
 ├── trailhead.yaml       # Access groups + sidebar tab/card definitions
 ├── nginx.conf           # Authentik forward auth + sub_filter + security headers
+├── logged-out.html      # Static logout page with 5s redirect countdown
 └── fonts/
     ├── frutiger.woff2
     ├── nationalpark.woff2
@@ -125,6 +200,7 @@ Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 ├── nps_parks_cache.json # Daily park cache (avoids repeated API calls)
 ├── launch_cache.json    # 1h Vandenberg launch cache
 ├── synopsis_cache.json  # 1h NWS synopsis cache
+├── forecast_cache.json  # 1h NWS 7-day forecast cache
 └── fonts/               # Copied from build at startup
     └── *.woff2
 ```
@@ -252,6 +328,25 @@ Rendered as a left-aligned static text block on a warm gray background (`var(--n
 
 **Note**: A scrolling ticker version (`.synopsis-ticker-*` CSS) is preserved in the template but unused — available for future reuse.
 
+## NWS 7-Day Forecast
+
+A horizontal strip showing 7-day high/low temperatures and rain probability, rendered between the weather tabs and the bottom-row cards.
+
+### API
+
+`GET https://api.weather.gov/gridpoints/TWC/91,49/forecast` — no key needed. Returns 14 periods (day/night pairs). The generator pairs them into 7 day objects with `name`, `high`, `low`, and `rain` (precipitation probability).
+
+Cached for 1 hour at `/output/forecast_cache.json` (same pattern as synopsis).
+
+### Display
+
+Translucent black strip (`rgba(0,0,0,0.75)`) with a thin black top border separating it from the weather tabs. Each day shows:
+- 3-letter day abbreviation (or "Today") — left-justified, fixed-width
+- High/low temperatures separated by `/`
+- Rain % in italic sky-blue — only shown if ≥5%
+
+Hidden gracefully if the NWS API is unavailable (`{% if forecast %}`).
+
 ## Sky Events
 
 ### Dashboard Card
@@ -315,6 +410,7 @@ The HTML template uses the National Park Service (NPS) design system:
   - **Station**: 6 weather metric cells in a 3x2 grid (Temperature, Humidity, Wind, Rain Today, Rain This Month, Rain This Year)
   - **Charts**: 24h temperature and wind/gust line charts (conditionally shown — hidden if chart generation failed)
   - **Radar**: NWS KEMX radar loop GIF
+- **7-day forecast strip**: translucent black horizontal bar between weather tabs and bottom cards. Shows day abbreviation, high/low temps, and rain% (≥5% only, italic sky-blue). Hidden if NWS API unavailable.
 - **Night Sky + Park of the Day**: two side-by-side cards at the bottom of the page. Night Sky shows an SVG moon disc (computed arc path with radial gradients, CSS `scaleX(-1)` flip for waning phases) on the left with name, illumination %, and trend arrow (copper ▲ brightening / gray ▼ dimming). On the right, multiple sky events stack vertically with thin separators: ISS passes (filtered for excellent viewing — maxEl>=40°, mag<=-1.5, shown with green "Visible" badge), Vandenberg launches (with twilight visibility indicator), meteor showers (shown ±3 days from peak), and curated astronomical events (eclipses, conjunctions, supermoons, oppositions). A "View all" link in the card header navigates to `/sky`. Park of the Day shows a different NPS park each day with photo, description, and link (cached daily via NPS API).
 - **Bottom bird drawer**: horizontal scroll strip of today's detected species with Wikipedia thumbnails, detection counts, and "New" badges for first-time species. In normal document flow (not fixed-position) — stays anchored at the bottom of the page and scrolls with content. Translucent black background (`rgba(0, 0, 0, 0.75)`) matching the identification band.
 - **Live clock**: JavaScript updates "Current Time" in the header every 15 seconds using the browser's local time. The "Updated" timestamp in the identification band stays static — it shows when the *data* was last refreshed server-side.

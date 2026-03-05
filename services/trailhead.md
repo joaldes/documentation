@@ -48,18 +48,18 @@ Compose file: `/etc/komodo/stacks/trailhead/compose.yaml`
 | BirdNET-Go (local) | Top 20 bird species detected today | 5 min |
 | astral (Python lib) | Sun events + moon phase/illumination | 5 min |
 | NWS KEMX | Radar loop GIF (Tucson region) | 5 min |
-| NWS AFD/TWC | Area Forecast Discussion synopsis | 1 hour |
-| NWS Forecast | 7-day high/low/rain% | 1 hour |
+| NWS AFD/TWC | Area Forecast Discussion synopsis | 3 hours |
+| NWS Forecast | 7-day high/low/rain% | 3 hours |
 | Frigate (local) | Driveway camera snapshot + event count | 5 min |
-| N2YO API | ISS passes (filtered: maxEl>=40°, mag<=-1.5) | 5 min |
-| Launch Library 2 | Next Vandenberg launch (non-Starlink) | 1 hour |
+| N2YO API | ISS passes (filtered: maxEl>=40°, mag<=-1.5) | 6 hours |
+| Launch Library 2 | Next Vandenberg launch (non-Starlink) | 6 hours |
 | Meteor showers | 8 major annual showers (±3 days from peak) | Static |
 | Curated sky events | Eclipses, conjunctions, supermoons, oppositions | Static |
 | NPS API | Park of the day (name, description, image) | Daily |
 
 ### Generated Output (`/output/` shared volume)
 
-`index.html`, `sky.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
+`index.html`, `sky.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `iss_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
 
 ### Quick Commands
 
@@ -97,11 +97,11 @@ docker exec trailhead-generator python3 /app/generate.py
 │  │    ├─ BirdNET-Go API  → today's bird detections     │  │
 │  │    ├─ astral library  → sun events + moon phase     │  │
 │  │    ├─ NWS KEMX        → radar loop GIF              │  │
-│  │    ├─ NWS AFD/TWC     → forecast synopsis (1h TTL)  │  │
-│  │    ├─ NWS Forecast    → 7-day high/low/rain% (1h)  │  │
+│  │    ├─ NWS AFD/TWC     → forecast synopsis (3h TTL)  │  │
+│  │    ├─ NWS Forecast    → 7-day high/low/rain% (3h)  │  │
 │  │    ├─ Frigate API     → driveway camera snapshot    │  │
-│  │    ├─ N2YO API        → ISS pass predictions (filtered)│  │
-│  │    ├─ Launch Library  → Vandenberg launches (1h TTL) │  │
+│  │    ├─ N2YO API        → ISS pass predictions (6h TTL)│  │
+│  │    ├─ Launch Library  → Vandenberg launches (6h TTL) │  │
 │  │    ├─ Meteor showers  → hardcoded annual calendar    │  │
 │  │    ├─ Curated events  → eclipses, conjunctions, etc. │  │
 │  │    ├─ NPS API         → park of the day (daily TTL) │  │
@@ -118,10 +118,11 @@ docker exec trailhead-generator python3 /app/generate.py
 │    /output/wind-chart.png       (24h wind speed chart)    │
 │    /output/radar.gif            (NWS KEMX radar loop)     │
 │    /output/driveway.jpg         (Frigate camera snapshot) │
-│    /output/forecast_cache.json  (1h NWS forecast cache)   │
+│    /output/iss_cache.json       (6h ISS pass cache)       │
+│    /output/forecast_cache.json  (3h NWS forecast cache)   │
 │    /output/nps_parks_cache.json (daily park cache)        │
-│    /output/launch_cache.json    (1h launch cache)         │
-│    /output/synopsis_cache.json  (1h NWS synopsis cache)   │
+│    /output/launch_cache.json    (6h launch cache)         │
+│    /output/synopsis_cache.json  (3h NWS synopsis cache)   │
 │    /output/fonts/*.woff2        (NPS typefaces)           │
 │         │ read by                                         │
 │         ▼                                                 │
@@ -141,11 +142,11 @@ docker exec trailhead-generator python3 /app/generate.py
 | BirdNET-Go (local) | HTTP | Today's detected bird species (top 20) | None (every 5 min) |
 | astral (Python lib) | Local calculation | Sun events + moon phase/illumination/trend | None (every 5 min) |
 | NWS KEMX | HTTPS | Radar loop GIF (Tucson region) | None (every 5 min) |
-| NWS AFD/TWC | HTTPS | Area Forecast Discussion synopsis | 1 hour |
-| NWS Forecast | HTTPS | 7-day forecast (high, low, rain%) | 1 hour |
+| NWS AFD/TWC | HTTPS | Area Forecast Discussion synopsis | 3 hours |
+| NWS Forecast | HTTPS | 7-day forecast (high, low, rain%) | 3 hours |
 | Frigate (local) | HTTP | Driveway camera snapshot + today's event count | None (every 5 min) |
-| N2YO API | HTTPS | ISS passes filtered for excellent viewing (maxEl>=40°, mag<=-1.5) | None (every 5 min) |
-| Launch Library 2 | HTTPS | Next Vandenberg launch (non-Starlink) | 1 hour |
+| N2YO API | HTTPS | ISS passes filtered for excellent viewing (maxEl>=40°, mag<=-1.5) | 6 hours |
+| Launch Library 2 | HTTPS | Next Vandenberg launch (non-Starlink) | 6 hours |
 | Meteor showers | Hardcoded | 8 major annual showers, shown ±3 days from peak | Static |
 | Curated sky events | Hardcoded | Eclipses, conjunctions, supermoons, oppositions (2026-2027) | Static |
 | NPS API | HTTPS | Park of the day (name, description, image) | Daily |
@@ -198,9 +199,10 @@ docker exec trailhead-generator python3 /app/generate.py
 ├── radar.gif            # NWS KEMX radar loop
 ├── driveway.jpg         # Frigate camera snapshot
 ├── nps_parks_cache.json # Daily park cache (avoids repeated API calls)
-├── launch_cache.json    # 1h Vandenberg launch cache
-├── synopsis_cache.json  # 1h NWS synopsis cache
-├── forecast_cache.json  # 1h NWS 7-day forecast cache
+├── iss_cache.json       # 6h N2YO ISS pass cache
+├── launch_cache.json    # 6h Vandenberg launch cache
+├── synopsis_cache.json  # 3h NWS synopsis cache
+├── forecast_cache.json  # 3h NWS 7-day forecast cache
 └── fonts/               # Copied from build at startup
     └── *.woff2
 ```
@@ -306,7 +308,7 @@ Today's high/low are derived as `max()`/`min()` of the temperature history value
 
 ## NWS Synopsis (AFD)
 
-The NWS Area Forecast Discussion (AFD) synopsis is a short paragraph summarizing the weather outlook for the Tucson region. Fetched from the NWS API (no key needed), cached for 1 hour.
+The NWS Area Forecast Discussion (AFD) synopsis is a short paragraph summarizing the weather outlook for the Tucson region. Fetched from the NWS API (no key needed), cached for 3 hours (AFDs issued ~4x/day).
 
 ### API Flow
 
@@ -336,7 +338,7 @@ A horizontal strip showing 7-day high/low temperatures and rain probability, ren
 
 `GET https://api.weather.gov/gridpoints/TWC/91,49/forecast` — no key needed. Returns 14 periods (day/night pairs). The generator pairs them into 7 day objects with `name`, `high`, `low`, and `rain` (precipitation probability).
 
-Cached for 1 hour at `/output/forecast_cache.json` (same pattern as synopsis).
+Cached for 3 hours at `/output/forecast_cache.json` (NWS grid forecasts update ~4x/day).
 
 ### Display
 

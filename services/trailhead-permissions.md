@@ -1,6 +1,6 @@
 # Trailhead — Per-User Access Control via Authentik SSO
 
-**Last Updated**: 2026-03-03
+**Last Updated**: 2026-03-04
 **Status**: Implemented and deployed
 **Related Systems**: Trailhead (192.168.0.179:8076), Authentik (192.168.0.179:9000)
 
@@ -67,7 +67,8 @@ Configured via API. Components created:
 - **Brand**: UUID `e137649b-f669-43e7-abdf-6e52a6b7e952` (default brand, customized)
 - **Authentication flow**: `default-authentication-flow` — title "Welcome, please login", identification + password on one page
 - **API token**: `BVcngz0VAdh81uKFTOd93NHHD2sXF5624hml3LLFuYTSQMYyd7vA8pOLDLgx` (for programmatic brand/flow changes)
-- **Users**: `alec`, `akadmin` (default admin)
+- **Users**: `alec` (type: `external`, `is_superuser: true`), `akadmin` (default admin, type: `internal`)
+  - `alec` is set to `external` so that `RootRedirectView` redirects to `default_application` (Trailhead) instead of the admin dashboard when `next=/` is hit after logout. `is_superuser` remains `true`, so admin UI at `/if/admin/` is still accessible.
 
 To add a new user:
 1. Create user in Authentik admin: http://192.168.0.179:9000/if/admin/#/identity/users
@@ -102,7 +103,7 @@ The identification stage (`default-authentication-identification`) has `password
 
 The "Login to continue to Trailhead." subtitle was suppressed by editing `/web/dist/chunks/XROP4FSD.js` inside the container (changed `this.challenge.applicationPre?` to `false?`). This edit is lost on container rebuild.
 
-The logout page was customized by editing `/web/dist/src/flow/providers/chunks/52MQAQ3X.js` to remove the "Go back to overview" and "Log out of Trailhead" buttons, keeping only "Log back into Trailhead". Also backed up at `/mnt/docker/authentik/media/custom/52MQAQ3X.js`. This edit is also lost on container rebuild.
+The logout page (`/web/dist/src/flow/providers/chunks/52MQAQ3X.js`) was modified to auto-redirect to `http://home.1701.me/logged-out` using `connectedCallback()` (fires before `render()`). The `render()` method shows a "Logging out..." message as a brief fallback while the redirect executes. Uses `window.location.replace()` to avoid a back-button return to the session-end page. Backed up at `/mnt/docker/authentik/media/custom/52MQAQ3X.js`. This edit is lost on container rebuild.
 
 ### Custom CSS
 
@@ -149,7 +150,7 @@ a { color: #C56C39 !important; }                           /* Copper links */
 After an Authentik update/rebuild, re-apply:
 1. **Logo SVG**: `docker cp /mnt/docker/authentik/media/custom/trailhead-logo.svg authentik-server:/web/dist/assets/icons/trailhead-logo.svg`
 2. **Subtitle suppression**: Re-edit `XROP4FSD.js` (the chunk filename may change between versions)
-3. **Logout page buttons**: `docker cp /mnt/docker/authentik/media/custom/52MQAQ3X.js authentik-server:/web/dist/src/flow/providers/chunks/52MQAQ3X.js` (chunk filename may change between versions)
+3. **Logout page redirect**: `docker cp /mnt/docker/authentik/media/custom/52MQAQ3X.js authentik-server:/web/dist/src/flow/providers/chunks/52MQAQ3X.js` (chunk filename may change between versions — search for `ak-stage-session-end` to find the right file)
 4. **Brand CSS + settings**: Persisted in the database, survives rebuilds
 5. **Flow title + password_stage**: Persisted in the database, survives rebuilds
 
@@ -164,6 +165,7 @@ Compose file at `/etc/komodo/stacks/trailhead/compose.yaml`.
 | `generate.py` | Renders single `index.html` with all cards + user_groups JSON (lowercase keys) |
 | `template.html` | Multi-tab sidebar, data-access attributes, JS filtering, Local/Remote badge |
 | `nginx.conf` | Authentik forward auth, network type detection, `sub_filter_once off`, `try_files /index.html` |
+| `logged-out.html` | Static "You've been logged out" page with 5s countdown + auto-redirect (no auth) |
 | `compose.yaml` | Generator + nginx services, healthcheck on `index.html` |
 
 ## nginx.conf — Key Details
@@ -214,18 +216,55 @@ location = /logout {
 }
 ```
 
-This uses the standard OIDC RP-Initiated Logout endpoint (`/application/o/trailhead/end-session/`), which:
-1. Invalidates the Authentik server session
-2. Shows a "You've logged out of Trailhead" page with a "Log back into Trailhead" button
-3. The `post_logout_redirect_uri` parameter is accepted because `http://home.1701.me` matches the provider's `external_host`
+The OIDC end-session endpoint triggers the `default-provider-invalidation-flow`, which has a **User Logout Stage** (`default-invalidation-logout`) at order 0. This stage calls `logout(request)` to destroy the Authentik server session.
 
-The logout page buttons were customized by editing `52MQAQ3X.js` inside the Authentik container to show only "Log back into Trailhead" (removed "Go back to overview" and "Log out of Trailhead"). This edit is lost on container rebuild — see "Things Lost on Container Rebuild" below.
+**Known Authentik limitation** (GitHub #10430, #4248): The User Logout Stage destroys the Django session, which also destroys `SESSION_KEY_PLAN` containing the flow plan context. This means `post_logout_redirect_uri` is lost after session destruction. The Authentik SPA detects the session loss and redirects to the auth flow with `next=/`, which after re-login leads to the Authentik dashboard instead of Trailhead.
+
+**Workaround — dual-path redirect:**
+
+The `52MQAQ3X.js` file (session-end stage component) was modified to redirect to a static "logged out" page on Trailhead before the SPA's session-loss detection kicks in. As a safety net, user `alec` was changed to `external` type so `RootRedirectView` redirects to `default_application` (Trailhead) if the SPA redirect wins the race.
+
+**Path A — JS redirect wins (primary):**
+```
+Logout → cookie cleared → OIDC end-session → invalidation flow
+  → User Logout Stage kills session → 52MQAQ3X.js connectedCallback()
+  → window.location.replace("http://home.1701.me/logged-out")
+  → static "You've been logged out" page (5s countdown)
+  → auto-redirect to home.1701.me → outpost OAuth → login → Trailhead
+```
+
+**Path B — SPA session-loss redirect wins (safety net):**
+```
+Logout → session killed → SPA detects session loss
+  → redirects to auth flow with next=/ → user logs in
+  → next=/ → RootRedirectView → external user type
+  → redirect to default_application launch_url → home.1701.me → Trailhead
+```
+
+Both paths end at Trailhead.
+
+### Logged-Out Page
+
+A static NPS-styled page served without auth at `/logged-out`:
+
+```nginx
+location = /logged-out {
+    add_header X-Content-Type-Options "nosniff" always;
+    alias /error-pages/logged-out.html;
+}
+```
+
+The page shows "You've Been Logged Out" with a 5-second countdown timer and auto-redirect to `http://home.1701.me/`. A "Log Back In Now" button is available as an immediate fallback. The file is mounted into the container via `compose.yaml`:
+
+```yaml
+- /mnt/docker/trailhead/logged-out.html:/error-pages/logged-out.html:ro
+```
 
 **Why not other approaches**:
+- `post_logout_redirect_uri` is lost when the User Logout Stage destroys the session (known Authentik bug)
 - `?next=` on invalidation flows rejects external URLs ("Invalid next URL")
-- `default_application` on the brand only redirects `UserTypes.EXTERNAL` users (admin/internal users go to Authentik dashboard)
-- The outpost `/sign_out` endpoint doesn't work for forward-auth mode (it's designed for proxy mode only)
-- Brand CSS can't hide the buttons because the `ak-stage-session-end` component's shadow DOM doesn't adopt brand stylesheets
+- The outpost `/sign_out` endpoint doesn't work for forward-auth mode (designed for proxy mode only)
+- Brand CSS can't style the `ak-stage-session-end` component (shadow DOM doesn't adopt brand stylesheets)
 
 ### Other Critical Settings
 
@@ -264,6 +303,7 @@ A user icon in the black band header opens a dropdown with:
 - **Header spoofing safe**: `$authentik_username` comes from `$upstream_http_` (outpost response only)
 - **Cards in source**: All cards are in the HTML source. Any authenticated user could view-source and see all URLs. This is fine because each service has its own auth — the access control here is UI cleanliness, not a security boundary.
 - **Static assets protected**: Camera snapshot (`driveway.jpg`) requires auth
+- **Logged-out page open**: `/logged-out` has no auth (static page shown after session destruction)
 - **Health check open**: `/health` has no auth (required for Docker healthcheck)
 - **Domain enforcement**: Auth redirect hardcodes `home.1701.me` to prevent OAuth callback failures when accessed via IP:port
 
@@ -276,10 +316,19 @@ Check `access_groups` in `trailhead.yaml`. The user must be listed in a group th
 Cookie passthrough is missing or broken. Ensure `auth_request_set $auth_cookie $upstream_http_set_cookie` and `add_header Set-Cookie $auth_cookie` are present on every auth-protected location block.
 
 ### Post-login redirects to Authentik dashboard (not Trailhead)
-The user likely accessed via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`. The OAuth callback fails because the redirect URI doesn't match `external_host`. Check:
+**After normal login**: The user likely accessed via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`. The OAuth callback fails because the redirect URI doesn't match `external_host`. Check:
 1. `@goauthentik_proxy_signin` has hardcoded `home.1701.me` (not `$http_host`)
 2. Authentik application `launch_url` is `http://home.1701.me` (not the IP:port)
 3. User bookmarks point to `http://home.1701.me` (not the IP)
+
+**After logout + re-login**: This is a known Authentik limitation (GitHub #10430, #4248). The User Logout Stage destroys the Django session including the flow plan, so `post_logout_redirect_uri` is lost. The SPA redirects to the auth flow with `next=/`, and after login `RootRedirectView` sends the user to the dashboard. The workaround has two parts:
+1. `52MQAQ3X.js` redirects to `/logged-out` before the SPA can detect the session loss (primary path)
+2. User `alec` is set to `external` type so `RootRedirectView` redirects to `default_application` (Trailhead) when `next=/` is hit (safety net)
+
+If this stops working, check:
+- `52MQAQ3X.js` is deployed in the Authentik container (may need re-copying after update)
+- User `alec` is still `external` type with `is_superuser: true`
+- Brand `default_application` is set to Trailhead (pk `4c8c0fb6-c9ab-4ca2-aa19-4a17e4a21087`)
 
 ### Logout 502 error
 The outpost `/sign_out` endpoint has a known bug (v2025.12.1) where it returns 502 when the browser has a valid proxy session cookie. The current workaround redirects to the invalidation flow directly instead. Do NOT attempt to proxy to `/outpost.goauthentik.io/sign_out` — it won't work.

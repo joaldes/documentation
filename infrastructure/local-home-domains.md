@@ -1,6 +1,6 @@
 # Local `.home` Domain Setup
 
-**Last Updated**: 2026-02-24
+**Last Updated**: 2026-03-07
 **Related Systems**: AdGuard DNS (Container 101), Nginx Proxy Manager (Container 112), All web services
 
 ## Summary
@@ -87,6 +87,17 @@ A single wildcard rewrite `*.1701.me → 192.168.0.30` means all `.1701.me` doma
 - **404 from NPM**: DNS rewrite exists but no matching NPM proxy host — create one in NPM
 - **Service loads but iframe blocked in HA**: Add `proxy_hide_header X-Frame-Options;` in the NPM proxy host's Advanced tab
 - **Can't get HTTPS**: `.home` domains cannot get Let's Encrypt certificates — use HTTP only, or use `.1701.me` domains for HTTPS
+
+## SSL Certificates (`.1701.me` domains)
+
+Let's Encrypt certificates managed by NPM (CT 112):
+
+| Domain | NPM Cert ID | Proxy Host | Notes |
+|--------|-------------|------------|-------|
+| `home.1701.me` | 18 | #23 | Force SSL, HTTP/2 — Trailhead dashboard |
+| `auth.1701.me` | 19 | #54 | Force SSL, HTTP/2 — Authentik SSO |
+
+Added 2026-03-07 to enable external HTTPS access from mobile networks.
 
 ## Related Incidents
 - [2026-02-18-birdnet-iframe-blocked.md](../incidents/2026-02-18-birdnet-iframe-blocked.md) — BirdNET X-Frame-Options fix via NPM

@@ -1,6 +1,6 @@
 # Trailhead — Per-User Access Control via Authentik SSO
 
-**Last Updated**: 2026-03-04
+**Last Updated**: 2026-03-07
 **Status**: Implemented and deployed
 **Related Systems**: Trailhead (192.168.0.179:8076), Authentik (192.168.0.179:9000)
 
@@ -13,7 +13,7 @@ Per-user access filtering on the Trailhead weather dashboard using Authentik SSO
 ```
 Browser → NPM (192.168.0.30) → trailhead-web (:8076)
   nginx auth_request → Authentik embedded outpost (192.168.0.179:9000)
-    401 → redirect to http://home.1701.me/outpost.goauthentik.io/start (hardcoded domain)
+    401 → redirect to http://home.1701.me/outpost.goauthentik.io/start (hardcoded in nginx; NPM upgrades to HTTPS)
     200 → auth_request_set captures $authentik_username
          → sub_filter injects username into TWO placeholders (dropdown + JS var)
          → sub_filter injects $network_type (Local/Remote) from X-Forwarded-For
@@ -26,26 +26,25 @@ Browser → NPM (192.168.0.30) → trailhead-web (:8076)
 
 ## Access Groups
 
-Defined in `trailhead.yaml`:
+Each card in `trailhead.yaml` has an optional `access` field with a list of access tags:
 
 ```yaml
-access_groups:
-  admin:  [alec, akadmin]
-  media:  [alec, akadmin]
-  family: [alec]
+- id: mealie
+  title: Mealie
+  access:
+    - apps-family
+- id: grafana
+  title: Grafana
+  access:
+    - apps-friends
 ```
 
-Each card has an `access` field:
-- `access: [admin]` — visible only to users in the `admin` group
-- `access: [admin, media]` — visible to users in `admin` OR `media`
-- `access: [admin, family]` — visible to users in `admin` OR `family`
+Access tags currently used:
+- `apps-family` — Mealie, Tandoor, Immich (family-only apps)
+- `apps-friends` — BirdNET, Grafana, Paperless, Stirling PDF (shared with friends)
+- `camera` — Driveway camera (cameras tab)
 
-At generation time, access_groups is inverted to `user_groups` with **lowercase keys**:
-```json
-{"alec": ["admin", "media", "family"], "akadmin": ["admin", "media"]}
-```
-
-This JSON is embedded in the HTML. At serve time, nginx injects the username, and JS filters cards using a **case-insensitive** lookup (`TRAILHEAD_USERNAME.toLowerCase()`).
+Cards without an `access` field are visible to all authenticated users. JS client-side filtering hides cards where the user's groups (from `TRAILHEAD_USER_GROUPS`) don't include any of the card's access tags. The lookup is **case-insensitive** (`TRAILHEAD_USERNAME.toLowerCase()`).
 
 ## Sidebar Tabs
 
@@ -60,10 +59,10 @@ Empty tabs (all cards hidden) are automatically hidden by JS.
 
 Configured via API. Components created:
 
-- **Proxy Provider**: `trailhead` — forward auth single application, external host `http://home.1701.me`
+- **Proxy Provider**: `trailhead` — forward auth single application, external host `https://home.1701.me`
 - **Application**: `Trailhead`, slug `trailhead`, pk `4c8c0fb6-c9ab-4ca2-aa19-4a17e4a21087`
-  - `launch_url`: `http://home.1701.me` (must match external host, not IP:port)
-- **Embedded outpost**: Trailhead provider assigned
+  - `launch_url`: `http://home.1701.me` (must match external host domain, not IP:port)
+- **Embedded outpost**: `authentik_host` = `https://auth.1701.me`, `authentik_host_browser` = `https://auth.1701.me`
 - **Brand**: UUID `e137649b-f669-43e7-abdf-6e52a6b7e952` (default brand, customized)
 - **Authentication flow**: `default-authentication-flow` — title "Welcome, please login", identification + password on one page
 - **API token**: `BVcngz0VAdh81uKFTOd93NHHD2sXF5624hml3LLFuYTSQMYyd7vA8pOLDLgx` (for programmatic brand/flow changes)
@@ -203,7 +202,9 @@ location @goauthentik_proxy_signin {
 }
 ```
 
-**Why hardcoded**: If the user accesses via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`, using `$http_host` would produce a redirect URL with the wrong domain. The outpost compares the redirect URI against `external_host` (`http://home.1701.me`) and rejects mismatches with "redirect URI did not contain external host". This caused callback failures (HTTP 400), session mismatches, and users ending up at the Authentik dashboard instead of Trailhead.
+**Why hardcoded**: If the user accesses via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`, using `$http_host` would produce a redirect URL with the wrong domain. The outpost compares the redirect URI against `external_host` (`https://home.1701.me`) and rejects mismatches with "redirect URI did not contain external host". This caused callback failures (HTTP 400), session mismatches, and users ending up at the Authentik dashboard instead of Trailhead.
+
+**Note**: The nginx.conf redirects use `http://` but NPM's Force SSL upgrades all external requests to HTTPS. The internal redirect from nginx to Authentik outpost stays HTTP (container-to-container on the same host).
 
 ### Logout
 

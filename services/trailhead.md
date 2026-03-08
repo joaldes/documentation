@@ -1,6 +1,6 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-03-05
+**Last Updated**: 2026-03-07
 
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
@@ -158,7 +158,7 @@ docker exec trailhead-generator python3 /app/generate.py
 | Direct IP | `http://192.168.0.179:8076` |
 | Sky events page | `http://192.168.0.179:8076/sky` |
 | Local domain | `http://weather.home` |
-| External domain | `http://weather.1701.me` |
+| External domain | `https://home.1701.me` (SSL via NPM, Force SSL enabled) |
 | Health check | `http://192.168.0.179:8076/health` |
 
 ## File Layout
@@ -576,23 +576,22 @@ Use the warm NPS palette via CSS custom properties defined in `:root`. Avoid har
 |---------|--------|---------|
 | `*.1701.me` | `192.168.0.30` | Wildcard — all `.1701.me` domains resolve locally to NPM, bypassing hairpin NAT |
 | `weather.home` | `192.168.0.30` | Local `.home` domain → NPM |
+| `auth.1701.me` | `192.168.0.30` | Authentik SSO (SSL cert 19 in NPM, proxy host #54) |
 
 ### NPM Proxy Hosts (CT 112, 192.168.0.30:81)
 
-| Domain | Forward To | ID |
-|--------|------------|-----|
-| `weather.1701.me` | `192.168.0.179:8076` (HTTP) | 74 |
-| `weather.home` | `192.168.0.179:8076` (HTTP) | 75 |
-
-Both have block-exploits enabled, no SSL (internal only).
+| Domain | Forward To | ID | SSL |
+|--------|------------|-----|-----|
+| `home.1701.me` | `192.168.0.179:8076` (HTTP) | 23 | Let's Encrypt (cert 18), Force SSL, HTTP/2 |
+| `weather.home` | `192.168.0.179:8076` (HTTP) | 75 | None (internal only) |
 
 ### Request Flow (Local Network)
 
 ```
-Browser → weather.1701.me
+Browser → https://home.1701.me
   → AdGuard DNS: *.1701.me → 192.168.0.30
-    → NPM: weather.1701.me → 192.168.0.179:8076
-      → nginx container → static files from page-output volume
+    → NPM: home.1701.me → 192.168.0.179:8076 (SSL termination at NPM)
+      → nginx container (Authentik forward auth) → static files from page-output volume
 ```
 
 ## Scheduling

@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-03-09 02:30 UTC*
+*Last updated: 2026-03-09 02:43 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 0.92, 1.04, 1.51 | RAM: 31/62 GB | Uptime: 35 days
+**Shipyard** (192.168.0.151) | CPU: 1.10, 2.13, 1.95 | RAM: 31/62 GB | Uptime: 35 days
 
-**40 services** — 20 LXC containers, 20 Docker stacks, 3 VMs, 11 storage pools
+**39 services** — 19 LXC containers, 20 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (40)
+## All Services (39)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -39,7 +39,6 @@
 | sonarr | lxc | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
 | stirling-pdf | docker | 192.168.0.179 | 8085 | http://192.168.0.179:8085 | running |
 | syncthing | lxc | 192.168.0.45 | 8384 | http://192.168.0.45:8384 | running |
-| tailscale | lxc | 192.168.0.126 | - | - | running |
 | tandoor | docker | 192.168.0.179 | 8090 | http://192.168.0.179:8090 | running |
 | tracearr | lxc | 192.168.0.211 | 3000 | http://192.168.0.211:3000 | running |
 | trailhead | docker | 192.168.0.179 | 8076 | http://192.168.0.179:8076 | running |
@@ -49,7 +48,7 @@
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
-## LXC Containers (20)
+## LXC Containers (19)
 | CT | Name | IP | Port | URL | Status |
 |-----|------------------|----------------|-------|------------------------------|---------|
 | 101 | adguard | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -70,7 +69,6 @@
 | 118 | homepage | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
 | 120 | pulse | 192.168.0.175 | 7655 | http://192.168.0.175:7655 | running |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
-| 126 | tailscale | 192.168.0.126 | - | - | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 
 ## Docker Stacks (20) — 192.168.0.179
@@ -113,7 +111,7 @@
 | docker-data | dir | 43/2014 | 2% |
 | littlestorage | lvmthin | 78/1830 | 4% |
 | local | dir | 49/93 | 53% |
-| local-lvm | lvmthin | 224/348 | 64% |
+| local-lvm | lvmthin | 223/348 | 64% |
 | smb-documents | dir | 0/921 | 0% |
 | smb-frigate | dir | 591/1006 | 58% |
 | smb-hometheater | dir | 15949/29679 | 53% |

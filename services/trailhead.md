@@ -1,12 +1,12 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-03-07
+**Last Updated**: 2026-03-10
 
-**Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Frigate NVR, AdGuard (CT 101), NPM (CT 112)
+**Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Sonarr (CT 110), Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
 ## Summary
 
-A static weather dashboard styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, sky event data (ISS passes, launches, meteor showers, eclipses), NWS forecast synopsis, and a daily NPS park — every 5 minutes. It renders two Jinja2 HTML templates (dashboard + sky events reference page) with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
+A static weather dashboard styled after the National Park Service design system. A Python generator fetches live weather data from an Ecowitt station, bird detections from BirdNET-Go, sun/moon events via the astral library, NWS radar imagery, a Frigate camera snapshot, sky event data (ISS passes, launches, meteor showers, eclipses), NWS forecast synopsis, upcoming TV episodes from Sonarr, and a daily NPS park — every 5 minutes. It renders three Jinja2 HTML templates (dashboard, sky events reference page, and TV calendar) with matplotlib charts and serves the result through nginx. The header displays a live JavaScript clock. Runs as a Docker Compose stack on Komodo.
 
 Previously called "neighborhood-page" — renamed to "trailhead" on 2026-02-27.
 
@@ -28,6 +28,7 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | `generate.py` | Main Python generator — fetches all data, renders Jinja2, generates matplotlib charts |
 | `template.html` | Jinja2 template for main dashboard |
 | `sky-events.html` | Jinja2 template for `/sky` reference page |
+| `tv-calendar.html` | Jinja2 template for `/tv` TV calendar page |
 | `trailhead.yaml` | Access groups + sidebar tab/card definitions |
 | `.env` | API keys (Ecowitt, NPS, N2YO, etc.) + coordinates |
 | `entrypoint.sh` | Font copy + `while true; sleep 300` loop |
@@ -56,10 +57,11 @@ Compose file: `/etc/komodo/stacks/trailhead/compose.yaml`
 | Meteor showers | 8 major annual showers (±3 days from peak) | Static |
 | Curated sky events | Eclipses, conjunctions, supermoons, oppositions | Static |
 | NPS API | Park of the day (name, description, image) | Daily |
+| Sonarr API (local) | Upcoming TV episodes (calendar endpoint, 90-day window) | 5 min |
 
 ### Generated Output (`/output/` shared volume)
 
-`index.html`, `sky.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `iss_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
+`index.html`, `sky.html`, `tv.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `iss_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
 
 ### Quick Commands
 
@@ -105,15 +107,18 @@ docker exec trailhead-generator python3 /app/generate.py
 │  │    ├─ Meteor showers  → hardcoded annual calendar    │  │
 │  │    ├─ Curated events  → eclipses, conjunctions, etc. │  │
 │  │    ├─ NPS API         → park of the day (daily TTL) │  │
+│  │    ├─ Sonarr API      → upcoming TV episodes         │  │
 │  │    ├─ matplotlib      → temp + wind 24h charts      │  │
 │  │    ├─ Jinja2 render   → /output/index.html          │  │
-│  │    └─ Jinja2 render   → /output/sky.html            │  │
+│  │    ├─ Jinja2 render   → /output/sky.html            │  │
+│  │    └─ Jinja2 render   → /output/tv.html             │  │
 │  └─────────────────────────────────────────────────────┘  │
 │         │ writes to                                       │
 │         ▼                                                 │
 │  [ trailhead_page-output named volume ]                   │
 │    /output/index.html           (rendered dashboard)      │
 │    /output/sky.html             (sky events ref page)     │
+│    /output/tv.html              (TV calendar page)        │
 │    /output/temp-chart.png       (24h temperature chart)   │
 │    /output/wind-chart.png       (24h wind speed chart)    │
 │    /output/radar.gif            (NWS KEMX radar loop)     │
@@ -150,6 +155,7 @@ docker exec trailhead-generator python3 /app/generate.py
 | Meteor showers | Hardcoded | 8 major annual showers, shown ±3 days from peak | Static |
 | Curated sky events | Hardcoded | Eclipses, conjunctions, supermoons, oppositions (2026-2027) | Static |
 | NPS API | HTTPS | Park of the day (name, description, image) | Daily |
+| Sonarr API (local) | HTTP | TV episode calendar (series, episode titles, air dates, status) | None (every 5 min) |
 
 ## Access
 
@@ -157,6 +163,7 @@ docker exec trailhead-generator python3 /app/generate.py
 |--------|-----|
 | Direct IP | `http://192.168.0.179:8076` |
 | Sky events page | `http://192.168.0.179:8076/sky` |
+| TV calendar page | `http://192.168.0.179:8076/tv` |
 | Local domain | `http://weather.home` |
 | External domain | `https://home.1701.me` (SSL via NPM, Force SSL enabled) |
 | Health check | `http://192.168.0.179:8076/health` |
@@ -176,7 +183,7 @@ docker exec trailhead-generator python3 /app/generate.py
 ├── sky-events.html      # Jinja2 template for /sky reference page
 ├── requirements.txt     # Python dependencies
 ├── trailhead.yaml       # Access groups + sidebar tab/card definitions
-├── nginx.conf           # Authentik forward auth + sub_filter + security headers
+├── nginx.conf           # Authentik forward auth + reference page routing + security headers
 ├── logged-out.html      # Static logout page with 5s redirect countdown
 └── fonts/
     ├── frutiger.woff2
@@ -194,6 +201,7 @@ docker exec trailhead-generator python3 /app/generate.py
 /output/
 ├── index.html           # Rendered dashboard page
 ├── sky.html             # Rendered sky events reference page
+├── tv.html              # Rendered TV calendar page
 ├── temp-chart.png       # 24h temperature line chart
 ├── wind-chart.png       # 24h wind speed + gust chart
 ├── radar.gif            # NWS KEMX radar loop
@@ -223,6 +231,8 @@ docker exec trailhead-generator python3 /app/generate.py
 | `FRIGATE_URL` | Frigate base URL | `http://192.168.0.179:5000` |
 | `NPS_API_KEY` | NPS Developer API key (free) | `zNb7hFy...` |
 | `N2YO_API_KEY` | N2YO satellite tracking API key | `abc123...` |
+| `SONARR_URL` | Sonarr base URL | `http://192.168.0.24:8989` |
+| `SONARR_API_KEY` | Sonarr API key | `abc123...` |
 
 ### Docker Compose
 
@@ -374,6 +384,56 @@ A standalone NPS-styled page at `/sky` listing all tracked astronomical events. 
 **Adding events**: Edit `_CURATED_SKY_EVENTS` in `generate.py`, add a dict with `label`, `detail`, `date` (ISO), `url`, and `days_before` (how many days before the event to show it on the dashboard). Rebuild with `docker compose build generator && docker compose up -d`.
 
 **Adding meteor showers**: Edit `_METEOR_SHOWERS` in `generate.py`. These are the 8 major annual showers — they repeat every year automatically.
+
+## TV Calendar (`/tv`)
+
+A standalone NPS-styled page showing upcoming TV episodes from Sonarr. Accessible via the TV Calendar bookmark card in the sidebar or directly at `/tv`.
+
+### Data Source
+
+Sonarr API calendar endpoint: `GET /api/v3/calendar?start=YYYY-MM-DD&end=YYYY-MM-DD`
+
+The generator fetches a 90-day window of episodes, grouped by air date. Each episode includes series name, season/episode numbers, episode title, and air status (aired, airing today, or upcoming).
+
+### Layout
+
+Two-column layout (CSS Grid `1fr 1fr`, max-width 1400px):
+
+- **Left column**: Month navigation (prev/next arrows), calendar grid with episode-day indicators, and a day detail panel that shows episodes for the selected day
+- **Right column**: Full chronological episode list grouped by date with day-group headers
+
+**Interactivity** (client-side JavaScript):
+- Clicking a calendar day with episodes selects it and shows its episodes below the calendar
+- Today is auto-selected on page load (or first day with episodes in current month)
+- Month navigation auto-selects the first episode day in the new month
+- Days with episodes get `cursor: pointer` and a selected highlight (blue outline)
+
+**Responsive**: On screens narrower than 850px, columns stack vertically.
+
+### Episode Display
+
+Each episode row shows:
+- Status dot (green = aired, copper = airing today, muted = upcoming)
+- Series name (bold serif)
+- Season/episode code (muted sans-serif, e.g. S01E03)
+- Episode title (italic serif, preceded by `·` divider)
+
+### nginx Routing
+
+Reference pages (`/sky`, `/tv`) share a single regex location block in `nginx.conf`:
+
+```nginx
+location ~ ^/(sky|tv)$ {
+    auth_request        /outpost.goauthentik.io/auth/nginx;
+    error_page          401 = @goauthentik_proxy_signin;
+    auth_request_set    $auth_cookie $upstream_http_set_cookie;
+    add_header          Set-Cookie $auth_cookie;
+    add_header X-Content-Type-Options "nosniff" always;
+    try_files /$1.html =404;
+}
+```
+
+New reference pages can be added by placing a `<name>.html` template in the source directory — the regex captures the URL path and maps it to `<name>.html` automatically. No nginx config changes needed for additional pages.
 
 ## BirdNET-Go API Reference
 

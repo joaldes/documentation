@@ -393,14 +393,14 @@ A standalone NPS-styled page showing upcoming TV episodes from Sonarr. Accessibl
 
 Sonarr API calendar endpoint: `GET /api/v3/calendar?start=YYYY-MM-DD&end=YYYY-MM-DD`
 
-The generator fetches a 90-day window of episodes, grouped by air date. Each episode includes series name, season/episode numbers, episode title, and air status (aired, airing today, or upcoming).
+The generator fetches episodes from the 1st of the current month through 60 days out, grouped by air date. Each episode includes series name, season/episode numbers, and download status.
 
 ### Layout
 
-Two-column layout (CSS Grid `1fr 1fr`, max-width 1400px):
+Two-column layout (CSS Grid `3fr 2fr`, max-width 1400px):
 
-- **Left column**: Month navigation (prev/next arrows), calendar grid with episode-day indicators, and a day detail panel that shows episodes for the selected day
-- **Right column**: Full chronological episode list grouped by date with day-group headers
+- **Left column**: Month navigation (prev/next arrows), calendar grid with numbered episode-count circles per day, and a day detail panel that shows episodes for the selected day
+- **Right column**: Scrollable chronological episode list grouped by date, auto-scrolls to today on load. Past days dimmed at 50% opacity.
 
 **Interactivity** (client-side JavaScript):
 - Clicking a calendar day with episodes selects it and shows its episodes below the calendar
@@ -413,10 +413,11 @@ Two-column layout (CSS Grid `1fr 1fr`, max-width 1400px):
 ### Episode Display
 
 Each episode row shows:
-- Status dot (green = aired, copper = airing today, muted = upcoming)
+- Status dot (green `#4CAF50` = downloaded, copper = monitored/missing, gray = unmonitored)
 - Series name (bold serif)
-- Season/episode code (muted sans-serif, e.g. S01E03)
-- Episode title (italic serif, preceded by `·` divider)
+- Season/episode code (sans-serif, e.g. S01 E03)
+
+Calendar day cells show a small numbered circle indicating episode count (green-tinted if all downloaded, copper-tinted if some missing).
 
 ### nginx Routing
 

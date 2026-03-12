@@ -34,7 +34,6 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [birdnet-pi-audio-stream-rebuild.md](services/birdnet-pi-audio-stream-rebuild.md) | Historical: Pi audio stream rebuild (2026-02-04) |
 | [birdnet-pi-lxc-setup.md](services/birdnet-pi-lxc-setup.md) | DEPRECATED: BirdNET-Pi LXC setup |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
-| [dashy-investigation.md](services/dashy-investigation.md) | Dashy dashboard investigation (vs Homepage, NPS theme, config reference) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + NPS design) |
 | [trailhead-permissions.md](services/trailhead-permissions.md) | Trailhead — Per-user bookmarks via Authentik SSO forward auth |
 
@@ -48,6 +47,8 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-02-16-zwave-usb-passthrough-stale.md](incidents/2026-02-16-zwave-usb-passthrough-stale.md) | Z-Wave USB passthrough stale device number on CT 108 |
 | [2026-02-18-birdnet-iframe-blocked.md](incidents/2026-02-18-birdnet-iframe-blocked.md) | BirdNET-Go iframe blocked in Home Assistant by X-Frame-Options header |
 | [2026-02-18-uptime-kuma-iframe-blocked.md](incidents/2026-02-18-uptime-kuma-iframe-blocked.md) | Uptime Kuma iframe blocked in HA — fixed with native env var |
+| [2026-03-08-immich-frozen-ui.md](incidents/2026-03-08-immich-frozen-ui.md) | Immich frozen UI incident |
+| [2026-03-12-birdnet-owl-detection-drop.md](incidents/2026-03-12-birdnet-owl-detection-drop.md) | BirdNET owl detection 90% drop — false positive filter/overlap mismatch |
 
 ---
 

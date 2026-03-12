@@ -1,7 +1,7 @@
 # BirdNET-Go Docker Setup
 
 **Created**: 2026-02-03
-**Updated**: 2026-03-05
+**Updated**: 2026-03-12
 **Status**: Complete and operational
 
 ## Summary
@@ -85,7 +85,7 @@ Settings optimized based on multi-agent research review of BirdNET literature, C
 birdnet:
   sensitivity: 1.0      # Cornell recommended sweet spot
   threshold: 0.75        # Balanced — cuts low-confidence floods, keeps real mid-confidence birds
-  overlap: 1.5           # ~3 confirmations per detection; saves Pi 4 CPU vs 2.0
+  overlap: 2.0           # Required for false positive filter level 1 (was 1.5, caused owl detection drop)
   latitude: 32.4107
   longitude: -110.9361
   locale: en-us
@@ -115,7 +115,7 @@ dynamicthreshold:
 
 ```yaml
 falsepositivefilter:
-  level: 1               # Light filtering; raise to 2 in June for cicada season
+  level: 1               # Light filtering; requires overlap >= 2.0 to work correctly
 ```
 
 ### Privacy Filter
@@ -160,7 +160,8 @@ species:
 | validhours 12 | Down from 24 | Morning trigger resets before evening; prevents stale afternoon phantom detections |
 | privacy filter 0.05 | Down from 0.5 | Aggressively rejects speech — 0.5 was too lenient for residential yard |
 | dog bark species empty | Cleared | Adding owls to bark filter suppresses real owl detections when dogs bark nearby |
-| FP filter level 1 | Light | Reserve level 2 for June-Sept cicada season |
+| overlap 2.0 | Up from 1.5 | Required for FP filter level 1; 1.5 caused 90% owl detection drop (2026-03-12) |
+| FP filter level 1 | Light | Requires overlap >= 2.0; reserve level 2 for June-Sept cicada season |
 | exclude list | 4 items | Non-bird noise classes + impossible species |
 
 ### Seasonal Notes

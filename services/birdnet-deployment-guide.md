@@ -1,6 +1,6 @@
 # BirdNET Deployment Guide
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-03-12
 **Related Systems**: Raspberry Pi (192.168.0.136), Komodo CT 128 (192.168.0.179), Home Assistant VM 100 (192.168.0.154)
 
 ---
@@ -195,13 +195,13 @@ docker run -d --name birdnet-go \
 
 ### Key Settings in config.yaml
 
-The config lives at `/mnt/docker/birdnet-go/config/config.yaml` (or `/config/config.yaml` inside the container). Key detection settings (tuned 2026-02-22 for minimal false positives):
+The config lives at `/mnt/docker/birdnet-go/config/config.yaml` (or `/config/config.yaml` inside the container). Key detection settings (tuned 2026-03-12 for minimal false positives):
 
 ```yaml
 birdnet:
   sensitivity: 1.0       # Default; optimal for desert environment
-  threshold: 0.8          # Raised from 0.7 — cuts low-confidence noise
-  overlap: 1.5            # Requires 2 confirmations per detection
+  threshold: 0.75         # Balanced — cuts low-confidence noise, keeps mid-confidence birds
+  overlap: 2.0            # Required for false positive filter level 1 (was 1.5, caused owl drop)
   latitude: 32.4107
   longitude: -110.9361
   rangefilter:
@@ -217,10 +217,10 @@ realtime:
   dynamicthreshold:
     enabled: true
     trigger: 0.9          # Only high-confidence detections lower the bar
-    min: 0.2
+    min: 0.35
     validhours: 12        # Reduced from 24 — matches dawn/dusk cycle
   falsepositivefilter:
-    level: 2              # Raised from 0 — moderate built-in FP filtering
+    level: 1              # Requires overlap >= 2.0; level 2 for cicada season
   privacyfilter:
     enabled: true
     confidence: 0.08      # Raised from 0.05

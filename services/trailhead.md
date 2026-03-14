@@ -303,6 +303,14 @@ def _wx(data, *keys, default='--'):
 
 This means the page renders with `--` fallback values if Ecowitt is completely unavailable, instead of crashing the generator.
 
+### Rate Limit Handling (api_get wrapper)
+
+All external HTTP requests go through `api_get()`, a wrapper around `requests.get()` that:
+- Checks HTTP status and raises on 4xx/5xx errors (`raise_for_status()`)
+- On **429 Too Many Requests**: sets a 30-minute per-domain cooldown, respects `Retry-After` header if present
+- During cooldown: raises `APIOnCooldown` (caught by existing `except Exception` blocks — dashboard renders with fallback values)
+- Cooldowns are in-memory (reset on container restart) — file-based caches (ISS 6hr, launches 6hr, NPS daily, NWS 3hr) cover restart scenarios
+
 ### History Endpoint
 
 `GET https://api.ecowitt.net/api/v3/device/history?cycle_type=5min`

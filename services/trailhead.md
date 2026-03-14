@@ -1,6 +1,6 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-03-10
+**Last Updated**: 2026-03-13
 
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Sonarr (CT 110), Frigate NVR, AdGuard (CT 101), NPM (CT 112)
 
@@ -424,7 +424,7 @@ Calendar day cells show a small numbered circle indicating episode count (green-
 Reference pages (`/sky`, `/tv`) share a single regex location block in `nginx.conf`:
 
 ```nginx
-location ~ ^/(sky|tv)$ {
+location ~ ^/(sky|tv)(\.html)?$ {
     auth_request        /outpost.goauthentik.io/auth/nginx;
     error_page          401 = @goauthentik_proxy_signin;
     auth_request_set    $auth_cookie $upstream_http_set_cookie;

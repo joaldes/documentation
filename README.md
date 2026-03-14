@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-03-01
+**Last Updated**: 2026-03-13
 
 ---
 
@@ -49,6 +49,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-02-18-uptime-kuma-iframe-blocked.md](incidents/2026-02-18-uptime-kuma-iframe-blocked.md) | Uptime Kuma iframe blocked in HA — fixed with native env var |
 | [2026-03-08-immich-frozen-ui.md](incidents/2026-03-08-immich-frozen-ui.md) | Immich frozen UI incident |
 | [2026-03-12-birdnet-owl-detection-drop.md](incidents/2026-03-12-birdnet-owl-detection-drop.md) | BirdNET owl detection 90% drop — false positive filter/overlap mismatch |
+| [2026-03-13-trailhead-sky-tv-navigation-broken.md](incidents/2026-03-13-trailhead-sky-tv-navigation-broken.md) | Trailhead Sky Events & TV Calendar pages not loading — nginx regex mismatch |
 
 ---
 

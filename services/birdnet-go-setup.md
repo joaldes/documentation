@@ -1,7 +1,7 @@
 # BirdNET-Go Docker Setup
 
 **Created**: 2026-02-03
-**Updated**: 2026-03-12
+**Updated**: 2026-03-13
 **Status**: Complete and operational
 
 ## Summary
@@ -85,7 +85,7 @@ Settings optimized based on multi-agent research review of BirdNET literature, C
 birdnet:
   sensitivity: 1.0      # Cornell recommended sweet spot
   threshold: 0.75        # Balanced — cuts low-confidence floods, keeps real mid-confidence birds
-  overlap: 2.0           # Required for false positive filter level 1 (was 1.5, caused owl detection drop)
+  overlap: 2.0           # Correct setting for owl detection (was 1.5, caused 90% owl detection drop)
   latitude: 32.4107
   longitude: -110.9361
   locale: en-us
@@ -115,7 +115,7 @@ dynamicthreshold:
 
 ```yaml
 falsepositivefilter:
-  level: 1               # Light filtering; requires overlap >= 2.0 to work correctly
+  level: 0               # Disabled — dynamic threshold (0.35) + confidence (0.75) provide sufficient quality gating
 ```
 
 ### Privacy Filter
@@ -161,12 +161,12 @@ species:
 | privacy filter 0.05 | Down from 0.5 | Aggressively rejects speech — 0.5 was too lenient for residential yard |
 | dog bark species empty | Cleared | Adding owls to bark filter suppresses real owl detections when dogs bark nearby |
 | overlap 2.0 | Up from 1.5 | Required for FP filter level 1; 1.5 caused 90% owl detection drop (2026-03-12) |
-| FP filter level 1 | Light | Requires overlap >= 2.0; reserve level 2 for June-Sept cicada season |
+| FP filter level 0 | Disabled | Was cutting detections in half; dynamic threshold + confidence threshold sufficient. Raise to 1-2 for cicada season |
 | exclude list | 4 items | Non-bird noise classes + impossible species |
 
 ### Seasonal Notes
 
-- **June-September (cicada season)**: Raise `falsepositivefilter.level` to 2. Cicadas produce broadband noise that degrades afternoon detection quality. Revert to 1 in October.
+- **June-September (cicada season)**: Raise `falsepositivefilter.level` to 1 or 2. Cicadas produce broadband noise that degrades afternoon detection quality. Revert to 0 in October.
 - **April-May (spring migration)**: Peak species diversity. Current settings are optimized for this — 0.01 rangefilter captures migrants.
 - **Nocturnal detection**: Working well — 525 Great Horned Owl, 60 Barn Owl detections in February. Keep 24/7 recording enabled.
 

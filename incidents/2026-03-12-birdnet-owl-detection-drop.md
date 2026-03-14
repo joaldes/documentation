@@ -38,7 +38,7 @@ birdnet:
 ```
 
 ### Alternative considered
-Disabling the false positive filter (`level: 0`) would also fix the issue but would allow more false positives through. Since the species exclude list already handles known false positives (Common Loon, Siren, Gun, Engine), either approach works. Chose to fix the overlap to keep the filter active.
+Initially chose to fix the overlap to keep the FP filter active. However, on 2026-03-13, overall detections remained at ~350/day (down from ~700/day) because the FP filter — now working correctly with overlap 2.0 — was aggressively filtering borderline detections. Disabled the FP filter (`level: 0`) since dynamic threshold (0.35) + confidence threshold (0.75) provide sufficient quality gating.
 
 ## Key Config File
 `/mnt/docker/birdnet-go/config/config.yaml` on Komodo (192.168.0.179)

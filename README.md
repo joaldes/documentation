@@ -51,6 +51,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-03-08-immich-frozen-ui.md](incidents/2026-03-08-immich-frozen-ui.md) | Immich frozen UI incident |
 | [2026-03-12-birdnet-owl-detection-drop.md](incidents/2026-03-12-birdnet-owl-detection-drop.md) | BirdNET owl detection 90% drop — false positive filter/overlap mismatch |
 | [2026-03-13-trailhead-sky-tv-navigation-broken.md](incidents/2026-03-13-trailhead-sky-tv-navigation-broken.md) | Trailhead Sky Events & TV Calendar pages not loading — nginx regex mismatch |
+| [2026-03-23-frigate-detect-stream-offline.md](incidents/2026-03-23-frigate-detect-stream-offline.md) | Frigate detect stream offline — PID limit not applied after container recreation |
 
 ---
 

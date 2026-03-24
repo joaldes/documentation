@@ -256,7 +256,7 @@ Settings tuned 2026-03-23 based on multi-agent research, Cornell Lab recommendat
 birdnet:
   sensitivity: 1.0      # Default; validated as optimal for desert environment
   threshold: 0.75        # Balanced — within recommended 0.7-0.8 range per peer-reviewed research
-  overlap: 1.0           # Samples every 2s; sufficient with FP filter disabled. Bump to 2.0 for cicada season
+  overlap: 1.5           # Old realtime default; analyzes every 1.5s. Bump to 2.0 for cicada season
   threads: 2             # Limits TFLite to 2 threads on shared server (CT 128 runs Frigate, Immich, etc.)
   latitude: 32.4107
   longitude: -110.9361
@@ -271,7 +271,7 @@ birdnet:
 
 ```yaml
 realtime:
-  interval: 60           # 60s between same-species detections (prevents database flood)
+  interval: 30           # 30s between same-species detections (captures owl pair exchanges)
 ```
 
 #### Dynamic Threshold
@@ -280,7 +280,7 @@ realtime:
 dynamicthreshold:
   enabled: true
   trigger: 0.9           # Only very high-confidence triggers lowering
-  min: 0.35              # Safety floor; catches owls but cuts garbage
+  min: 0.30              # Safety floor; preserves quiet owl detections while cutting garbage
   validhours: 12         # Covers a full night or morning cycle
 ```
 
@@ -300,14 +300,14 @@ equalizer:
   enabled: true
   filters:
     - type: HighPass
-      frequency: 350     # Cuts wind/traffic/HVAC; preserves GHO fundamental (300-400Hz)
+      frequency: 250     # Cornell Lab recommended; preserves all owl frequencies (GHO 300-400Hz)
       q: 0.1             # Gentle rolloff (overdamped)
     - type: LowPass
       frequency: 15000   # Cuts ultrasonic artifacts; no bird vocalizations above ~12kHz
       q: 0.1
 ```
 
-**Why 350Hz, not 500Hz**: Great Horned Owl fundamental is 300-400Hz. BirdNET uses a dual spectrogram (0-3kHz and 500Hz-15kHz). A 500Hz HighPass would remove the GHO fundamental from the first spectrogram. 350Hz preserves it while still cutting sub-bass noise.
+**Why 250Hz**: Cornell Lab recommends 250Hz for general bird monitoring. GHO fundamental is 300-400Hz, Barn Owl screams have energy down to 400Hz. 250Hz safely preserves all owl frequencies while cutting most wind/traffic rumble (peaks below 200Hz). Previous 500Hz setting risked clipping owl fundamentals; 350Hz was borderline.
 
 #### Privacy Filter
 
@@ -349,16 +349,16 @@ species:
 |---------|-------|-----------|
 | sensitivity 1.0 | Default | Validated as optimal; 1.25 could be tested for quieter desert in future |
 | threshold 0.75 | Down from 0.8 | Within recommended 0.7-0.8 range per peer-reviewed ornithology research |
-| overlap 1.0 | Down from 2.0 | 2.0 was needed for FP filter level 1 (now disabled); 1.0 halves inference load |
+| overlap 1.5 | Down from 2.0 | Old realtime default; good coverage without 2.0's CPU cost. Bump to 2.0 for cicada season |
 | threads 2 | Down from 0 (auto=8) | Reduces CPU on shared server; 2 threads handles 3s analysis window easily |
 | rangefilter 0.01 | Default | Inclusive — captures migrants; Tucson is a major migration corridor |
-| dedup interval 60s | Up from 15s default | Prevents database flood without losing species data |
-| dynamic min 0.35 | Up from default 0.3 | Catches nocturnal owls while cutting low-quality detections |
+| dedup interval 30s | Up from 15s default | Captures owl pair exchanges (20-40s spacing) without database flood |
+| dynamic min 0.30 | Up from default 0.2 | Preserves quiet owl detections while staying above garbage floor |
 | validhours 12 | Down from default 24 | Resets before evening; prevents stale afternoon phantom detections |
 | privacy filter 0.05 | Very aggressive | 0.5 was too lenient for residential yard with regular conversation |
 | dog bark species empty | Correct | Adding owls to bark filter SUPPRESSES their detections when dogs bark |
 | FP filter level 0 | Disabled | Was cutting detections in half; dynamic threshold + confidence sufficient |
-| equalizer HP 350Hz | Enabled | Cuts noise below bird range; 350Hz safe for owl fundamentals (300-400Hz) |
+| equalizer HP 250Hz | Enabled | Cornell Lab recommended; preserves all owl frequencies including fundamentals |
 | cpus 2.0 | Docker limit | Prevents starving other services; matches threads=2 |
 
 ### Audio Configuration

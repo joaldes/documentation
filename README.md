@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-03-15
+**Last Updated**: 2026-03-23
 
 ---
 
@@ -29,10 +29,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [prometheus-config.yaml](services/prometheus-config.yaml) | Prometheus scrape configuration |
 | [homeassistant-mcp-integration.md](services/homeassistant-mcp-integration.md) | Home Assistant MCP integration for Claude |
 | [rtl433-honeywell-setup.md](services/rtl433-honeywell-setup.md) | RTL-433 SDR + Honeywell 5800 sensor integration |
-| [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go) |
-| [birdnet-go-setup.md](services/birdnet-go-setup.md) | BirdNET-Go Docker container on Komodo |
-| [birdnet-pi-audio-stream-rebuild.md](services/birdnet-pi-audio-stream-rebuild.md) | Historical: Pi audio stream rebuild (2026-02-04) |
-| [birdnet-pi-lxc-setup.md](services/birdnet-pi-lxc-setup.md) | DEPRECATED: BirdNET-Pi LXC setup |
+| [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + NPS design) |
 | [trailhead-permissions.md](services/trailhead-permissions.md) | Trailhead — Per-user bookmarks via Authentik SSO forward auth |

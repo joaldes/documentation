@@ -31,8 +31,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [rtl433-honeywell-setup.md](services/rtl433-honeywell-setup.md) | RTL-433 SDR + Honeywell 5800 sensor integration |
 | [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
-| [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + NPS design) |
-| [trailhead-permissions.md](services/trailhead-permissions.md) | Trailhead — Per-user bookmarks via Authentik SSO forward auth |
+| [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + Authentik SSO + NPS design) |
 | [ollama-setup.md](services/ollama-setup.md) | Ollama + Open WebUI — Local LLM inference (CT 130) |
 
 ### Incidents
@@ -67,6 +66,14 @@ Official documentation for the Proxmox-based homelab infrastructure.
 - **No spaces** in filenames
 - **Dates** in ISO format: `YYYY-MM-DD`
 - **Documentation**: `.md` (Markdown)
+
+### One Doc Per Service
+
+Each service gets exactly **one** comprehensive document in `services/`. All subsystems, configuration, access control, and troubleshooting for a service belong in that single file as separate sections. This prevents documentation drift between multiple files covering the same service.
+
+- No separate setup/config/rebuild/permissions docs that can drift apart
+- If a service has multiple subsystems (e.g., Trailhead + Authentik SSO), use sections within the single doc
+- Incidents stay in `incidents/` — they're timestamped events, not service docs
 
 ### When to Create New vs Update Existing
 

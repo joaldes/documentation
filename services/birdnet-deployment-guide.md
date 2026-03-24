@@ -288,7 +288,7 @@ dynamicthreshold:
 
 ```yaml
 falsepositivefilter:
-  level: 0               # Disabled — dynamic threshold (0.35) + confidence (0.75) provide sufficient gating
+  level: 0               # Disabled — dynamic threshold (0.30) + confidence (0.75) provide sufficient gating
 ```
 
 **Rationale**: FP filter level 1 cut overall detections in half (2026-03-12 incident). The dynamic threshold + confidence threshold combination is sufficient. Re-enable at level 1-2 for cicada season (requires overlap >= 2.0).

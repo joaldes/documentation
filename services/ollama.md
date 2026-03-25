@@ -1,11 +1,11 @@
 # Ollama (Container 130)
 
 **Last Updated**: 2026-03-25
-**Related Systems**: LXC 130 (192.168.0.130), Open WebUI (:8085), Ollama API (:11434)
+**Related Systems**: LXC 130 (192.168.0.130), Open WebUI (:8085), Ollama API (:11434), SearXNG (:8888)
 
 ## Summary
 
-Local LLM inference running on Intel Iris Xe iGPU via Intel IPEX-optimized Ollama. Two models configured: a fast general-purpose model and a coding-focused model. Accessible via Open WebUI at `192.168.0.130:8085`.
+Local LLM inference running on Intel Iris Xe iGPU via Intel IPEX-optimized Ollama. Two models configured: a fast general-purpose model and a coding-focused model. Web search powered by SearXNG. Accessible via Open WebUI at `192.168.0.130:8085`.
 
 ## Infrastructure
 
@@ -14,6 +14,7 @@ Local LLM inference running on Intel Iris Xe iGPU via Intel IPEX-optimized Ollam
 - **Docker Image**: `ipex_ollama:latest` (Intel-optimized build)
 - **Storage**: 50GB root on `littlestorage`, models at `/models`
 - **Open WebUI**: `ghcr.io/open-webui/open-webui:main`
+- **SearXNG**: `searxng/searxng:latest` (self-hosted meta search engine for web search)
 
 ## Models
 
@@ -82,6 +83,45 @@ If swapping models in the future, stay within these ranges:
 | Max quality | 3-4B | 9-13 tok/s | Diminishing returns below this speed |
 | Too slow | 7B+ | <7 tok/s | Not recommended for this iGPU |
 
+## Web Search (SearXNG)
+
+Open WebUI supports web search via SearXNG, a self-hosted meta search engine running alongside Ollama.
+
+### Configuration
+
+| Component | Setting | Value |
+|-----------|---------|-------|
+| SearXNG | Container port | `8888:8080` (host:internal) |
+| SearXNG | Config path | `/mnt/docker/ollama/searxng/settings.yml` |
+| SearXNG | Docker network | `ollama_default` (same as Ollama + Open WebUI) |
+| Open WebUI | `ENABLE_RAG_WEB_SEARCH` | `true` |
+| Open WebUI | `RAG_WEB_SEARCH_ENGINE` | `searxng` |
+| Open WebUI | `SEARXNG_QUERY_URL` | `http://searxng:8080/search?q=<query>&format=json` |
+
+### Model Compatibility
+
+- **qwen2.5-coder:3b**: Web search works well. Model reads search results and produces coherent answers.
+- **qwen2.5:1.5b**: Web search does NOT work. Model is too small to handle RAG context — outputs empty code blocks or garbage instead of answers.
+
+**Recommendation**: Only use web search with the 3B model.
+
+### Usage
+
+In Open WebUI, click the **"+"** icon next to the message input and enable **Web Search** before sending your prompt. The model will search the web and include results in its response.
+
+### SearXNG Management
+
+```bash
+# Test search endpoint
+curl -s "http://192.168.0.130:8888/search?q=test&format=json" | jq '.results[:3]'
+
+# Restart SearXNG
+ssh claude@192.168.0.151 "sudo pct exec 130 -- docker restart searxng"
+
+# Check SearXNG logs
+ssh claude@192.168.0.151 "sudo pct exec 130 -- docker logs --tail 20 searxng"
+```
+
 ## Troubleshooting
 
 **Slow first response**: Model is loading from disk. Wait ~20s, subsequent requests will be fast.
@@ -92,6 +132,11 @@ curl -s http://192.168.0.130:11434/api/ps
 ```
 
 **Out of memory**: Container has 10GB RAM. If loading a large model fails, remove unused models first.
+
+**Ollama hung / API not responding**: The `ollama-lib serve` process can get stuck in D state (uninterruptible I/O sleep) during GPU initialization. Processes pile up in D state and the API stops responding entirely. Fix: restart the container.
+```bash
+ssh claude@192.168.0.151 "sudo pct exec 130 -- docker restart ollama"
+```
 
 **GPU not detected**: Verify `/dev/dri/card0` and `/dev/dri/renderD128` exist inside the container:
 ```bash

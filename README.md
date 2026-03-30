@@ -34,6 +34,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + Authentik SSO + NPS design) |
 | [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130) |
+| [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
 
 ### Incidents
 

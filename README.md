@@ -20,6 +20,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [backups-samba-share.md](infrastructure/backups-samba-share.md) | Backups disk Samba share + Mac HFS+ data copy |
 | [local-home-domains.md](infrastructure/local-home-domains.md) | Local .home domain setup (AdGuard DNS + NPM routing) |
 | [docker-cpu-optimization.md](infrastructure/docker-cpu-optimization.md) | Docker CPU resource limits & cAdvisor tuning (CT 128) |
+| [subtitle-standardization.md](infrastructure/subtitle-standardization.md) | Subtitle filename standardization (Emby naming conventions) |
 
 ### Services
 

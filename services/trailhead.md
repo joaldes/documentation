@@ -599,7 +599,7 @@ Use the warm NPS palette via CSS custom properties defined in `:root`. Avoid har
 | Copper (`--nps-copper`) | `.copper` | Media |
 | Brown (`--nps-brown`) | `.brown` | Documents & Files |
 | Blue (`--nps-blue-dark`) | `.blue` | Infrastructure |
-| Red (`--nps-red`) | `.red` | Alerts / safety |
+| Red (`--nps-red`) | `.red` | Critical alerts (`#E63333`) |
 | Alert orange (`--nps-alert`) | `.alert-banner` | System notifications banner (`#FF8C00`) |
 
 ### Spacing & Layout

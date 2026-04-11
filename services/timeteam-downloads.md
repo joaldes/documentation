@@ -213,3 +213,29 @@ sed -i '/VIDEO_ID_HERE/d' "/mnt/hometheater/Time Team YouTube/.downloaded_ids"
 | YouTube (756 videos, 167 hours) | ~153 GB |
 | Patreon exclusive | ~10-30 GB |
 | **Total** | **~170-185 GB** |
+
+## Library Reorganization (Completed 2026-04-11)
+
+The library was reorganized from category-based folders into dig-based folders with E/X naming.
+
+### New Folder Structure
+- **48 folders**: 39 dig folders + 9 category folders
+- **1,175 active files** (41 duplicates removed)
+- **E## = Episodes** (main dig content), **X## = Extras** (clips, trailers, BTS)
+- Category folders use straight E## numbering
+
+### Workflow for New Downloads
+1. Run `timeteam-download.sh` (downloads to temporary sorting folders)
+2. Run `timeteam-reorganize.py` (generates rename-mapping.csv)
+3. Review the mapping
+4. Run `timeteam-execute.py` (moves and renames files)
+
+### Key Files
+| File | Location | Purpose |
+|------|----------|---------|
+| `timeteam-master.csv` | Samba timeteam/ | Master manifest of all files with metadata |
+| `timeteam-reorganize.py` | Samba timeteam/ | Classification + naming script |
+| `timeteam-execute.py` | Samba timeteam/ | Executes the moves/renames |
+| `rename-mapping.csv` | Samba timeteam/ | Current mapping (old -> new) |
+| `rename-review.txt` | Samba timeteam/ | Human-readable review |
+| `reorganization-plan.md` | Samba timeteam/ | Full reorganization plan |

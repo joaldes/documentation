@@ -36,6 +36,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + Authentik SSO + NPS design) |
 | [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130) |
 | [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
+| [timeteam-downloads.md](services/timeteam-downloads.md) | Time Team complete download system — YouTube + Patreon to Emby library |
 
 ### Incidents
 

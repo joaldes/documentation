@@ -31,7 +31,9 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | `tv-calendar.html` | Jinja2 template for `/tv` TV calendar page |
 | `trailhead.yaml` | Access groups + sidebar tab/card definitions |
 | `.env` | API keys (Ecowitt, NPS, N2YO, etc.) + coordinates |
-| `entrypoint.sh` | Font copy + `while true; sleep 300` loop |
+| `entrypoint.sh` | Font copy + generator loop (5s trigger check) + regen HTTP server on :8077 |
+| `regen-server.py` | Tiny HTTP server — `POST /regen` touches trigger file for immediate regeneration |
+| `alerts.json` | Alert banner data — array of `{message, type, expires}` objects (bind-mounted into container) |
 | `Dockerfile` | Python 3.12-slim, runs as non-root `appuser` |
 | `nginx.conf` | Static server + Authentik forward auth + security headers |
 | `logged-out.html` | Static logout landing page with 5s redirect countdown |
@@ -597,7 +599,8 @@ Use the warm NPS palette via CSS custom properties defined in `:root`. Avoid har
 | Copper (`--nps-copper`) | `.copper` | Media |
 | Brown (`--nps-brown`) | `.brown` | Documents & Files |
 | Blue (`--nps-blue-dark`) | `.blue` | Infrastructure |
-| Red (`--nps-red`) | `.red` | Alerts / safety (unused currently) |
+| Red (`--nps-red`) | `.red` | Alerts / safety |
+| Alert orange (`--nps-alert`) | `.alert-banner` | System notifications banner (`#FF8C00`) |
 
 ### Spacing & Layout
 
@@ -728,9 +731,37 @@ curl -s http://192.168.0.179:8076/ | grep -oE '\d+\.\d+°F'
 
 ### Force Immediate Regeneration
 
+Click the **&#x21bb;** refresh button next to the "Updated" timestamp in the ident band. This POSTs to `/regen`, which triggers the generator within 5 seconds and reloads the page.
+
+Or from CLI:
+```bash
+curl -X POST http://192.168.0.179:8076/regen
+```
+
+Or directly:
 ```bash
 docker exec trailhead-generator python3 /app/generate.py
 ```
+
+### Alert Banner
+
+An orange notification banner below the ident band, controlled by `/mnt/docker/trailhead/alerts.json`. Max 2 rows, auto-hides when no alerts. Auto-expires based on the `expires` field.
+
+**Format:**
+```json
+[
+  {
+    "message": "Download in progress — 50/756 (7%)",
+    "type": "info",
+    "expires": "2026-04-12T00:00:00"
+  }
+]
+```
+
+- **type**: `info` (blue dot), `warn` (copper dot), `error` (red dot), `success` (green dot)
+- **expires**: ISO timestamp — alert auto-removed after this time
+- **To clear all alerts**: write `[]` to the file
+- Changes picked up on next 5-min generation cycle (or trigger a regen)
 
 ## Troubleshooting
 

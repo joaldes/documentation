@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-04-13 06:54 UTC*
+*Last updated: 2026-04-13 23:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.06, 1.34, 2.04 | RAM: 35/62 GB | Uptime: 71 days
+**Shipyard** (192.168.0.151) | CPU: 2.05, 1.62, 1.89 | RAM: 36/62 GB | Uptime: 71 days
 
-**43 services** — 22 LXC containers, 21 Docker stacks, 3 VMs, 11 storage pools
+**44 services** — 23 LXC containers, 21 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (43)
+## All Services (44)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -17,6 +17,7 @@
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
+| gis-stack | lxc | 192.168.0.229 | - | - | running |
 | grafana | docker | 192.168.0.179 | 3001 | http://192.168.0.179:3001 | running |
 | homelable | lxc | 192.168.0.218 | - | - | running |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
@@ -52,7 +53,7 @@
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
-## LXC Containers (22)
+## LXC Containers (23)
 | CT | Name | IP | Port | URL | Status |
 |-----|------------------|----------------|-------|------------------------------|---------|
 | 101 | adguard | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -77,6 +78,7 @@
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | 130 | ollama | 192.168.0.130 | - | - | running |
+| 131 | gis-stack | 192.168.0.229 | - | - | running |
 
 ## Docker Stacks (21) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
@@ -113,14 +115,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 5573/10158 | 54% |
+| backups | dir | 5581/10158 | 54% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 738/1006 | 73% |
-| docker-data | dir | 90/2014 | 4% |
-| littlestorage | lvmthin | 117/1830 | 6% |
+| docker-data | dir | 91/2014 | 4% |
+| littlestorage | lvmthin | 112/1830 | 6% |
 | local | dir | 49/93 | 52% |
 | local-lvm | lvmthin | 273/348 | 78% |
 | smb-documents | dir | 1/921 | 0% |
 | smb-frigate | dir | 593/1006 | 58% |
-| smb-hometheater | dir | 16175/29679 | 54% |
+| smb-hometheater | dir | 16181/29679 | 54% |
 | smb-pictures | dir | 2338/10158 | 23% |

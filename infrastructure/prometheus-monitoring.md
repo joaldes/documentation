@@ -62,7 +62,6 @@ This monitoring stack provides complete observability for:
 | unmanic | 192.168.0.207 | 105 | Active |
 | radarr | 192.168.0.42 | 107 | Active |
 | zwave-js-ui | 192.168.0.153 | 108 | Active |
-| tdarr | 192.168.0.51 | 109 | Stopped |
 | sonarr | 192.168.0.24 | 110 | Active |
 | urbackup | 192.168.0.209 | 111 | Active |
 | nginxproxymanager | 192.168.0.30 | 112 | Active |
@@ -72,7 +71,6 @@ This monitoring stack provides complete observability for:
 | wikijs | 192.168.0.57 | 117 | Active |
 | homepage | 192.168.0.70 | 118 | Active |
 | pulse | 192.168.0.175 | 120 | Active |
-| notifiarr | 192.168.0.96 | 121 | Stopped |
 | claude-ai | 192.168.0.180 | 124 | Active |
 | komodo | 192.168.0.179 | 128 | Active |
 
@@ -81,7 +79,7 @@ This monitoring stack provides complete observability for:
 Monitors web services including:
 - Proxmox Web UI (https://192.168.0.151:8006)
 - AdGuard, NPM, Uptime Kuma, Homepage, Home Assistant
-- Media stack: Emby, Radarr, Sonarr, Bazarr, Jellyseerr, Tdarr
+- Media stack: Emby, Radarr, Sonarr, Bazarr, Jellyseerr
 - Komodo Docker services: Immich, Paperless-NGX, Tandoor, Stirling PDF, Frigate, Mealie, Komodo UI
 
 ### Blackbox TCP Probes (2 endpoints)
@@ -355,11 +353,9 @@ curl -s 'http://192.168.0.179:9092/api/v1/alerts' | jq '.data.alerts[]'
 
 ## Known Issues
 
-1. **Stopped containers show as down** - This is expected behavior. Containers 109 (tdarr) and 121 (notifiarr) are intentionally stopped.
+1. **PVE Exporter requires `--config.file` flag** - Version 3.8.0+ changed the CLI syntax from positional argument to named flag.
 
-2. **PVE Exporter requires `--config.file` flag** - Version 3.8.0+ changed the CLI syntax from positional argument to named flag.
-
-3. **Docker networking** - Prometheus config must use container names (e.g., `blackbox-exporter:9115`) not `localhost` when running in Docker.
+2. **Docker networking** - Prometheus config must use container names (e.g., `blackbox-exporter:9115`) not `localhost` when running in Docker.
 
 ## Maintenance
 

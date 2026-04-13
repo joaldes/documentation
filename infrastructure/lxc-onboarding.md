@@ -255,10 +255,6 @@ When accessing containers, follow this priority:
 **SSH Key** = Claude AI (CT 124) public key in `/root/.ssh/authorized_keys`
 **Proxmox host** also has the key in `claude` user's `authorized_keys`.
 
-**Stopped containers** (not audited):
-- 109 (tdarr)
-- 121 (notifiarr)
-
 ---
 
 ## Troubleshooting

@@ -1,6 +1,6 @@
 # Reyday Media File Server
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-04-13
 **Related Systems**: Komodo (Container 128, 192.168.0.179)
 
 ## Summary
@@ -17,9 +17,9 @@ Password-protected nginx file server serving GoPro media from `/mnt/pictures/per
 - **nginx:alpine** serves a browsable directory listing (autoindex) with HTTP Basic Auth
 - Volume mounted **read-write** from `/mnt/pictures/personal/alec/reyday`
 - WebDAV `PUT` method enabled for file uploads (DELETE is **not** enabled — users cannot delete files)
-- The `mp4` module enables video seeking/scrubbing for .mp4 files without downloading the entire file
+- `.mp4` files are served as static files with native HTTP range request support — modern browsers handle seeking via byte-range fetches without needing nginx's legacy `mp4` content-handler module (see [Historical Note](#historical-note-mp4-content-handler-removed-2026-04-13) below)
 - A staged upload page at `/upload` lets users select files, review them, then upload with an explicit button click
-- nginx workers run as root inside the container (via `sed` on startup) for write access to UID 1000 files
+- nginx workers run as root inside the container (via `sed` on startup) for write access to UID 1000 files. New uploads land as `root:0644` (world-readable) thanks to the `dav_access user:rw group:r all:r;` directive in `location /` — Samba and other readers can read them
 - Custom header injected via `sub_filter` — replaces plain "Index of /" with "Rey Day" title and upload link
 - Based on the same pattern as the `portrait` stack (port 8100, serves hometheater media)
 
@@ -40,11 +40,10 @@ Internet → DNS (reyday.1701.me) → 76.159.199.214 (Comcast WAN)
 | `output_buffers 2 1m` | Double-buffering for large file reads |
 | `keepalive_timeout 300s` | Prevents dropped connections during long streams |
 | `send_timeout 300s` | Tolerates slow clients streaming large video |
-| `mp4` + `mp4_buffer_size 4m` | Enables MP4 pseudo-streaming (seek by time) |
-| `mp4_max_buffer_size 16m` | Handles large GoPro moov atoms |
 | `client_max_body_size 0` | Unlimited upload size |
 | `dav_methods PUT MKCOL` | Enables file upload and directory creation via WebDAV |
 | `create_full_put_path on` | Auto-creates subdirectories on upload |
+| `dav_access user:rw group:r all:r` | New uploads land as mode `0644` instead of nginx dav's hardcoded `0600` — required so Samba (UID 1000) can read root-owned uploads |
 | `default_type text/html` | Required on `/upload` location — nginx determines MIME from request URI not alias path |
 | `sub_filter` | Injects custom HTML/CSS header into autoindex pages |
 
@@ -54,7 +53,7 @@ Internet → DNS (reyday.1701.me) → 76.159.199.214 (Comcast WAN)
 - **Auth**: Same Basic Auth as browsing (browser sends credentials automatically)
 - **Allowed**: Upload (PUT), create directories (MKCOL)
 - **Blocked**: Delete (405 Method Not Allowed)
-- **File ownership**: Uploaded files owned by `root:root` (UID 0) since nginx workers run as root
+- **File ownership**: Uploaded files owned by `root:root` (UID 0) since nginx workers run as root. Mode is `0644` (`rw-r--r--`) via `dav_access` directive — world-readable so Samba (`sambauser`, UID 1000) can read them. Files are *not* deletable from SMB by `sambauser` — that would require running nginx as UID 1000 (deferred work).
 
 ### Upload UX
 1. Drag-and-drop or click to select files — files are **staged** (listed with name/size) but not uploaded yet
@@ -213,19 +212,11 @@ services:
             autoindex_localtime on;
             dav_methods PUT MKCOL;
             create_full_put_path on;
+            dav_access user:rw group:r all:r;
             sub_filter '</head>' '<style>body{font-family:sans-serif;margin:0;padding:0;background:#fafafa}.header{padding:20px 30px}.header h1{margin:0;font-size:2.5em;color:#333}.header a{color:#4a90d9;font-size:1.2em}pre{padding:10px 30px}</style></head>';
             sub_filter '<h1>Index of /' '<div class="header"><h1>Rey Day</h1><a href="/upload">Upload files</a></div><h1 style="display:none">Index of /';
             sub_filter_once off;
             sub_filter_types text/html;
-          }
-          location ~* \.mp4$ {
-            auth_basic "Restricted";
-            auth_basic_user_file /etc/nginx/.htpasswd;
-            root /usr/share/nginx/html;
-            mp4;
-            mp4_buffer_size 4m;
-            mp4_max_buffer_size 16m;
-            dav_methods PUT;
           }
           location = /upload {
             auth_basic "Restricted";
@@ -299,5 +290,10 @@ curl -u settling:friends -H "Range: bytes=0-1023" -I http://192.168.0.179:8105/G
 - **Upload page downloads instead of rendering**: The `/upload` location needs `default_type text/html;` — nginx determines MIME from the request URI (`/upload`, no extension), not the alias target.
 - **Upload fails with 403**: nginx workers need write permission. Verify `sed -i 's/user nginx;/user root;/'` ran successfully — check `docker logs reyday`.
 - **Upload fails with 413 (Request Entity Too Large)**: Check NPM proxy host config — set `client_max_body_size 0;` in the Advanced tab.
-- **Uploaded files not visible via Samba**: Files are owned by root:root. Samba should still serve them if the share config allows. If not, add a cron job to `chown 1000:1000` new files.
+- **Uploaded files not visible via Samba**: Files are owned by `root:root` mode `0644` (`rw-r--r--`). Samba (which runs as `sambauser` UID 1000) reads them via the world-read bit. If a file appears unreadable, check that the `dav_access user:rw group:r all:r;` directive is present in `location /` of the nginx config (it produces `0644`; without it, nginx dav defaults to hardcoded `0600` which Samba cannot read).
+- **Uploaded files cannot be deleted from Samba**: Expected — files are owned by `root`, not `sambauser`. The reyday web UI doesn't expose DELETE either. To delete an upload: SSH/`pct exec` into container 128 and `rm` it manually, or temporarily run nginx as UID 1000 (significant rework).
+- **PUT to `.mp4` files returns 405 Method Not Allowed**: Historical bug, fixed 2026-04-13. The nginx config used to have a `location ~* \.mp4$ { mp4; ... }` block that installed nginx's `ngx_http_mp4_module` content handler. That handler only accepts `GET`/`HEAD` and returns 405 on anything else *before* the WebDAV PUT handler runs — even though `dav_methods PUT;` was declared in the same block, it was silently overridden. The fix was to delete the entire `.mp4` location block; `.mp4` files now fall through to `location /` for both GET (via standard sendfile + range requests) and PUT (via dav). If you ever see PUT 405s on a specific extension after re-deploying, look for similar shadowing.
 - **Komodo can't find compose file**: Ensure the Komodo stack directory path matches `/etc/komodo/stacks/reyday/` (not the deprecated `reydey`).
+
+## Historical note: mp4 content handler removed (2026-04-13)
+The nginx config previously had a dedicated `location ~* \.mp4$ { mp4; mp4_buffer_size 4m; mp4_max_buffer_size 16m; dav_methods PUT; }` block intended to enable pseudo-streaming via `?start=N` query parameters. In practice the `mp4` content-handler **blocked all PUT uploads to `.mp4` files with HTTP 405** because the handler claims the request and only accepts GET/HEAD before WebDAV can see it. Modern browsers don't use `?start=N` pseudo-streaming anyway — they handle MP4 seeking via standard HTTP `Range:` headers, which nginx serves natively for any static file. The location block was deleted entirely (not just the `mp4` directive) since auth, root, and dav_methods were already provided by `location /`. No regression in playback. See the conversation history from 2026-04-13 for the full diagnosis.

@@ -3,7 +3,7 @@
 Official documentation for the Proxmox-based homelab infrastructure.
 
 **Host**: 192.168.0.151 (Shipyard)
-**Last Updated**: 2026-03-24
+**Last Updated**: 2026-04-13
 
 ---
 
@@ -21,6 +21,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [local-home-domains.md](infrastructure/local-home-domains.md) | Local .home domain setup (AdGuard DNS + NPM routing) |
 | [docker-cpu-optimization.md](infrastructure/docker-cpu-optimization.md) | Docker CPU resource limits & cAdvisor tuning (CT 128) |
 | [subtitle-standardization.md](infrastructure/subtitle-standardization.md) | Subtitle filename standardization (Emby naming conventions) |
+| [samba-smb3-migration.md](infrastructure/samba-smb3-migration.md) | Samba minimum protocol raised to SMB3, LANMAN/NTLMv1 disabled (CT 104) |
 
 ### Services
 
@@ -37,6 +38,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130) |
 | [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
 | [timeteam-downloads.md](services/timeteam-downloads.md) | Time Team complete download system — YouTube + Patreon to Emby library |
+| [timeteam-runbook.md](services/timeteam-runbook.md) | Time Team library processing runbook — download, classify, rename, Emby sync |
 
 ### Incidents
 

@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-04-14 16:09 UTC*
+*Last updated: 2026-04-14 17:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1089.70, 953.30, 584.60 | RAM: 61/62 GB | Uptime: 72 days
+**Shipyard** (192.168.0.151) | CPU: 2.30, 2.50, 24.63 | RAM: 34/62 GB | Uptime: 72 days
 
 **44 services** — 23 LXC containers, 21 Docker stacks, 3 VMs, 11 storage pools
 
@@ -17,7 +17,7 @@
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
-| gis-stack | lxc | 172.18.0.1 | - | - | running |
+| gis-stack | lxc | 192.168.0.229 | - | - | running |
 | grafana | docker | 192.168.0.179 | 3001 | http://192.168.0.179:3001 | running |
 | homelable | lxc | 192.168.0.218 | - | - | running |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
@@ -39,7 +39,7 @@
 | reyday | docker | 192.168.0.179 | 8105 | http://192.168.0.179:8105 | running |
 | samba | lxc | 192.168.0.176 | - | - | running |
 | sander | docker | 192.168.0.179 | 8100 | http://192.168.0.179:8100 | running |
-| scanopy | lxc | 172.17.0.1 | - | - | running |
+| scanopy | lxc | 192.168.0.219 | - | - | running |
 | scanopy-daemon | docker | 192.168.0.179 | - | - | running |
 | sftp | docker | 192.168.0.179 | 8070 | http://192.168.0.179:8070 | running |
 | sonarr | lxc | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
@@ -74,11 +74,11 @@
 | 117 | wikijs | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | 118 | homepage | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
 | 120 | pulse | 192.168.0.175 | 7655 | http://192.168.0.175:7655 | running |
-| 121 | scanopy | 172.17.0.1 | - | - | running |
+| 121 | scanopy | 192.168.0.219 | - | - | running |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | 130 | ollama | 192.168.0.130 | - | - | running |
-| 131 | gis-stack | 172.18.0.1 | - | - | running |
+| 131 | gis-stack | 192.168.0.229 | - | - | running |
 
 ## Docker Stacks (21) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
@@ -92,7 +92,7 @@
 | immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
-| komodo | 9120 | 7/7 | 1 | running | http://192.168.0.179:9120 |
+| komodo | 9120 | 7/7 | 2 | running | http://192.168.0.179:9120 |
 | manyfold | 3214 | 1/1 | 1 | running | http://192.168.0.179:3214 |
 | mealie | 9925 | 1/1 | 1 | running | http://192.168.0.179:9925 |
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
@@ -123,6 +123,6 @@
 | local | dir | 49/93 | 52% |
 | local-lvm | lvmthin | 273/348 | 78% |
 | smb-documents | dir | 1/921 | 0% |
-| smb-frigate | dir | 593/1006 | 58% |
+| smb-frigate | dir | 591/1006 | 58% |
 | smb-hometheater | dir | 16198/29679 | 54% |
 | smb-pictures | dir | 2338/10158 | 23% |

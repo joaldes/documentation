@@ -45,8 +45,12 @@ Time Team Digs/                     (92441 — name locked; auto-matches to "...
 ├── S04 Little Boy Blue              3
 └── S05 Poverty Point                2
 
-Time Team - Sutton Hoo/             (92443)
-└── S01                            62   Dig Series 1 mains + Ship Rebuilding + 56 extras
+Time Team - Sutton Hoo/             (92443) — reorganized 2026-04-17
+├── S00 Extras                      24   BTS, PRV, TRL, QNA, PUB, 360, SPC clips
+├── S01 The Dig                     12   Series 1 dig episodes + specials
+├── S02 The Ship                     6   Ship rebuild project
+├── S03 The Return                   9   Series 2 dig content
+└── S04 Livestreams                 11   Daily livestream coverage
 
 Time Team Online/                   (88728) — catch-all
 ├── Behind the Scenes/             117
@@ -76,6 +80,25 @@ Example: `E01 - The Sutton Hoo Ship - Rebuilding a Legend (Part 1) with Tony Rob
 
 ### Approved filename characters
 Letters a-z A-Z, digits 0-9, spaces, dashes `-`, parens `( )`, brackets `[ ]`, accented Latin.
+
+### Category abbreviations (Sutton Hoo)
+Used as prefix tags in Sutton Hoo filenames: `S00E01 - BTS - Jimmys GPR Diary.mp4`
+
+| Abbr | Category |
+|------|----------|
+| DIG | Main dig episodes |
+| HLT | Weekly highlights |
+| QNA | Q and A sessions |
+| LVS | Livestream coverage |
+| DGW | Dig Watch |
+| SIT | Site Tour |
+| BTS | Behind the Scenes |
+| PRV | Preview or teaser |
+| TRL | Trailer |
+| PUB | Pub Chat |
+| BKC | Book Club |
+| 360 | 360-degree camera |
+| SPC | Specs-Cam |
 
 ### NOT allowed
 Commas, apostrophes, quotes, colons, question marks, exclamation marks, ampersands (use "and"), hash, plus, at, percent, asterisks, emojis.
@@ -154,6 +177,7 @@ Record the move in a rename-history CSV (for audit). Current history files:
 - `phase-d-rename-history.csv` — Phase D main/extras split (236 files)
 - `phase-e-specials-history.csv` — Phase E Classic Specials → Time Team/S00 + merges (31 files)
 - `phase-f-history.csv` — Phase F TTO restructure → Crews/Digs/Sutton Hoo (434 files)
+- `sutton-hoo-reorganize-history.csv` — Sutton Hoo S01 split into 5 seasons (62 files)
 
 ---
 
@@ -263,6 +287,7 @@ This walks all disk files + chains through `rename-mapping.csv`, `s21-s24-rename
 | Phase D | 2026-04-12 | Split main content from extras: main stays in S21-S24, extras move to S491-S500 | 236 |
 | Phase E (Specials) | 2026-04-13 | Migrate Classic Specials → Time Team/S00 (28) + S15E06 Blitzkrieg + S19E07 Earl of Essex + 1 preview to Promos/E58 | 31 |
 | **Phase F (TTO)** | **2026-04-13** | **Split Time Team Online into Time Team Crews (30, 9 seasons) + Time Team Digs (340, 5 seasons) + Time Team - Sutton Hoo (62, 1 season) + 2 Promos redirects** | **434** |
+| **Sutton Hoo reorg** | **2026-04-17** | **Split 62-ep S01 into S00 Extras (24) + S01 The Dig (12) + S02 The Ship (6) + S03 The Return (9) + S04 Livestreams (11). Added 3-char category abbreviations (BTS, PRV, QNA, LVS, DGW, etc.)** | **62** |
 
 ---
 

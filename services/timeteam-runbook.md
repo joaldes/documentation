@@ -81,24 +81,30 @@ Example: `E01 - The Sutton Hoo Ship - Rebuilding a Legend (Part 1) with Tony Rob
 ### Approved filename characters
 Letters a-z A-Z, digits 0-9, spaces, dashes `-`, parens `( )`, brackets `[ ]`, accented Latin.
 
-### Category abbreviations (Sutton Hoo)
-Used as prefix tags in Sutton Hoo filenames: `S00E01 - BTS - Jimmys GPR Diary.mp4`
+### Category abbreviations
+Used as prefix tags in filenames: `S00E01 - BTS - Jimmys GPR Diary.mp4`
 
-| Abbr | Category |
-|------|----------|
-| DIG | Main dig episodes |
-| HLT | Weekly highlights |
-| QNA | Q and A sessions |
-| LVS | Livestream coverage |
-| DGW | Dig Watch |
-| SIT | Site Tour |
-| BTS | Behind the Scenes |
-| PRV | Preview or teaser |
-| TRL | Trailer |
-| PUB | Pub Chat |
-| BKC | Book Club |
-| 360 | 360-degree camera |
-| SPC | Specs-Cam |
+| Abbr | Category | Emby Subfolder |
+|------|----------|----------------|
+| DIG | Main dig episodes | *(main folder)* |
+| HLT | Weekly highlights | `featurettes` |
+| QNA | Q and A sessions | `interviews` |
+| LVS | Livestream coverage | `specials` |
+| DGW | Dig Watch | `scenes` |
+| SIT | Site Tour | `behind the scenes` |
+| BTS | Behind the Scenes | `behind the scenes` |
+| PRV | Preview or teaser | `trailers` |
+| TRL | Trailer | `trailers` |
+| PUB | Pub Chat | `interviews` |
+| BKC | Book Club | `featurettes` |
+| 360 | 360-degree camera | `shorts` |
+| SPC | Specs-Cam | `shorts` |
+| FNF | Fun Fact | `shorts` |
+| MST | Masterclass | `featurettes` |
+| DEL | Deleted or Cut content | `deleted scenes` |
+| --- | Catch-all | `extras` |
+
+Emby extras subfolders are placed inside season folders. All extras appear in a single "Extras" row in the Emby detail view regardless of subfolder name. Supported subfolder names: `extras`, `specials`, `shorts`, `scenes`, `featurettes`, `behind the scenes`, `deleted scenes`, `interviews`, `trailers`.
 
 ### NOT allowed
 Commas, apostrophes, quotes, colons, question marks, exclamation marks, ampersands (use "and"), hash, plus, at, percent, asterisks, emojis.

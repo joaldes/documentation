@@ -46,11 +46,16 @@ Time Team Digs/                     (92441 — name locked; auto-matches to "...
 └── S05 Poverty Point                2
 
 Time Team - Sutton Hoo/             (92443) — reorganized 2026-04-17
-├── S00 Extras                      24   BTS, PRV, TRL, QNA, PUB, 360, SPC clips
-├── S01 The Dig                     12   Series 1 dig episodes + specials
+├── S01 The Dig                      5   Main dig episodes (Parts 1-4 + compilation)
+│   ├── behind the scenes/          7   BTS clips
+│   ├── interviews/                 5   QNA, PUB, John Preston interview
+│   ├── specials/                   3   Standalone documentaries
+│   ├── featurettes/                2   Weekly highlights
+│   └── trailers/                  10   Previews and trailers
 ├── S02 The Ship                     6   Ship rebuild project
 ├── S03 The Return                   9   Series 2 dig content
-└── S04 Livestreams                 11   Daily livestream coverage
+├── S04 Livestreams                 11   Daily livestream coverage
+└── S00 (4 remaining)               4   360-cam and specs-cam clips
 
 Time Team Online/                   (88728) — catch-all
 ├── Behind the Scenes/             117

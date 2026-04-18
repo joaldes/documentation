@@ -189,6 +189,7 @@ Record the move in a rename-history CSV (for audit). Current history files:
 - `phase-e-specials-history.csv` — Phase E Classic Specials → Time Team/S00 + merges (31 files)
 - `phase-f-history.csv` — Phase F TTO restructure → Crews/Digs/Sutton Hoo (434 files)
 - `sutton-hoo-reorganize-history.csv` — Sutton Hoo S01 split into 5 seasons (62 files)
+- `sutton-hoo-master.csv` — Comprehensive Sutton Hoo file tracker (62 files): filename, Emby ID, display name, overview status, subtitle status, category, subfolder
 
 ---
 
@@ -209,6 +210,19 @@ After scan, episodes may have incorrect TVDB-scraped titles. Two scripts dependi
 Both parse filename → `Name`, set `LockedFields=['Name', 'SortName', 'Overview']` + `LockData=true`.
 
 ### Lock series name on new shows (Phase F gotcha)
+
+### Metadata push (per-show)
+
+After organizing files, push metadata via Emby API for each show:
+
+1. **Show level**: Name, Overview, Genres, Tags, Year, Studio, Rating. Lock data.
+2. **Season level**: GET full object, update Name and Overview, POST back. Lock data.
+3. **Episode level**: GET full object, update Name (strip filename prefix) and Overview (clean YouTube descriptions — strip promo links, social media, merchandise). Lock data.
+
+Pattern (GET-modify-POST):
+
+
+Track results in per-show master CSV (e.g. ): Emby ID, display name, overview status, subtitle status, locked status.
 
 When adding a new show folder (e.g., `Time Team Digs/`), Emby's scanner may auto-match against TVDB and apply a wrong name. Phase F hit this: `Time Team Digs` auto-matched to "Time Team Digs - A History Of Britain". Fix via API:
 
@@ -298,7 +312,7 @@ This walks all disk files + chains through `rename-mapping.csv`, `s21-s24-rename
 | Phase D | 2026-04-12 | Split main content from extras: main stays in S21-S24, extras move to S491-S500 | 236 |
 | Phase E (Specials) | 2026-04-13 | Migrate Classic Specials → Time Team/S00 (28) + S15E06 Blitzkrieg + S19E07 Earl of Essex + 1 preview to Promos/E58 | 31 |
 | **Phase F (TTO)** | **2026-04-13** | **Split Time Team Online into Time Team Crews (30, 9 seasons) + Time Team Digs (340, 5 seasons) + Time Team - Sutton Hoo (62, 1 season) + 2 Promos redirects** | **434** |
-| **Sutton Hoo reorg** | **2026-04-17** | **Split 62-ep S01 into S00 Extras (24) + S01 The Dig (12) + S02 The Ship (6) + S03 The Return (9) + S04 Livestreams (11). Added 3-char category abbreviations (BTS, PRV, QNA, LVS, DGW, etc.)** | **62** |
+| **Sutton Hoo reorg** | **2026-04-17** | **Split 62-ep S01 into S00 Extras (24) + S01 The Dig (12) + S02 The Ship (6) + S03 The Return (9) + S04 Livestreams (11). Added 3-char category abbreviations (BTS, PRV, QNA, LVS, DGW, etc.). Emby extras subfolders (behind the scenes, interviews, specials, featurettes, trailers, shorts). Metadata push via API: show overview/genres/year, season names/overviews, episode display names and cleaned overviews** | **62** |
 
 ---
 

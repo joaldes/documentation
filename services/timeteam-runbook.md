@@ -189,7 +189,7 @@ Record the move in a rename-history CSV (for audit). Current history files:
 - `phase-e-specials-history.csv` — Phase E Classic Specials → Time Team/S00 + merges (31 files)
 - `phase-f-history.csv` — Phase F TTO restructure → Crews/Digs/Sutton Hoo (434 files)
 - `sutton-hoo-reorganize-history.csv` — Sutton Hoo S01 split into 5 seasons (62 files)
-- `sutton-hoo-master.csv` — Comprehensive Sutton Hoo file tracker (62 files): filename, Emby ID, display name, overview status, subtitle status, category, subfolder
+- `timeteam-library-master.csv` — Comprehensive library-wide file tracker (1,226 files, 26 columns): show, season, episode, filename, Emby ID, display name, overview/people/date status, subtitle status, YouTube ID, source, upload date, source URL, match method
 
 ---
 
@@ -233,6 +233,23 @@ curl -s -X POST "http://192.168.0.13:8096/Items/<SERIES_ID>?api_key=$TOKEN" \
 ```
 
 Post-edit, `LockData=true` + `ProviderIds={}` together prevent re-matching on future scans.
+
+### Source matching pipeline
+
+When building the master CSV (`timeteam-library-master.csv`), files are matched to their YouTube/Patreon source using 4 strategies in order:
+
+1. **Path match** — `current_full_path` from `timeteam-audit.csv` matches Emby's file path
+2. **Filename match** — `current_filename` from audit CSV matches disk filename
+3. **Size match** — `size_mb` from `timeteam-master.csv` uniquely matches file size (ambiguous sizes excluded)
+4. **Duration match** — `duration_secs` from master CSV matches Emby runtime (+/- 1 second tolerance)
+
+Coverage: YouTube 592 (48%), Patreon 388 (32%), TVDB 87 (7%), filename-only 159 (13%)
+
+For unmatched files, `yt-dlp ytsearch` can be used from a local PC with YouTube cookies:
+```bash
+python -m yt_dlp --cookies cookies.txt --print "%(id)s;;;%(title)s;;;%(duration)s" "ytsearch1:Time Team QUERY"
+```
+Note: yt-dlp search requires YouTube authentication. Export cookies via "Get cookies.txt LOCALLY" Chrome extension (Netscape format). Server IPs are blocked by YouTube — must run from a local PC with browser cookies.
 
 ### Fix IndexNumber for 3-digit seasons (S491-S500)
 
@@ -313,6 +330,7 @@ This walks all disk files + chains through `rename-mapping.csv`, `s21-s24-rename
 | Phase E (Specials) | 2026-04-13 | Migrate Classic Specials → Time Team/S00 (28) + S15E06 Blitzkrieg + S19E07 Earl of Essex + 1 preview to Promos/E58 | 31 |
 | **Phase F (TTO)** | **2026-04-13** | **Split Time Team Online into Time Team Crews (30, 9 seasons) + Time Team Digs (340, 5 seasons) + Time Team - Sutton Hoo (62, 1 season) + 2 Promos redirects** | **434** |
 | **Sutton Hoo reorg** | **2026-04-17** | **Split 62-ep S01 into S00 Extras (24) + S01 The Dig (12) + S02 The Ship (6) + S03 The Return (9) + S04 Livestreams (11). Added 3-char category abbreviations (BTS, PRV, QNA, LVS, DGW, etc.). Emby extras subfolders (behind the scenes, interviews, specials, featurettes, trailers, shorts). Metadata push via API: show overview/genres/year, season names/overviews, episode display names and cleaned overviews** | **62** |
+| **Metadata sweep** | **2026-04-17** | **Built timeteam-library-master.csv (1,226 files, 26 columns). 4-strategy source matching: 87% matched. Emby API metadata push for Sutton Hoo: show/season/episode overviews, genres, dates, people, display names** | **1226** |
 
 ---
 

@@ -123,8 +123,12 @@ Commas, apostrophes, quotes, colons, question marks, exclamation marks, ampersan
 ```bash
 # 1. Refresh the video list from the channel
 yt-dlp --flat-playlist --print "%(id)s;;;%(title)s;;;%(duration)s" \
+    --write-info-json \
     "https://www.youtube.com/@TimeTeamOfficial/videos" \
     > "/mnt/hometheater/TV Shows/Time Team/.video-list.txt"
+
+# Always save metadata JSON alongside downloads:
+# --write-info-json    # Saves full YouTube metadata (description, tags, dates, etc.)
 
 # 2. Run the download script (skips already-downloaded via .downloaded_ids)
 screen -dmS timeteam bash ~/timeteam-download.sh
@@ -145,6 +149,49 @@ screen -dmS patreon bash ~/timeteam-patreon.sh
 ```
 
 **Note**: Download scripts drop files into temporary sorting folders. New files need to be processed through Steps 2-5 below to integrate into the library.
+
+---
+
+## Step 1b - Subtitle Download
+
+### yt-dlp subtitle flags
+- `--sub-langs "en.*"` -- matches both `en` and `en-GB` (YouTube tags British English as en-GB)
+- `--remote-components ejs:github` -- REQUIRED for YouTube JS challenge solver (without this, downloads fail)
+- `--write-auto-subs --write-subs` -- download both auto-generated and manual subs
+- `--convert-subs srt` -- convert to SRT format (requires ffmpeg installed)
+
+### Cookie management
+yt-dlp OVERWRITES the cookies file after each run. Always copy cookies to a temp file first:
+```python
+import shutil
+shutil.copy2("cookies.txt", "cookies_temp.txt")
+# Use cookies_temp.txt with --cookies
+```
+Export fresh cookies from Chrome/Firefox using "Get cookies.txt LOCALLY" extension (Netscape format).
+
+### Subtitle filename normalization
+yt-dlp creates `.en-GB.srt` and `.en-en-GB.srt` files. After download, normalize:
+- `.en-GB.srt` -- rename to `.en.srt` (keep -- original/manual captions)
+- `.en-en-GB.srt` -- delete (auto-translated duplicate, lower quality)
+- `.en-orig.srt` -- rename to `.en.srt`
+
+### Running from server vs local PC
+YouTube blocks server IPs for automated requests. Subtitle downloads must run from a local PC with residential IP. The scripts are at:
+- `timeteam/dl_yt_subs_retry.py` -- batch subtitle downloader with error logging
+- `timeteam/dl_transcripts.py` -- youtube-transcript-api approach (also blocked from server)
+
+---
+
+## Step 1c - Metadata Harvest
+
+After downloading videos, harvest full metadata from YouTube:
+```bash
+yt-dlp --dump-json --cookies cookies.txt "URL" > video_id.info.json
+```
+
+This captures: full description, tags, view count, like count, upload date, thumbnail URLs, channel info. Store JSONs in `timeteam/yt-metadata/`.
+
+For future downloads, `--write-info-json` saves this automatically alongside the video file.
 
 ---
 

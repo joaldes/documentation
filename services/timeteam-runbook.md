@@ -180,12 +180,18 @@ YouTube blocks server IPs for automated requests. Subtitle downloads must run fr
 - `timeteam/dl_yt_subs_retry.py` -- batch subtitle downloader with error logging
 - `timeteam/dl_transcripts.py` -- youtube-transcript-api approach (also blocked from server)
 
-### Subtitle coverage status (2026-04-19)
-- Has SRT: 1,043 / 1,226 (85.1%)
-- No-avail (confirmed no captions): 45 (3.7%)
-- Missing (TVDB classics + Patreon Vimeo): 138 (11.3%) — need Whisper to generate
-  - 85 TVDB/IMDB classic Channel 4 episodes (no YouTube source)
-  - 53 Patreon-hosted on Vimeo (no captions available)
+### Subtitle coverage (2026-04-20 FINAL)
+- Has SRT: 1,224 / 1,226 (99.8%)
+- No-avail: 2 (S01E01 0KB file + Boden Fogou Wall Fame no audio track)
+- Missing: 0
+- Sources: yt-dlp download (1,043), Whisper transcription (177), pre-existing (4)
+- Post-processing: backslash-h artifacts cleaned from 245 Whisper-generated SRT files
+
+### Whisper transcription (2026-04-20)
+faster-whisper base model on LXC 104 (CPU, 4 threads, int8). 177 files, 84 hours of audio, ~10 hours processing time.
+Used for: 85 TVDB classics + 53 Patreon Vimeo + 39 YouTube no-caption files.
+2 failures: S01E01 (0KB empty file), Boden Fogou Wall Fame (no audio track in video).
+ffmpeg fallback for incompatible codecs (extract audio to WAV first, then transcribe).
 
 ### Description generation
 For 411 files with empty YouTube/Patreon descriptions, Ollama (qwen2.5:1.5b on LXC 130 at 192.168.0.130:11434) generates 1-sentence summaries from episode titles. Results stored in `description_ollama` CSV column.

@@ -87,6 +87,14 @@ Monitors web services including:
 - Samba SMB (192.168.0.176:445)
 - Komodo SSH (192.168.0.179:22)
 
+### Blackbox ICMP Probes (7 endpoints)
+
+External: 1.1.1.1, 8.8.8.8. Internal: gateway (192.168.0.1), AdGuard (192.168.0.11), Proxmox host, Samba/NAS, Claude AI CT. See [network-monitoring.md](network-monitoring.md) for details and the dedicated Grafana dashboard.
+
+### Speedtest (every 30 min)
+
+Ookla speedtest via \`miguelndecarvalho/speedtest-exporter\` on port 9798. Exposes \`speedtest_download_bits_per_second\`, \`speedtest_upload_bits_per_second\`, \`speedtest_ping_latency_milliseconds\`, \`speedtest_jitter_latency_milliseconds\`. See [network-monitoring.md](network-monitoring.md).
+
 ## Installation
 
 ### Prerequisites

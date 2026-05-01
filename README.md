@@ -15,6 +15,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 |----------|-------------|
 | [lxc-onboarding.md](infrastructure/lxc-onboarding.md) | Standard LXC container setup checklist |
 | [prometheus-monitoring.md](infrastructure/prometheus-monitoring.md) | Prometheus + Grafana monitoring stack |
+| [network-monitoring.md](infrastructure/network-monitoring.md) | Network performance: speedtest + LAN ICMP probes |
 | [proxmox-changelog.md](infrastructure/proxmox-changelog.md) | System change history |
 | [emergency-procedures.md](infrastructure/emergency-procedures.md) | Emergency response runbook |
 | [backups-samba-share.md](infrastructure/backups-samba-share.md) | Backups disk Samba share + Mac HFS+ data copy |

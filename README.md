@@ -57,6 +57,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-03-23-frigate-detect-stream-offline.md](incidents/2026-03-23-frigate-detect-stream-offline.md) | Frigate detect stream offline — PID limit not applied after container recreation |
 | [2026-04-06-nightstand-button-duplicates.md](incidents/2026-04-06-nightstand-button-duplicates.md) | Nightstand button sending duplicate commands |
 | [2026-04-16-lizard-tank-overheat.md](incidents/2026-04-16-lizard-tank-overheat.md) | Lizard tank aux heat stuck ON 5hrs — old NR flow binary sensor gate blocked turn-off |
+| [2026-05-01-ha-unreachable-claude-ai-overload.md](incidents/2026-05-01-ha-unreachable-claude-ai-overload.md) | HA unreachable 55min — Claude AI CT overload starved Proxmox host, stalled HA vCPU, missed DHCP renewal |
 
 ---
 

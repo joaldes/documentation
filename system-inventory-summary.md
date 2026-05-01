@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-04-24 07:00 UTC*
+*Last updated: 2026-05-01 22:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 2.81, 1.81, 2.14 | RAM: 40/62 GB | Uptime: 82 days
+**Shipyard** (192.168.0.151) | CPU: 2.34, 3.49, 21.61 | RAM: 32/62 GB | Uptime: 89 days
 
 **45 services** — 23 LXC containers, 22 Docker stacks, 3 VMs, 11 storage pools
 
@@ -99,7 +99,7 @@
 | mealie | 9925 | 1/1 | 1 | running | http://192.168.0.179:9925 |
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
-| prometheus | 9092 | 4/4 | 2 | running | http://192.168.0.179:9092 |
+| prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
 | sander | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
 | scanopy-daemon | - | 1/1 | 1 | running | - |
@@ -117,14 +117,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 5687/10158 | 55% |
+| backups | dir | 5831/10158 | 57% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 775/1006 | 77% |
-| docker-data | dir | 111/2014 | 5% |
-| littlestorage | lvmthin | 124/1830 | 6% |
-| local | dir | 50/93 | 53% |
-| local-lvm | lvmthin | 276/348 | 79% |
+| container-backups | dir | 795/1006 | 79% |
+| docker-data | dir | 126/2014 | 6% |
+| littlestorage | lvmthin | 136/1830 | 7% |
+| local | dir | 51/93 | 54% |
+| local-lvm | lvmthin | 279/348 | 80% |
 | smb-documents | dir | 31/921 | 3% |
-| smb-frigate | dir | 591/1006 | 58% |
-| smb-hometheater | dir | 16256/29679 | 54% |
-| smb-pictures | dir | 2338/10158 | 23% |
+| smb-frigate | dir | 592/1006 | 58% |
+| smb-hometheater | dir | 16467/29679 | 55% |
+| smb-pictures | dir | 2340/10158 | 23% |

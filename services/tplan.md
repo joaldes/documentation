@@ -163,7 +163,28 @@ con.commit(); con.close()
 
 - **Cron**: daily 3am at `/etc/cron.d/tplan-backup` → `sqlite3 .backup` to `/opt/tplan/data/backups/`. 14-day retention.
 - **Pre-CSS-split snapshot**: `/mnt/documents/personal/alec/claudeai/tplan.preCSS-20260504-1747` — full live static-dir copy. Safe to delete after a week of CSS-split stability.
+- **Pre-soft-delete snapshot**: `/opt/tplan/app.py.preSoftDelete-20260504` + `/opt/tplan/data/backups/trips-preSoftDelete-20260504.db`. Safe to delete after a week of soft-delete stability.
 - **Browser-side**: every `scheduleSave()` writes `localStorage[tplan.draft.<tripId>]`. On load, if newer than server's `updated_at`, silently auto-restored and re-PUT.
+
+---
+
+## Soft-delete + Restore (shipped 2026-05-04)
+
+Trip deletion is now recoverable. `DELETE /api/trips/{id}` sets `deleted_at = <ISO timestamp>` instead of dropping the row. Trips remain restorable for 30 days, then a sweep on `tplan` lifespan startup hard-deletes them.
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /api/trips` | Live trips only (default) |
+| `GET /api/trips?deleted_only=true` | Trash view |
+| `GET /api/trips?include_deleted=true` | Both |
+| `GET /api/trips/{id}` | 404 if soft-deleted (unless `?include_deleted=true`) |
+| `PUT` / `PATCH /api/trips/{id}` | 410 Gone if soft-deleted (must restore first) |
+| `DELETE /api/trips/{id}` | Soft-delete (default); `?permanent=true` for hard |
+| `POST /api/trips/{id}/restore` | Clears `deleted_at`, returns the trip |
+
+Schema: `deleted_at TEXT` column + partial index `idx_trips_deleted_at_live ON trips(deleted_at) WHERE deleted_at IS NULL` (live queries hit only the small live-row index).
+
+Frontend (`index.html`): optimistic delete + Undo toast (5s); collapsed "Recently deleted" section with countdown ("Deletes in N days", red < 7); Restore + Delete-forever buttons per deleted card.
 
 ---
 
@@ -174,9 +195,9 @@ con.commit(); con.close()
 | Importer still uses Nominatim (1.1s throttle) | High UX | Switch `vendor/tplan/import.js geocodeTrip()` to Photon `192.168.0.179:2322/api?q=` with 8-way parallel. ~100× speedup on imports. |
 | Live missing `BEGIN IMMEDIATE` on PUT | Medium | Staging has it. Concurrent PUTs (rare in single-user) can lose updates without it. |
 | ~~Live missing `no-cache` middleware~~ | DONE 2026-05-04 | Middleware now deployed; cache-buster query strings still in place as belt-and-suspenders. |
+| ~~Hard-delete on trips, no undo~~ | DONE 2026-05-04 | Soft-delete + 30-day Recently-deleted section live. See section above. |
 | 4000-line `mockup-dev.html` JS still monolith | Medium | Native `<script type="module">` ESM is the right next step. Bigger commitment than CSS. |
 | No automated tests | Medium | Playwright visual-regression smoke test was sketched, never built. |
-| Hard-delete on trips, no undo | Low | DB backup is the recovery path. |
 | No auth on `/api/` | Low (LAN-only) | Revisit if exposed externally. |
 
 ---

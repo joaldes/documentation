@@ -197,7 +197,7 @@ Frontend (`index.html`): optimistic delete + Undo toast (5s); collapsed "Recentl
 | ~~Live missing `no-cache` middleware~~ | DONE 2026-05-04 | Middleware now deployed; cache-buster query strings still in place as belt-and-suspenders. |
 | ~~Hard-delete on trips, no undo~~ | DONE 2026-05-04 | Soft-delete + 30-day Recently-deleted section live. See section above. |
 | 4000-line `mockup-dev.html` JS still monolith | Medium | Native `<script type="module">` ESM is the right next step. Bigger commitment than CSS. |
-| No automated tests | Medium | Playwright visual-regression smoke test was sketched, never built. |
+| No automated tests | Won't fix (2026-05-04) | Playwright design done; declined to add test infra for a single-user app. Manual verification on staging before promote remains the workflow. |
 | No auth on `/api/` | Low (LAN-only) | Revisit if exposed externally. |
 
 ---

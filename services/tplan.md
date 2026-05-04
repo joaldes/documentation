@@ -230,9 +230,9 @@ js/day-sortable.js   (Phase 5 — wireDaySortable, day-banner reorder)
 | ~~Live missing `no-cache` middleware~~ | DONE 2026-05-04 | Middleware now deployed; cache-buster query strings still in place as belt-and-suspenders. |
 | ~~Hard-delete on trips, no undo~~ | DONE 2026-05-04 | Soft-delete + 30-day Recently-deleted section live. See section above. |
 | ~~4000-line `mockup-dev.html` JS monolith~~ | DONE 2026-05-04 | Split into 10 IIFE modules under `tplan/js/`. mockup-dev.html: 3996 → 2823 lines. See "JS modular layout" section above. |
-| Reservations panel stale after "Clear all" | Low | Pre-existing. `renderReservationsPanel` early-returns when panel hidden. Fix: remove the `display==='none'` guard in `js/reservations.js`. |
-| Day drag-reorder doesn't auto-recalc routes | Low | Pre-existing. `wireDaySortable` `onEnd` calls `renderAll` but not `recalcRoutes`. Fix: after reorder, call `recalcRoutes(d.id)` for each day with ≥2 stops (respect autoRoute toggle). |
-| Add Day briefly shows previous day's stops | Low | Pre-existing. `addDay` calls `setGroupValues` synchronously before async `replaceData` resolves. Fix: drop the premature `setGroupValues` call. |
+| ~~Reservations panel stale after "Clear all"~~ | DONE 2026-05-04 | Removed `display==='none'` early-return in `js/reservations.js renderReservationsPanel`. Always builds; cost is sub-ms. |
+| ~~Day drag-reorder doesn't auto-recalc routes~~ | DONE 2026-05-04 | After `renderAll()` in `js/day-sortable.js onEnd`, iterate days and call `global.recalcRoutes(d.id)` when `global.autoRoute` is on. (Required `let autoRoute` → `var autoRoute` in core for window access.) |
+| ~~Add Day briefly shows previous day's stops~~ | DONE 2026-05-04 | Removed premature `setGroupValues` from `addDay`. `replaceData()` sets groups via `_dayId`. (Sibling `reorderDays`/`deleteDay` unchanged — not reported broken.) |
 | No automated tests | Won't fix (2026-05-04) | Playwright design done; declined to add test infra for a single-user app. Manual verification on staging before promote remains the workflow. |
 | No auth on `/api/` | Low (LAN-only) | Revisit if exposed externally. |
 

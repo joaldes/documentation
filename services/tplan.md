@@ -162,8 +162,11 @@ con.commit(); con.close()
 ## Backups
 
 - **Cron**: daily 3am at `/etc/cron.d/tplan-backup` → `sqlite3 .backup` to `/opt/tplan/data/backups/`. 14-day retention.
-- **Pre-CSS-split snapshot**: `/mnt/documents/personal/alec/claudeai/tplan.preCSS-20260504-1747` — full live static-dir copy. Safe to delete after a week of CSS-split stability.
-- **Pre-soft-delete snapshot**: `/opt/tplan/app.py.preSoftDelete-20260504` + `/opt/tplan/data/backups/trips-preSoftDelete-20260504.db`. Safe to delete after a week of soft-delete stability.
+- **Pre-refactor snapshots (delete after 2026-05-11 if stable)**:
+  - `/mnt/documents/personal/alec/claudeai/tplan.preCSS-20260504-1747/` — full live static-dir copy before CSS split (~936 KB)
+  - `/opt/tplan/app.py.preSoftDelete-20260504` + `/opt/tplan/data/backups/trips-preSoftDelete-20260504.db` — before soft-delete (~11 MB)
+  - `/opt/tplan/app.py.preLivePort-20260504` + `/opt/tplan/data/backups/trips-preLivePort-20260504.db` — purpose not recorded; same retention (~11 MB)
+- **Archive of obsolete prototypes**: `/mnt/documents/personal/alec/claudeai/tplan-archive/2026-05-04/` — `mockup.html` + `icon-test.html` (live + staging copies). Indefinite retention; outside the served static tree so not reachable via HTTP.
 - **Browser-side**: every `scheduleSave()` writes `localStorage[tplan.draft.<tripId>]`. On load, if newer than server's `updated_at`, silently auto-restored and re-PUT.
 
 ---

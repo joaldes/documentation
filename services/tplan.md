@@ -173,7 +173,7 @@ con.commit(); con.close()
 |---|---|---|
 | Importer still uses Nominatim (1.1s throttle) | High UX | Switch `vendor/tplan/import.js geocodeTrip()` to Photon `192.168.0.179:2322/api?q=` with 8-way parallel. ~100× speedup on imports. |
 | Live missing `BEGIN IMMEDIATE` on PUT | Medium | Staging has it. Concurrent PUTs (rare in single-user) can lose updates without it. |
-| Live missing `no-cache` middleware | Low | Use `?v=...` cache-buster instead. |
+| ~~Live missing `no-cache` middleware~~ | DONE 2026-05-04 | Middleware now deployed; cache-buster query strings still in place as belt-and-suspenders. |
 | 4000-line `mockup-dev.html` JS still monolith | Medium | Native `<script type="module">` ESM is the right next step. Bigger commitment than CSS. |
 | No automated tests | Medium | Playwright visual-regression smoke test was sketched, never built. |
 | Hard-delete on trips, no undo | Low | DB backup is the recovery path. |

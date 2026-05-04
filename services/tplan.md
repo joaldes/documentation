@@ -192,6 +192,35 @@ Frontend (`index.html`): optimistic delete + Undo toast (5s); collapsed "Recentl
 
 ---
 
+## JS modular layout (shipped 2026-05-04)
+
+`mockup-dev.html`'s inline `<script>` was reduced from **3996 → 2823 lines** (-1173) by extracting 10 cluster modules into `tplan/js/`. Pattern: each file is an IIFE (`(function(global){ 'use strict'; ... global.tplanX = {...}; })(window)`) — same precedent as `vendor/tplan/import.js`. Bare-name back-compat shims (e.g. `global.pushHistory = pushHistory`) so existing call sites in core remain unchanged.
+
+Load order (in `<body>`, after the body DOM, before the inline `<script>`):
+```
+js/toast.js          (Phase 1 — shared toast helper, used by undo + booking)
+js/time.js           (Phase 2 — clock parse/format, intra-row + cascade)
+js/undo.js           (Phase 2 — _history/_redo + Ctrl+Z/Y listener)
+js/day-color.js      (Phase 3 — DEFAULT_DAY_COLORS palette + picker modal)
+js/reservations.js   (Phase 3 — Reservations side panel renderer)
+js/search.js         (Phase 4 — Photon search bar + add-popup)
+js/edit-location.js  (Phase 4 — drag-pin Edit Location banner + Regen name)
+js/booking-modal.js  (Phase 5 — BOOKING_TYPES/_FIELDS + showBookingModal)
+js/day-renderer.js   (Phase 5 — renderDayGroupHeader + preserveScroll)
+js/day-sortable.js   (Phase 5 — wireDaySortable, day-banner reorder)
+```
+
+**Hub globals** that stayed in the inline script: `tripData`, `_tripMeta`, `_saveState`, `_table`, `map`, `mapMarkers`, `mapPolylines`. Their declarations are `var` (not `let`/`const`) so modules can read/write via `window`. Top-level function declarations (`renderAll`, `pushHistory`, `findStop`, etc.) auto-attach to `window` and are accessed by modules ambiently.
+
+**Snapshots** at `tplan-archive/2026-05-04/jsmod-phase{1..5}/` capture each phase's verified state for clean rollback.
+
+**Known regressions surfaced during Phase 5 verification (pre-existing — filed for follow-up):**
+1. "Clear all reservations" leaves the Reservations panel stale until tab switch (`renderReservationsPanel` early-returns when panel is `display:none`)
+2. Day drag-reorder doesn't trigger Valhalla recalc (only `renderAll`, no `recalcRoutes` call)
+3. Add Day briefly shows previous day's stops until `replaceData()` resolves (premature `setGroupValues` call in `addDay`)
+
+---
+
 ## Open Audit Items (deferred 2026-05-04)
 
 | Item | Severity | Notes |
@@ -200,7 +229,10 @@ Frontend (`index.html`): optimistic delete + Undo toast (5s); collapsed "Recentl
 | ~~Live missing `BEGIN IMMEDIATE` on PUT~~ | DONE 2026-05-04 | Rode along with soft-delete promotion (`put_trip` wraps the UPDATE in `BEGIN IMMEDIATE`). |
 | ~~Live missing `no-cache` middleware~~ | DONE 2026-05-04 | Middleware now deployed; cache-buster query strings still in place as belt-and-suspenders. |
 | ~~Hard-delete on trips, no undo~~ | DONE 2026-05-04 | Soft-delete + 30-day Recently-deleted section live. See section above. |
-| 4000-line `mockup-dev.html` JS still monolith | Medium | Native `<script type="module">` ESM is the right next step. Bigger commitment than CSS. |
+| ~~4000-line `mockup-dev.html` JS monolith~~ | DONE 2026-05-04 | Split into 10 IIFE modules under `tplan/js/`. mockup-dev.html: 3996 → 2823 lines. See "JS modular layout" section above. |
+| Reservations panel stale after "Clear all" | Low | Pre-existing. `renderReservationsPanel` early-returns when panel hidden. Fix: remove the `display==='none'` guard in `js/reservations.js`. |
+| Day drag-reorder doesn't auto-recalc routes | Low | Pre-existing. `wireDaySortable` `onEnd` calls `renderAll` but not `recalcRoutes`. Fix: after reorder, call `recalcRoutes(d.id)` for each day with ≥2 stops (respect autoRoute toggle). |
+| Add Day briefly shows previous day's stops | Low | Pre-existing. `addDay` calls `setGroupValues` synchronously before async `replaceData` resolves. Fix: drop the premature `setGroupValues` call. |
 | No automated tests | Won't fix (2026-05-04) | Playwright design done; declined to add test infra for a single-user app. Manual verification on staging before promote remains the workflow. |
 | No auth on `/api/` | Low (LAN-only) | Revisit if exposed externally. |
 

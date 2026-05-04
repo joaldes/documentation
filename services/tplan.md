@@ -166,6 +166,7 @@ con.commit(); con.close()
   - `/mnt/documents/personal/alec/claudeai/tplan.preCSS-20260504-1747/` — full live static-dir copy before CSS split (~936 KB)
   - `/opt/tplan/app.py.preSoftDelete-20260504` + `/opt/tplan/data/backups/trips-preSoftDelete-20260504.db` — before soft-delete (~11 MB)
   - `/opt/tplan/app.py.preLivePort-20260504` + `/opt/tplan/data/backups/trips-preLivePort-20260504.db` — purpose not recorded; same retention (~11 MB)
+  - `/mnt/documents/personal/alec/claudeai/tplan-archive/2026-05-04/index.html.prePhotonImporter-20260504` + `import.js.prePhotonImporter-20260504` — before Photon importer swap
 - **Archive of obsolete prototypes**: `/mnt/documents/personal/alec/claudeai/tplan-archive/2026-05-04/` — `mockup.html` + `icon-test.html` (live + staging copies). Indefinite retention; outside the served static tree so not reachable via HTTP.
 - **Browser-side**: every `scheduleSave()` writes `localStorage[tplan.draft.<tripId>]`. On load, if newer than server's `updated_at`, silently auto-restored and re-PUT.
 
@@ -195,7 +196,7 @@ Frontend (`index.html`): optimistic delete + Undo toast (5s); collapsed "Recentl
 
 | Item | Severity | Notes |
 |---|---|---|
-| Importer still uses Nominatim (1.1s throttle) | High UX | Switch `vendor/tplan/import.js geocodeTrip()` to Photon `192.168.0.179:2322/api?q=` with 8-way parallel. ~100× speedup on imports. |
+| ~~Importer uses Nominatim (1.1s throttle)~~ | DONE 2026-05-04 | Switched to Photon (`192.168.0.179:2322/api`) with 8-way parallel batches. Importer now does a 30-stop import in ~1 s instead of ~33 s. Min 800 ms display + demoted-count message in `index.html commitImport`. Known imperfection: ambiguous POI names without location bias may resolve to the wrong match (post-commit "fix locations" UI handles it). |
 | ~~Live missing `BEGIN IMMEDIATE` on PUT~~ | DONE 2026-05-04 | Rode along with soft-delete promotion (`put_trip` wraps the UPDATE in `BEGIN IMMEDIATE`). |
 | ~~Live missing `no-cache` middleware~~ | DONE 2026-05-04 | Middleware now deployed; cache-buster query strings still in place as belt-and-suspenders. |
 | ~~Hard-delete on trips, no undo~~ | DONE 2026-05-04 | Soft-delete + 30-day Recently-deleted section live. See section above. |

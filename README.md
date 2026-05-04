@@ -36,6 +36,8 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + Authentik SSO + NPS design) |
+| [tplan.md](services/tplan.md) | tPlan — Self-hosted road-trip planner (FastAPI + SQLite, live + staging stacks, modular CSS, Tabulator/Leaflet) |
+| [photon.md](services/photon.md) | Photon — Self-hosted geocoder (CT 128, planet OSM index, used by tPlan for search/reverse-geocode) |
 | [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130) |
 | [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
 | [timeteam-downloads.md](services/timeteam-downloads.md) | Time Team complete download system — YouTube + Patreon to Emby library |

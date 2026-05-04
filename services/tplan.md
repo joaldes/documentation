@@ -190,6 +190,8 @@ Schema: `deleted_at TEXT` column + partial index `idx_trips_deleted_at_live ON t
 
 Frontend (`index.html`): optimistic delete + Undo toast (5s); collapsed "Recently deleted" section with countdown ("Deletes in N days", red < 7); Restore + Delete-forever buttons per deleted card.
 
+API responses omit `deleted_at` when null (live trips don't carry the field; only soft-deleted trips include it). Keeps the wire format clean.
+
 ---
 
 ## JS modular layout (shipped 2026-05-04)

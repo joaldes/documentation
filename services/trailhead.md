@@ -40,7 +40,7 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | `requirements.txt` | Pinned Python dependencies |
 | `fonts/` | NPS typefaces (Frutiger, National Park, NPS 1935, NPS 1945 signage) |
 
-Compose file: `/etc/komodo/stacks/trailhead/compose.yaml`
+Compose file: `/mnt/docker/trailhead/compose.yaml`
 
 ### Data Sources
 
@@ -73,7 +73,7 @@ scp generate.py template.html root@192.168.0.179:/mnt/docker/trailhead/
 ssh root@192.168.0.179 "docker restart trailhead-generator"
 
 # Full rebuild (only for Dockerfile/requirements.txt/entrypoint.sh)
-cd /etc/komodo/stacks/trailhead && docker compose build --no-cache && docker compose up -d
+cd /mnt/docker/trailhead && docker compose build --no-cache && docker compose up -d
 
 # Logs & status
 docker logs trailhead-generator --tail 30
@@ -187,14 +187,12 @@ docker exec trailhead-generator python3 /app/generate.py
 ├── trailhead.yaml       # Access groups + sidebar tab/card definitions
 ├── nginx.conf           # Authentik forward auth + reference page routing + security headers
 ├── logged-out.html      # Static logout page with 5s redirect countdown
+├── compose.yaml         # Docker Compose (generator + nginx)
 └── fonts/
     ├── frutiger.woff2
     ├── nationalpark.woff2
     ├── nps1935.woff2
     └── nps-signage-1945.woff2
-
-/etc/komodo/stacks/trailhead/
-└── compose.yaml         # Docker Compose (generator + nginx)
 ```
 
 ### Generated Output (inside container volume)
@@ -707,7 +705,7 @@ Only needed if Dockerfile, requirements.txt, or entrypoint.sh change:
 
 ```bash
 # From Komodo (192.168.0.179)
-cd /etc/komodo/stacks/trailhead
+cd /mnt/docker/trailhead
 docker compose build --no-cache
 docker compose up -d
 ```
@@ -902,7 +900,7 @@ Configured via API. Components created:
 To add a new user:
 1. Create user in Authentik admin: http://192.168.0.179:9000/if/admin/#/identity/users
 2. Add username to the appropriate groups in `trailhead.yaml` under `access_groups`
-3. Rebuild: `cd /etc/komodo/stacks/trailhead && docker compose build generator && docker compose up -d`
+3. Rebuild: `cd /mnt/docker/trailhead && docker compose build generator && docker compose up -d`
 
 ### Login Page Branding
 

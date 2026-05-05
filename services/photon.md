@@ -14,7 +14,7 @@
 | **DNS** | `photon.home → 192.168.0.179` (AdGuard rewrite) |
 | **Direct URL** | `http://192.168.0.179:2322` (use this in code; not all browsers resolve `.home`) |
 | **Container** | `photon` (Docker, image `rtuszik/photon-docker:latest`) |
-| **Compose** | `/etc/komodo/stacks/photon/compose.yaml` |
+| **Compose** | `/mnt/docker/photon/compose.yaml` |
 | **Data dir** | `/mnt/docker/photon/data` (~92 GB extracted index) |
 | **Index** | Komoot planet build (~57 GB compressed → ~92 GB extracted), monthly auto-refresh |
 | **Source mirror** | `https://r2.koalasec.org/public/photon-db-planet-1.0-latest.tar.bz2` |
@@ -34,7 +34,7 @@ LAN-fast: queries return in ~20–50 ms vs ~300–800 ms for komoot.io public Ph
 
 ## Compose file
 
-`/etc/komodo/stacks/photon/compose.yaml`:
+`/mnt/docker/photon/compose.yaml`:
 
 ```yaml
 name: photon
@@ -143,7 +143,7 @@ curl -s "http://192.168.0.179:2322/api?q=fossil+butte&limit=1" | head -c 300
 
 ### Restart
 ```bash
-ssh root@192.168.0.179 'cd /etc/komodo/stacks/photon && docker compose restart photon'
+ssh root@192.168.0.179 'cd /mnt/docker/photon && docker compose restart photon'
 ```
 
 ### Force a re-pull of the index (rare; auto-updates monthly)

@@ -14,7 +14,7 @@
 | **DNS** | `overpass.home → 192.168.0.179` (AdGuard rewrite) |
 | **Direct URL** | `http://192.168.0.179:12345` (use this in code; not all browsers resolve `.home`) |
 | **Containers** | `overpass` (`wiktorn/overpass-api:v0.7.62.9`), `overpass-caddy` (`caddy:2-alpine`) |
-| **Compose** | `/mnt/docker/overpass/compose.yaml` |
+| **Compose** | `/etc/komodo/stacks/overpass/compose.yaml` |
 | **Data dir** | `/mnt/docker/overpass/db` (~50–60 GB after import) |
 | **Caddyfile** | `/mnt/docker/overpass/caddy/Caddyfile` (CORS reverse-proxy) |
 | **Source PBF** | `https://download.geofabrik.de/north-america-latest.osm.pbf` (~17.6 GB) |
@@ -32,7 +32,7 @@ In tplan: drives the (planned) clickable POI overlay. User pans/zooms → tplan 
 
 ## Compose file
 
-`/mnt/docker/overpass/compose.yaml`:
+`/etc/komodo/stacks/overpass/compose.yaml`:
 
 ```yaml
 name: overpass
@@ -148,22 +148,22 @@ ssh root@192.168.0.179 'docker logs -f overpass'
 
 **Restart:**
 ```bash
-ssh root@192.168.0.179 'cd /mnt/docker/overpass && docker compose restart'
+ssh root@192.168.0.179 'cd /etc/komodo/stacks/overpass && docker compose restart'
 ```
 
 **Force re-index from scratch (rare — destroys ~50 GB of indexed data):**
 ```bash
-ssh root@192.168.0.179 'cd /mnt/docker/overpass && docker compose down && rm -rf /mnt/docker/overpass/db/* && docker compose up -d'
+ssh root@192.168.0.179 'cd /etc/komodo/stacks/overpass && docker compose down && rm -rf /mnt/docker/overpass/db/* && docker compose up -d'
 ```
 
 ---
 
 ## Initial bring-up (2026-05-04)
 
-1. Created `/etc/komodo/stacks/` was the original convention — moved to `/mnt/docker/overpass/` for Komodo file-on-host stack pattern (matches Valhalla, etc.).
+1. Compose at `/etc/komodo/stacks/overpass/compose.yaml`, data dir at `/mnt/docker/overpass/{db,caddy}`. (CT 128's Komodo periphery container only mounts `/etc/komodo` from the host, so stack compose files there are required for Komodo UI management — see `feedback_komodo_stacks.md`.)
 2. Pulled images (`wiktorn/overpass-api:v0.7.62.9`, `caddy:2-alpine`).
 3. `docker compose up -d` — stack came up; Overpass began downloading the NA PBF (~17.6 GB) and indexing.
-4. Registered in Komodo via `CreateStack` API (server_id `69ddced4735ae27880b55726`, files_on_host=true, run_directory=`/mnt/docker/overpass`).
+4. Registered in Komodo via `CreateStack` API (server_id `69ddced4735ae27880b55726`, files_on_host=true, run_directory=`/etc/komodo/stacks/overpass`, auto_pull=false).
 5. AdGuard rewrite added (`overpass.home → 192.168.0.179`).
 6. Trailhead bookmark added (Infrastructure group, "Geo Data" category) — generator image rebuilt to bake new `trailhead.yaml`.
 

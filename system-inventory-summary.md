@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-04 13:00 UTC*
+*Last updated: 2026-05-05 04:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 2.23, 2.99, 3.14 | RAM: 34/62 GB | Uptime: 92 days
+**Shipyard** (192.168.0.151) | CPU: 5.91, 3.47, 3.28 | RAM: 36/62 GB | Uptime: 92 days
 
-**46 services** — 23 LXC containers, 23 Docker stacks, 3 VMs, 11 storage pools
+**47 services** — 23 LXC containers, 24 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (46)
+## All Services (47)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -32,6 +32,7 @@
 | mealie | docker | 192.168.0.179 | 9925 | http://192.168.0.179:9925 | running |
 | nginxproxymanager | lxc | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
 | ollama | lxc | 192.168.0.130 | - | - | running |
+| overpass | docker | 192.168.0.179 | 12345 | http://192.168.0.179:12345 | running |
 | paperless | docker | 192.168.0.179 | 8010 | http://192.168.0.179:8010 | running |
 | paperless-ai | docker | 192.168.0.179 | 3030 | http://192.168.0.179:3030 | running |
 | photon | docker | 192.168.0.179 | 2322 | http://192.168.0.179:2322 | running |
@@ -82,7 +83,7 @@
 | 130 | ollama | 192.168.0.130 | - | - | running |
 | 131 | gis-stack | 192.168.0.229 | - | - | running |
 
-## Docker Stacks (23) — 192.168.0.179
+## Docker Stacks (24) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -98,16 +99,17 @@
 | lubelogger | 8071 | 1/1 | 0 | running | http://192.168.0.179:8071 |
 | manyfold | 3214 | 1/1 | 1 | running | http://192.168.0.179:3214 |
 | mealie | 9925 | 1/1 | 1 | running | http://192.168.0.179:9925 |
+| overpass | 12345 | 2/2 | 0 | running | http://192.168.0.179:12345 |
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
-| photon | 2322 | 1/1 | 0 | running | http://192.168.0.179:2322 |
+| photon | 2322 | 1/1 | 1 | running | http://192.168.0.179:2322 |
 | prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
 | sander | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
 | scanopy-daemon | - | 1/1 | 1 | running | - |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
-| trailhead | 8076 | 2/2 | 2 | running | http://192.168.0.179:8076 |
+| trailhead | 8076 | 2/2 | 1 | running | http://192.168.0.179:8076 |
 
 ## VMs (3)
 | VMID | Name | Status |
@@ -119,14 +121,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 5839/10158 | 57% |
+| backups | dir | 5929/10158 | 58% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 807/1006 | 80% |
-| docker-data | dir | 165/2014 | 8% |
-| littlestorage | lvmthin | 132/1830 | 7% |
+| docker-data | dir | 238/2014 | 11% |
+| littlestorage | lvmthin | 133/1830 | 7% |
 | local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 281/348 | 80% |
 | smb-documents | dir | 31/921 | 3% |
 | smb-frigate | dir | 591/1006 | 58% |
-| smb-hometheater | dir | 16467/29679 | 55% |
+| smb-hometheater | dir | 16475/29679 | 55% |
 | smb-pictures | dir | 2340/10158 | 23% |

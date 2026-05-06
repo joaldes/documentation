@@ -39,6 +39,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [tplan.md](services/tplan.md) | tPlan — Self-hosted road-trip planner (FastAPI + SQLite, live + staging stacks, modular CSS, Tabulator/Leaflet) |
 | [photon.md](services/photon.md) | Photon — Self-hosted geocoder (CT 128, planet OSM index, used by tPlan for search/reverse-geocode) |
 | [overpass.md](services/overpass.md) | Overpass-NA — Self-hosted OSM query API (CT 128, NA extract + Caddy CORS sidecar, for tPlan POI overlay) |
+| [jobs-home.md](services/jobs-home.md) | jobs.home — Ambient job-progress dashboard for ad-hoc scripts across all homelab hosts |
 | [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130) |
 | [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
 | [timeteam-downloads.md](services/timeteam-downloads.md) | Time Team complete download system — YouTube + Patreon to Emby library |

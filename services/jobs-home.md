@@ -39,6 +39,45 @@ Bearer-token auth on writes (`POST /jobs/.../{start,progress,done}`); reads (`GE
 
 ---
 
+## Quick-start examples (common tools)
+
+```sh
+# wget — pipe progress
+wget --progress=dot:giga "$URL" 2>&1 | jobctl pipe-progress iso-dl --total 12G --re '[0-9]+%'
+
+# curl — wrap with track-file
+jobctl track-file iso-dl /tmp/file.iso --total 12G --interval 30 &
+curl -fSL -o /tmp/file.iso "$URL"
+wait    # track-file auto-completes when file size goes flat
+
+# yt-dlp batch (the Time Team pattern)
+jobctl run yt-batch -- yt-dlp -a urls.txt -o "%(title)s.%(ext)s" --write-info-json
+
+# rsync (incremental backup)
+jobctl run backup-photos -- rsync -avh --info=progress2 /src /dst
+
+# ffmpeg encode of a single file (track output growth)
+jobctl track-file encode-foo /tmp/out.mp4 --total 2G &
+ffmpeg -i in.mkv -c:v libx264 -crf 22 /tmp/out.mp4
+wait
+
+# Large dir backup (track recursive size)
+jobctl track-file tar-snapshot /mnt/backups/snap.tar --total 50G --interval 60 &
+tar -cf /mnt/backups/snap.tar /mnt/photos
+
+# Custom Python script reporting progress
+# (in your script:)
+#   from urllib.request import Request, urlopen
+#   import json
+#   def progress(name, current, total=None, msg=None):
+#       body = json.dumps({"current": current, "total": total, "msg": msg}).encode()
+#       Request(f"http://192.168.0.179:8077/jobs/{name}/progress",
+#               data=body, headers={"Authorization": f"Bearer {TOKEN}",
+#                                   "Content-Type": "application/json"})
+```
+
+---
+
 ## API
 
 | Endpoint | Auth | Purpose |
@@ -168,9 +207,80 @@ ssh root@192.168.0.179 'docker logs -f jobsd'
 3. Smoke test: `ssh host 'jobctl start hello; jobctl done hello'`
 
 ### Rotate token
-1. Generate new: `openssl rand -hex 32`
-2. Edit `/mnt/docker/jobsd/.env`, restart jobsd
-3. Edit `~/.jobsrc` on every host
+Tokens are 32-byte hex (256-bit). Distribute via secure channel only.
+1. **Generate**: `NEW=$(openssl rand -hex 32); echo "$NEW"`
+2. **Server**: edit `/mnt/docker/jobsd/.env` → `JOBS_TOKEN=$NEW`, restart with `docker compose restart jobsd`
+3. **Each host**: update `~/.jobsrc` (mode 600) with the new `JOBS_TOKEN=...`
+4. **Smoke**: from each host run `jobctl start rotate-test; jobctl done rotate-test --exit-code 0` — appears + completes on dashboard
+5. **Rollback** if anything breaks: revert `.env` to old value + restart, revert each `~/.jobsrc`
+
+---
+
+## Disaster recovery
+
+If `/mnt/docker/jobsd/data/jobs.db` is wiped or corrupted, the service rebuilds an empty DB on next start (the `init_db()` function in `app/main.py` runs `CREATE TABLE IF NOT EXISTS`). Just restart:
+
+```bash
+ssh root@192.168.0.179 'rm -f /mnt/docker/jobsd/data/jobs.db
+cd /mnt/docker/jobsd && docker compose restart jobsd'
+```
+
+Historical jobs are lost; running jobs (those with active `jobctl track-file` watchers or that subsequently call `progress`) re-register on their next POST. Existing `~/.jobsrc` tokens stay valid.
+
+If the entire `/mnt/docker/jobsd/` dir is wiped (compose, app, data), restore from git: the source-of-truth for `app/main.py`, `Dockerfile`, `compose.yaml`, and `app/templates/*.html` lives at the runbook reference paths above. Rebuild from those + a fresh `.env` with a new token + run `docker compose up -d --build`.
+
+---
+
+## Querying history (SQLite)
+
+The DB is at `/mnt/docker/jobsd/data/jobs.db` on CT 128. WAL mode, safe to query while service is running.
+
+```sh
+# last 7 days of finished jobs
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+  \"SELECT name, host, status, duration FROM jobs
+    WHERE ended_at > strftime('%s','now','-7 days')
+    ORDER BY started_at DESC\""
+
+# slowest jobs ever (top 20)
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+  \"SELECT name, ROUND(duration/60,1) AS mins, status FROM jobs
+    WHERE duration IS NOT NULL ORDER BY duration DESC LIMIT 20\""
+
+# rate-over-time for a specific job (for plotting)
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+  \"SELECT ts, current FROM progress_events
+    WHERE job_id = 'overpass-indexing@komodo' ORDER BY ts\""
+
+# how many runs of each named job, success rate
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+  \"SELECT name, COUNT(*) AS runs,
+           SUM(status='succeeded') AS ok,
+           SUM(status='failed')    AS fail,
+           AVG(duration)           AS avg_sec
+    FROM jobs WHERE status<>'running'
+    GROUP BY name ORDER BY runs DESC\""
+```
+
+---
+
+## Extending the service
+
+To add a new endpoint or change behavior:
+1. Source on CT 128 at `/mnt/docker/jobsd/app/main.py` (FastAPI) and `/mnt/docker/jobsd/app/templates/*.html` (Jinja2 + htmx)
+2. Edit in place via SSH or scp from a working copy
+3. Rebuild + redeploy:
+   ```sh
+   ssh root@192.168.0.179 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
+   ```
+4. Container logs show import errors immediately if Python is broken: `docker logs jobsd --tail 30`
+
+The dependencies are in `Dockerfile` (`fastapi uvicorn[standard] jinja2 python-multipart`); to add packages, edit Dockerfile and rebuild.
+
+Existing extensions worth wiring later:
+- `/metrics` already emits Prometheus exposition; add a Prometheus scrape config + AlertManager rule for `jobsd_job_status==0` to get phone-pingable failure alerts
+- Per-job log tail UI panel (the `/jobs/{id}/tail` endpoint exists; just needs frontend wiring)
+- Webhook-out on done (POST to ntfy / Discord / etc on completion) — single function in `done()` handler
 
 ---
 
@@ -232,7 +342,14 @@ Job ID convention: `<slug-of-name>@<short-hostname>` (host-scoped). `jobctl id N
 
 **500 on `/_partial/jobs`** — likely a Jinja template error. `docker logs jobsd` shows the trace. Templates are server-rendered and cached; rebuild with `docker compose up -d --build`.
 
-**Job "stuck" running** — track-file watcher process died (e.g. shell closed). Manually `jobctl done NAME` to mark complete, or restart the watcher.
+**Job "stuck" running** — usually because the `jobctl track-file` watcher process died (shell closed before it auto-completed). Two fixes:
+- Manual close: `jobctl done NAME --exit-code 0` from any host (host-scoped IDs — use `jobctl id NAME` to confirm exact ID)
+- Find + kill orphan watcher: `ps -ef | grep "jobctl track-file NAME"; kill <pid>` then `jobctl done NAME`
+- For long jobs that outlive a shell: run watchers in `tmux new-session -d -s "watch-NAME" 'jobctl track-file NAME …'` so they survive disconnection
+
+**Watcher detached too early** — `track-file` exits when file size is flat for 5 polls. For jobs with long pauses (e.g., osmium fileinfo phase between steps), use longer interval: `--interval 120`.
+
+**Wrong size on directory tracking** — confirm that path is a directory; `jobctl track-file` uses `du -sb` for dirs vs `stat` for files. If you see flat 4096 bytes for a dir, the version of jobctl is pre-fix; redeploy from `/mnt/docker/jobsd/jobctl`.
 
 **`401` from POSTs** — `~/.jobsrc` token doesn't match `/mnt/docker/jobsd/.env`. Re-sync.
 

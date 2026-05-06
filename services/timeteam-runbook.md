@@ -118,6 +118,8 @@ Commas, apostrophes, quotes, colons, question marks, exclamation marks, ampersan
 
 ## Step 1 - Download New Content
 
+> **Track progress on jobs.home**: wrap any bulk download with `jobctl run yt-batch -- yt-dlp -a urls.txt …` (or pipe via `jobctl pipe-progress`). See `services/jobs-home.md`.
+
 ### YouTube
 
 ```bash
@@ -213,6 +215,8 @@ For future downloads, `--write-info-json` saves this automatically alongside the
 
 ## Step 2 - Classify and Assign to Target Folder
 
+> **Track progress on jobs.home**: bulk classify scripts wrap with `jobctl run tt-classify -- python3 classify.py` (or use `jobctl progress` inside the script for per-file granularity).
+
 For each newly-downloaded file:
 
 1. **Determine if it's main content or an extra**:
@@ -235,6 +239,8 @@ For each newly-downloaded file:
 ---
 
 ## Step 3 - Move & Rename
+
+> **Track progress on jobs.home**: bulk file moves wrap with `jobctl run tt-rename -- bash rename-batch.sh`; track size shifts with `jobctl track-file tt-rename-target /mnt/hometheater/TV\ Shows/Time\ Team\ Online --total 100G --interval 60 &`.
 
 Execute the move with `sudo mv` via the Proxmox host:
 

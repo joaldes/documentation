@@ -34,6 +34,8 @@ LAN-fast: queries return in ~20–50 ms vs ~300–800 ms for komoot.io public Ph
 
 ## Compose file
 
+> **Track progress on jobs.home**: initial 92 GB index extract takes ~1 hr. Wrap with `jobctl track-file photon-extract /mnt/docker/photon/data --total 100000000000 --interval 60 &`. Live at `http://jobs.home:8077`.
+
 `/mnt/docker/photon/compose.yaml`:
 
 ```yaml

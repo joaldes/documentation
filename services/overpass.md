@@ -160,6 +160,8 @@ ssh root@192.168.0.179 'cd /mnt/docker/overpass && docker compose down && rm -rf
 
 ## Initial bring-up (2026-05-04)
 
+> **Track progress on jobs.home**: PBF→bz2-XML preprocess + index build is multi-hour. Track index dir growth via `jobctl track-file overpass-index /mnt/docker/overpass/db/db --total 32212254720 --interval 60 &`. Live progress at `http://jobs.home:8077`.
+
 1. Compose + data colocated at `/mnt/docker/overpass/` (compose.yaml, db/, caddy/) — durable layout that survives CT 128 rebuilds. See `feedback_komodo_stacks.md` for the periphery `/mnt/docker` bind mount that makes this Komodo-manageable.
 2. Pulled images (`wiktorn/overpass-api:v0.7.62.9`, `caddy:2-alpine`).
 3. `docker compose up -d` — stack came up; Overpass began downloading the NA PBF (~17.6 GB) and indexing.

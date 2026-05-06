@@ -159,6 +159,10 @@ con.commit(); con.close()
 
 ---
 
+## Long-running ops
+
+For Time Team migration / bulk dig folder reorg / large CSV regenerate / mass NFO writeback, wrap with `jobctl run` so progress surfaces at `http://jobs.home:8077`. Future Photon-batch importer kicks (1000+ stops) should also wrap with `jobctl run tplan-import -- python3 import.py …`. See `services/jobs-home.md`.
+
 ## Backups
 
 - **Cron**: daily 3am at `/etc/cron.d/tplan-backup` → `sqlite3 .backup` to `/opt/tplan/data/backups/`. 14-day retention.

@@ -1,24 +1,59 @@
 {
-  "timestamp": "2026-05-06T01:00:01Z",
+  "timestamp": "2026-05-06T07:00:01Z",
   "host": {
     "name": "Shipyard",
     "ip": "192.168.0.151",
     "cpu_load": [
-      "3.15",
-      "3.55",
-      "4.26"
+      "5.49",
+      "3.98",
+      "3.96"
     ],
     "memory_total_gb": 62,
-    "memory_used_gb": 41,
-    "uptime_days": 93
+    "memory_used_gb": 36,
+    "uptime_days": 94
   },
   "storage": [
+    {
+      "id": "smb-pictures",
+      "type": "dir",
+      "total_gb": 10158,
+      "used_gb": 2340,
+      "percent_used": 23
+    },
+    {
+      "id": "container-backups",
+      "type": "dir",
+      "total_gb": 1006,
+      "used_gb": 809,
+      "percent_used": 80
+    },
+    {
+      "id": "littlestorage",
+      "type": "lvmthin",
+      "total_gb": 1830,
+      "used_gb": 134,
+      "percent_used": 7
+    },
     {
       "id": "local",
       "type": "dir",
       "total_gb": 93,
       "used_gb": 51,
       "percent_used": 54
+    },
+    {
+      "id": "smb-frigate",
+      "type": "dir",
+      "total_gb": 1006,
+      "used_gb": 591,
+      "percent_used": 58
+    },
+    {
+      "id": "docker-data",
+      "type": "dir",
+      "total_gb": 2014,
+      "used_gb": 248,
+      "percent_used": 12
     },
     {
       "id": "local-lvm",
@@ -28,18 +63,18 @@
       "percent_used": 80
     },
     {
-      "id": "docker-data",
+      "id": "smb-hometheater",
       "type": "dir",
-      "total_gb": 2014,
-      "used_gb": 240,
-      "percent_used": 11
+      "total_gb": 29679,
+      "used_gb": 16484,
+      "percent_used": 55
     },
     {
-      "id": "container-backups",
+      "id": "birdnet",
       "type": "dir",
-      "total_gb": 1006,
-      "used_gb": 809,
-      "percent_used": 80
+      "total_gb": 228,
+      "used_gb": 0,
+      "percent_used": 0
     },
     {
       "id": "smb-documents",
@@ -52,43 +87,8 @@
       "id": "backups",
       "type": "dir",
       "total_gb": 10158,
-      "used_gb": 5949,
+      "used_gb": 5945,
       "percent_used": 58
-    },
-    {
-      "id": "smb-pictures",
-      "type": "dir",
-      "total_gb": 10158,
-      "used_gb": 2340,
-      "percent_used": 23
-    },
-    {
-      "id": "smb-frigate",
-      "type": "dir",
-      "total_gb": 1006,
-      "used_gb": 591,
-      "percent_used": 58
-    },
-    {
-      "id": "littlestorage",
-      "type": "lvmthin",
-      "total_gb": 1830,
-      "used_gb": 134,
-      "percent_used": 7
-    },
-    {
-      "id": "birdnet",
-      "type": "dir",
-      "total_gb": 228,
-      "used_gb": 0,
-      "percent_used": 0
-    },
-    {
-      "id": "smb-hometheater",
-      "type": "dir",
-      "total_gb": 29679,
-      "used_gb": 16475,
-      "percent_used": 55
     }
   ],
   "networks": [
@@ -101,54 +101,24 @@
   ],
   "containers": [
     {
-      "ctid": 114,
-      "name": "uptimekuma",
+      "ctid": 120,
+      "name": "pulse",
       "status": "running",
-      "ip": "192.168.0.44",
+      "ip": "192.168.0.175",
       "cores": 1,
       "memory_mb": 1024,
-      "port": 3001,
-      "url": "http://192.168.0.44:3001"
+      "port": 7655,
+      "url": "http://192.168.0.175:7655"
     },
     {
-      "ctid": 107,
-      "name": "radarr",
+      "ctid": 130,
+      "name": "ollama",
       "status": "running",
-      "ip": "192.168.0.42",
-      "cores": 2,
-      "memory_mb": 2048,
-      "port": 7878,
-      "url": "http://192.168.0.42:7878"
-    },
-    {
-      "ctid": 113,
-      "name": "jellyseerr",
-      "status": "running",
-      "ip": "192.168.0.43",
-      "cores": 2,
-      "memory_mb": 2048,
-      "port": 5055,
-      "url": "http://192.168.0.43:5055"
-    },
-    {
-      "ctid": 128,
-      "name": "komodo",
-      "status": "running",
-      "ip": "192.168.0.179",
-      "cores": 8,
-      "memory_mb": 32768,
-      "port": 9120,
-      "url": "http://192.168.0.179:9120"
-    },
-    {
-      "ctid": 111,
-      "name": "urbackup",
-      "status": "running",
-      "ip": "192.168.0.209",
-      "cores": 2,
-      "memory_mb": 2048,
-      "port": 55414,
-      "url": "http://192.168.0.209:55414"
+      "ip": "192.168.0.130",
+      "cores": 5,
+      "memory_mb": 10240,
+      "port": null,
+      "url": null
     },
     {
       "ctid": 112,
@@ -171,64 +141,34 @@
       "url": "http://192.168.0.153:8091"
     },
     {
-      "ctid": 120,
-      "name": "pulse",
+      "ctid": 104,
+      "name": "samba",
       "status": "running",
-      "ip": "192.168.0.175",
-      "cores": 1,
-      "memory_mb": 1024,
-      "port": 7655,
-      "url": "http://192.168.0.175:7655"
-    },
-    {
-      "ctid": 105,
-      "name": "unmanic",
-      "status": "running",
-      "ip": "192.168.0.207",
-      "cores": 5,
-      "memory_mb": 32768,
-      "port": 8888,
-      "url": "http://192.168.0.207:8888"
-    },
-    {
-      "ctid": 130,
-      "name": "ollama",
-      "status": "running",
-      "ip": "192.168.0.130",
-      "cores": 5,
-      "memory_mb": 10240,
+      "ip": "192.168.0.176",
+      "cores": 2,
+      "memory_mb": 6144,
       "port": null,
       "url": null
     },
     {
-      "ctid": 124,
-      "name": "claudeai",
+      "ctid": 110,
+      "name": "sonarr",
       "status": "running",
-      "ip": "192.168.0.180",
-      "cores": 2,
-      "memory_mb": 12440,
-      "port": 3000,
-      "url": "http://192.168.0.180:3000"
-    },
-    {
-      "ctid": 121,
-      "name": "scanopy",
-      "status": "running",
-      "ip": "192.168.0.219",
+      "ip": "192.168.0.24",
       "cores": 2,
       "memory_mb": 2048,
-      "port": null,
-      "url": null
+      "port": 8989,
+      "url": "http://192.168.0.24:8989"
     },
     {
-      "ctid": 118,
-      "name": "homepage",
+      "ctid": 107,
+      "name": "radarr",
       "status": "running",
-      "ip": "192.168.0.70",
+      "ip": "192.168.0.42",
       "cores": 2,
-      "memory_mb": 1024,
-      "port": 3000,
-      "url": "http://192.168.0.70:3000"
+      "memory_mb": 2048,
+      "port": 7878,
+      "url": "http://192.168.0.42:7878"
     },
     {
       "ctid": 102,
@@ -241,34 +181,54 @@
       "url": "http://192.168.0.13:8096"
     },
     {
-      "ctid": 104,
-      "name": "samba",
+      "ctid": 124,
+      "name": "claudeai",
       "status": "running",
-      "ip": "192.168.0.176",
+      "ip": "192.168.0.180",
       "cores": 2,
-      "memory_mb": 6144,
-      "port": null,
-      "url": null
+      "memory_mb": 12440,
+      "port": 3000,
+      "url": "http://192.168.0.180:3000"
     },
     {
-      "ctid": 101,
-      "name": "adguard",
+      "ctid": 128,
+      "name": "komodo",
       "status": "running",
-      "ip": "192.168.0.11",
+      "ip": "192.168.0.179",
+      "cores": 8,
+      "memory_mb": 32768,
+      "port": 9120,
+      "url": "http://192.168.0.179:9120"
+    },
+    {
+      "ctid": 118,
+      "name": "homepage",
+      "status": "running",
+      "ip": "192.168.0.70",
+      "cores": 2,
+      "memory_mb": 1024,
+      "port": 3000,
+      "url": "http://192.168.0.70:3000"
+    },
+    {
+      "ctid": 114,
+      "name": "uptimekuma",
+      "status": "running",
+      "ip": "192.168.0.44",
       "cores": 1,
       "memory_mb": 1024,
-      "port": 80,
-      "url": "http://192.168.0.11:80"
+      "port": 3001,
+      "url": "http://192.168.0.44:3001"
     },
     {
-      "ctid": 110,
-      "name": "sonarr",
+      "ctid": 116,
+      "name": "tracearr",
       "status": "running",
-      "ip": "192.168.0.24",
+      "ip": "192.168.0.211",
       "cores": 2,
       "memory_mb": 2048,
-      "port": 8989,
-      "url": "http://192.168.0.24:8989"
+      "port": 3000,
+      "url": "http://192.168.0.211:3000"
     },
     {
       "ctid": 117,
@@ -291,24 +251,24 @@
       "url": "http://192.168.0.45:8384"
     },
     {
-      "ctid": 131,
-      "name": "gis-stack",
+      "ctid": 101,
+      "name": "adguard",
       "status": "running",
-      "ip": "192.168.0.229",
-      "cores": 4,
-      "memory_mb": 24576,
-      "port": null,
-      "url": null
+      "ip": "192.168.0.11",
+      "cores": 1,
+      "memory_mb": 1024,
+      "port": 80,
+      "url": "http://192.168.0.11:80"
     },
     {
-      "ctid": 116,
-      "name": "tracearr",
+      "ctid": 109,
+      "name": "homelable",
       "status": "running",
-      "ip": "192.168.0.211",
+      "ip": "192.168.0.218",
       "cores": 2,
-      "memory_mb": 2048,
-      "port": 3000,
-      "url": "http://192.168.0.211:3000"
+      "memory_mb": 1024,
+      "port": null,
+      "url": null
     },
     {
       "ctid": 115,
@@ -321,26 +281,66 @@
       "url": "http://192.168.0.48:6767"
     },
     {
-      "ctid": 109,
-      "name": "homelable",
+      "ctid": 113,
+      "name": "jellyseerr",
       "status": "running",
-      "ip": "192.168.0.218",
+      "ip": "192.168.0.43",
       "cores": 2,
-      "memory_mb": 1024,
+      "memory_mb": 2048,
+      "port": 5055,
+      "url": "http://192.168.0.43:5055"
+    },
+    {
+      "ctid": 121,
+      "name": "scanopy",
+      "status": "running",
+      "ip": "192.168.0.219",
+      "cores": 2,
+      "memory_mb": 2048,
       "port": null,
       "url": null
+    },
+    {
+      "ctid": 131,
+      "name": "gis-stack",
+      "status": "running",
+      "ip": "192.168.0.229",
+      "cores": 4,
+      "memory_mb": 24576,
+      "port": null,
+      "url": null
+    },
+    {
+      "ctid": 105,
+      "name": "unmanic",
+      "status": "running",
+      "ip": "192.168.0.207",
+      "cores": 5,
+      "memory_mb": 32768,
+      "port": 8888,
+      "url": "http://192.168.0.207:8888"
+    },
+    {
+      "ctid": 111,
+      "name": "urbackup",
+      "status": "running",
+      "ip": "192.168.0.209",
+      "cores": 2,
+      "memory_mb": 2048,
+      "port": 55414,
+      "url": "http://192.168.0.209:55414"
     }
   ],
   "vms": [
     {
-      "vmid": 119,
-      "name": "WindowsTiny10",
-      "status": "stopped"
-    },
-    {
       "vmid": 100,
       "name": "homeassistant",
       "status": "running"
+    },
+    {
+      "vmid": 119,
+      "name": "WindowsTiny10",
+      "status": "stopped"
     },
     {
       "vmid": 106,
@@ -590,7 +590,7 @@
         "name": "overpass",
         "state": "running",
         "containers": 2,
-        "containers_running": 2,
+        "containers_running": 1,
         "containers_healthy": 0,
         "ports": [
           12345
@@ -635,21 +635,6 @@
         ],
         "primary_port": 3030,
         "url": "http://192.168.0.179:3030"
-      },
-      {
-        "name": "photon",
-        "state": "running",
-        "containers": 1,
-        "containers_running": 1,
-        "containers_healthy": 1,
-        "ports": [
-          2322
-        ],
-        "container_names": [
-          "photon"
-        ],
-        "primary_port": 2322,
-        "url": "http://192.168.0.179:2322"
       },
       {
         "name": "prometheus",
@@ -1018,15 +1003,6 @@
       "ip": "192.168.0.179",
       "port": 3030,
       "url": "http://192.168.0.179:3030",
-      "status": "running"
-    },
-    {
-      "name": "photon",
-      "type": "docker",
-      "ctid": 128,
-      "ip": "192.168.0.179",
-      "port": 2322,
-      "url": "http://192.168.0.179:2322",
       "status": "running"
     },
     {

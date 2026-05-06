@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-05 04:00 UTC*
+*Last updated: 2026-05-06 01:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 5.91, 3.47, 3.28 | RAM: 36/62 GB | Uptime: 92 days
+**Shipyard** (192.168.0.151) | CPU: 3.15, 3.55, 4.26 | RAM: 41/62 GB | Uptime: 93 days
 
-**47 services** — 23 LXC containers, 24 Docker stacks, 3 VMs, 11 storage pools
+**48 services** — 23 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (47)
+## All Services (48)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -24,6 +24,7 @@
 | immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | running |
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | jellystat | docker | 192.168.0.179 | 3000 | http://192.168.0.179:3000 | running |
+| jobsd | docker | 192.168.0.179 | 8077 | http://192.168.0.179:8077 | running |
 | karakeep | docker | 192.168.0.179 | 8055 | http://192.168.0.179:8055 | running |
 | komodo | lxc | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | komodo | docker | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
@@ -83,7 +84,7 @@
 | 130 | ollama | 192.168.0.130 | - | - | running |
 | 131 | gis-stack | 192.168.0.229 | - | - | running |
 
-## Docker Stacks (24) — 192.168.0.179
+## Docker Stacks (25) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -94,6 +95,7 @@
 | grafana | 3001 | 1/1 | 1 | running | http://192.168.0.179:3001 |
 | immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
+| jobsd | 8077 | 1/1 | 0 | running | http://192.168.0.179:8077 |
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
 | komodo | 9120 | 7/7 | 2 | running | http://192.168.0.179:9120 |
 | lubelogger | 8071 | 1/1 | 0 | running | http://192.168.0.179:8071 |
@@ -121,14 +123,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 5929/10158 | 58% |
+| backups | dir | 5949/10158 | 58% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 807/1006 | 80% |
-| docker-data | dir | 238/2014 | 11% |
-| littlestorage | lvmthin | 133/1830 | 7% |
+| container-backups | dir | 809/1006 | 80% |
+| docker-data | dir | 240/2014 | 11% |
+| littlestorage | lvmthin | 134/1830 | 7% |
 | local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 281/348 | 80% |
-| smb-documents | dir | 31/921 | 3% |
+| smb-documents | dir | 34/921 | 3% |
 | smb-frigate | dir | 591/1006 | 58% |
 | smb-hometheater | dir | 16475/29679 | 55% |
 | smb-pictures | dir | 2340/10158 | 23% |

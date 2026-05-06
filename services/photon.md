@@ -1,7 +1,7 @@
 # Photon — Self-Hosted Geocoder
 
-**Last Updated**: 2026-05-04
-**Related Systems**: CT 128 (Komodo, 192.168.0.179), CT 124 (tPlan, consumes), CT 101 (AdGuard DNS)
+**Last Updated**: 2026-05-06
+**Related Systems**: LXC 131 (gis-stack, 192.168.0.229), CT 124 (tPlan, consumes), CT 101 (AdGuard DNS)
 
 ---
 
@@ -9,15 +9,18 @@
 
 | Item | Value |
 |------|-------|
-| **Host** | CT 128 (Komodo, 192.168.0.179) |
+| **Host** | LXC 131 (gis-stack, 192.168.0.229) — *migrated from CT 128 on 2026-05-06* |
 | **Port** | 2322 |
-| **DNS** | `photon.home → 192.168.0.179` (AdGuard rewrite) |
-| **Direct URL** | `http://192.168.0.179:2322` (use this in code; not all browsers resolve `.home`) |
+| **DNS** | `photon.home → 192.168.0.229` (AdGuard rewrite, enabled) |
+| **Recommended URL** | `http://photon.home:2322` (use in code; AdGuard handles resolution) |
 | **Container** | `photon` (Docker, image `rtuszik/photon-docker:latest`) |
-| **Compose** | `/mnt/docker/photon/compose.yaml` |
-| **Data dir** | `/mnt/docker/photon/data` (~92 GB extracted index) |
+| **Compose** | `/mnt/docker/photon/compose.yaml` (managed by Komodo Periphery on 131) |
+| **Data dir** | `/mnt/docker/photon/data` (~92 GB extracted index, shared bind-mount) |
 | **Index** | Komoot planet build (~57 GB compressed → ~92 GB extracted), monthly auto-refresh |
 | **Source mirror** | `https://r2.koalasec.org/public/photon-db-planet-1.0-latest.tar.bz2` |
+
+## Migration note (2026-05-06)
+Photon was relocated from CT 128 (Komodo apps host) to LXC 131 (gis-stack) without data movement: both LXCs bind-mount the same host `/mnt/docker`, so the cutover was just `docker stop` on 128 + `docker compose up -d` on 131. Six tPlan code references updated from `192.168.0.179:2322` → `photon.home:2322`. AdGuard rewrite for `photon.home` was re-enabled (was disabled) and pointed at 192.168.0.229.
 
 ---
 

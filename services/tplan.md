@@ -1,7 +1,12 @@
 # tPlan — Self-Hosted Road-Trip Planner
 
-**Last Updated**: 2026-05-04
-**Related Systems**: CT 124 (Claude AI / FastAPI host, 192.168.0.180), CT 104 (Samba, static-asset writes), CT 128 (Photon search, 192.168.0.179:2322), LXC 131 (Valhalla routing, gis.home:8002)
+**Last Updated**: 2026-05-06
+**Related Systems**: CT 124 (Claude AI / FastAPI host, 192.168.0.180), CT 104 (Samba, static-asset writes), LXC 131 (gis-stack: Photon search at `photon.home:2322`, Valhalla routing at `gis.home:8002`, Overpass POI overlay at `overpass.home:12345`)
+
+## Recent additions (2026-05-06)
+
+- **Overpass POI overlay** — `js/overpass.js` (~280 LOC IIFE module). Six-chip strip next to the search box (Food / Fuel / Lodging / Sights / Shopping / Other). At zoom ≥ 13, debounced bbox query against `overpass.home:12345/api/interpreter`, renders results as small color-coded teardrop pins (14×19 px, black outline, hover-scale 1.4×). Click pin → popup with name + Add to day picker / Add to ideas. localStorage cache by rounded-bbox tile, 24h TTL. RenderToken guards prevent stale fetches from over-painting fresh results. CSS in `css/map.css`.
+- **Photon migration** — backend moved from CT 128 to LXC 131. URL references in `js/search.js`, `js/edit-location.js`, `vendor/tplan/import.js` (live + staging) updated from `192.168.0.179:2322` → `photon.home:2322`.
 
 ---
 

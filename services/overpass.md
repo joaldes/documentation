@@ -1,7 +1,7 @@
-# Overpass-NA — Self-Hosted OSM Query API
+# Overpass-US-West — Self-Hosted OSM Query API
 
-**Last Updated**: 2026-05-04
-**Related Systems**: CT 128 (Komodo, 192.168.0.179), CT 124 (tPlan, future consumer), CT 101 (AdGuard DNS)
+**Last Updated**: 2026-05-06
+**Related Systems**: LXC 131 (gis-stack, 192.168.0.229), CT 124 (tPlan, live consumer), CT 101 (AdGuard DNS)
 
 ---
 
@@ -9,16 +9,18 @@
 
 | Item | Value |
 |------|-------|
-| **Host** | CT 128 (Komodo, 192.168.0.179) |
+| **Host** | LXC 131 (gis-stack, 192.168.0.229) |
 | **Port** | 12345 (Caddy CORS sidecar; overpass internal :80 only) |
-| **DNS** | `overpass.home → 192.168.0.179` (AdGuard rewrite) |
-| **Direct URL** | `http://192.168.0.179:12345` (use this in code; not all browsers resolve `.home`) |
+| **DNS** | `overpass.home → 192.168.0.229` (AdGuard rewrite, enabled) |
+| **Recommended URL** | `http://overpass.home:12345/api/interpreter` |
 | **Containers** | `overpass` (`wiktorn/overpass-api:v0.7.62.9`), `overpass-caddy` (`caddy:2-alpine`) |
 | **Compose** | `/mnt/docker/overpass/compose.yaml` |
-| **Data dir** | `/mnt/docker/overpass/db` (~50–60 GB after import) |
-| **Caddyfile** | `/mnt/docker/overpass/caddy/Caddyfile` (CORS reverse-proxy) |
-| **Source PBF** | `https://download.geofabrik.de/north-america-latest.osm.pbf` (~17.6 GB) |
-| **Diff URL** | `https://download.geofabrik.de/north-america-updates/` (hourly polled, daily-published) |
+| **Data dir** | `/mnt/docker/overpass/db/db` (~16 GB built index, US-West extract) |
+| **Cached preprocessed bz2** | `/mnt/docker/overpass/planet.osm.bz2.preprocessed` (5.7 GB; insurance for re-init) |
+| **Caddyfile** | `/mnt/docker/overpass/caddy/Caddyfile` (CORS reverse-proxy, single-value `Access-Control-Allow-Origin`) |
+| **Source PBF** | User-supplied US-West extract (3.17 GB), preserved at `/mnt/docker/overpass/db/planet.osm.pbf` |
+| **Diff URL** | `https://download.geofabrik.de/north-america/us-west-updates/` (hourly polled when network allows) |
+| **OVERPASS_MODE** | `init+update` (live diff updates enabled 2026-05-06; depends on Geofabrik connectivity) |
 
 ---
 
@@ -26,7 +28,14 @@
 
 Overpass-API queries the raw OSM database. Returns every tagged feature in a bounding box — restaurants, shops, gas stations, trailheads, viewpoints, hotels, monuments, etc. Far denser than rendered tile labels because the query touches the data directly, not a pre-styled tile.
 
-In tplan: drives the (planned) clickable POI overlay. User pans/zooms → tplan queries `/api/interpreter` for `amenity=*`, `shop=*`, `tourism=*`, `leisure=*` in the viewport → renders POI markers → click "Add as stop".
+**In tPlan**: drives the **clickable POI overlay (live as of 2026-05-06)** — see `tplan.md`. Module at `js/overpass.js` queries `/api/interpreter` for amenity/shop/tourism/leisure/historic/natural/man_made/highway features at zoom ≥ 13, renders teardrop pins by category (Food / Fuel / Lodging / Sights / Shopping / Other), click → "Add to day…" / "Add to ideas".
+
+## History notes
+
+- **2026-05-06 init success**: After multiple failed attempts with `pbzip2`-preprocessed bz2 (parallel-block boundary corrupted XML at way 1,174,008,446), single-threaded `bzip2` preprocess produced a clean stream and parse completed cleanly. `OVERPASS_PLANET_PREPROCESS` line in compose.yaml updated to use `bzip2` (no `pbzip2`).
+- **Migration to LXC 131**: Both CT 128 and LXC 131 bind-mount the same host `/mnt/docker`, so when CT 128's overpass init exited cleanly, LXC 131's pre-staged stack picked up the built DB seamlessly.
+- **Caddy CORS**: Wiktorn image's nginx adds no `Access-Control-Allow-Origin`; Caddy adds it, and uses `header_down -Access-Control-Allow-Origin` to strip any upstream duplicates. Reload-vs-restart matters — config changes require full container restart, not just `caddy reload`.
+- **Healthcheck**: switched from `wget /api/interpreter?data=node(1)` (CGI-spawn each minute, ~25% CPU spike) to plain `wget /` (nginx-only check, no spike).
 
 ---
 

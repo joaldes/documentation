@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-05-07
 **Container**: LXC 131 (`cartography`) — 192.168.0.229
-**Managed By**: Komodo Periphery on `https://192.168.0.229:8120`
+**Managed By**: Komodo (source of truth) — Server entry `cartography` (id `69ddced4735ae27880b55726`), four stacks: `map`, `gis`, `proxy`, `gis-tools`. Periphery on `https://192.168.0.229:8120`. Compose files at `/mnt/docker/<name>/compose.yaml` are read by Komodo on each deploy (`files_on_host: true`).
 
 ## Summary
 

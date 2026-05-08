@@ -129,3 +129,15 @@ The Tier-1 swaps (Protomaps → TileServer-GL, Valhalla → OSRM) were paused af
 - nginx switched to resolver+variable pattern for lazy-resolved upstreams (resilient to upstream restarts)
 
 Original Tier-1 swaps (TileServer-GL, OSRM) remain shelved. The reorg made the existing stack self-documenting; further component swaps are not currently a priority.
+
+## Update: 2026-05-08 — cartography brought into Komodo
+
+Following the namespace reorg, the four cartography compose stacks were registered with Komodo as source-of-truth (`files_on_host: true`, run_directory points at `/mnt/docker/<name>/`):
+
+- Server entry renamed: `gis-stack` → `cartography`
+- Stale `valhalla` and `overpass` Komodo stacks deleted (their `run_directory` paths were removed during the reorg cleanup)
+- New stacks created via API: `map` and `proxy` on the cartography server
+- Existing `gis` and `gis-tools` stacks refreshed (gis triggered a martin `:latest` re-pull → recreated `gis-martin`, no data impact)
+- `map-valhalla` healthcheck `start_period` lowered from `6h` → `60s` (was driving spurious "starting" on the dashboard; valhalla actually warm-restarts in seconds)
+
+All four stacks now visible in Komodo UI. Future compose changes should go through Komodo (UI/API), not direct `docker compose up -d` on cartography. Komodo writes to `/mnt/docker/<name>/compose.yaml` on each deploy and runs compose against it via Periphery.

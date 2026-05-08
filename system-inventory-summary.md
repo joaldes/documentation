@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-08 02:00 UTC*
+*Last updated: 2026-05-08 04:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 4.14, 4.46, 3.89 | RAM: 38/62 GB | Uptime: 95 days
+**Shipyard** (192.168.0.151) | CPU: 11.27, 10.62, 6.50 | RAM: 37/62 GB | Uptime: 95 days
 
-**47 services** — 23 LXC containers, 24 Docker stacks, 3 VMs, 11 storage pools
+**46 services** — 23 LXC containers, 23 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (47)
+## All Services (46)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -33,7 +33,6 @@
 | mealie | docker | 192.168.0.179 | 9925 | http://192.168.0.179:9925 | running |
 | nginxproxymanager | lxc | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
 | ollama | lxc | 192.168.0.130 | - | - | running |
-| overpass | docker | 192.168.0.179 | 12345 | http://192.168.0.179:12345 | running |
 | paperless | docker | 192.168.0.179 | 8010 | http://192.168.0.179:8010 | running |
 | paperless-ai | docker | 192.168.0.179 | 3030 | http://192.168.0.179:3030 | running |
 | prometheus | docker | 192.168.0.179 | 9092 | http://192.168.0.179:9092 | running |
@@ -83,7 +82,7 @@
 | 130 | ollama | 192.168.0.130 | - | - | running |
 | 131 | cartography | 192.168.0.229 | - | - | running |
 
-## Docker Stacks (24) — 192.168.0.179
+## Docker Stacks (23) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -100,7 +99,6 @@
 | lubelogger | 8071 | 1/1 | 0 | running | http://192.168.0.179:8071 |
 | manyfold | 3214 | 1/1 | 1 | running | http://192.168.0.179:3214 |
 | mealie | 9925 | 1/1 | 1 | running | http://192.168.0.179:9925 |
-| overpass | 12345 | 1/2 | 0 | running | http://192.168.0.179:12345 |
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
 | prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
@@ -121,11 +119,11 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6057/10158 | 59% |
+| backups | dir | 6047/10158 | 59% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 812/1006 | 80% |
 | docker-data | dir | 266/2014 | 13% |
-| littlestorage | lvmthin | 135/1830 | 7% |
+| littlestorage | lvmthin | 136/1830 | 7% |
 | local | dir | 51/93 | 55% |
 | local-lvm | lvmthin | 286/348 | 82% |
 | smb-documents | dir | 65/921 | 7% |

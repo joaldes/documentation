@@ -1,7 +1,7 @@
 # Overpass-US-West — Self-Hosted OSM Query API
 
 **Last Updated**: 2026-05-06
-**Related Systems**: LXC 131 (gis-stack, 192.168.0.229), CT 124 (tPlan, live consumer), CT 101 (AdGuard DNS)
+**Related Systems**: LXC 131 (cartography, 192.168.0.229), CT 124 (tPlan, live consumer), CT 101 (AdGuard DNS)
 
 ---
 
@@ -9,16 +9,16 @@
 
 | Item | Value |
 |------|-------|
-| **Host** | LXC 131 (gis-stack, 192.168.0.229) |
+| **Host** | LXC 131 (cartography, 192.168.0.229) |
 | **Port** | 12345 (Caddy CORS sidecar; overpass internal :80 only) |
 | **DNS** | `overpass.home → 192.168.0.229` (AdGuard rewrite, enabled) |
 | **Recommended URL** | `http://overpass.home:12345/api/interpreter` |
 | **Containers** | `overpass` (`wiktorn/overpass-api:v0.7.62.9`), `overpass-caddy` (`caddy:2-alpine`) |
-| **Compose** | `/mnt/docker/overpass/compose.yaml` |
-| **Data dir** | `/mnt/docker/overpass/db/db` (~16 GB built index, US-West extract) |
-| **Cached preprocessed bz2** | `/mnt/docker/overpass/planet.osm.bz2.preprocessed` (5.7 GB; insurance for re-init) |
-| **Caddyfile** | `/mnt/docker/overpass/caddy/Caddyfile` (CORS reverse-proxy, single-value `Access-Control-Allow-Origin`) |
-| **Source PBF** | User-supplied US-West extract (3.17 GB), preserved at `/mnt/docker/overpass/db/planet.osm.pbf` |
+| **Compose** | `/mnt/docker/map/overpass/compose.yaml` |
+| **Data dir** | `/mnt/docker/map/overpass/db/db` (~16 GB built index, US-West extract) |
+| **Cached preprocessed bz2** | `/mnt/docker/map/overpass/planet.osm.bz2.preprocessed` (5.7 GB; insurance for re-init) |
+| **Caddyfile** | `/mnt/docker/map/overpass/caddy/Caddyfile` (CORS reverse-proxy, single-value `Access-Control-Allow-Origin`) |
+| **Source PBF** | User-supplied US-West extract (3.17 GB), preserved at `/mnt/docker/map/overpass/db/planet.osm.pbf` |
 | **Diff URL** | `https://download.geofabrik.de/north-america/us-west-updates/` (hourly polled when network allows) |
 | **OVERPASS_MODE** | `init+update` (live diff updates enabled 2026-05-06; depends on Geofabrik connectivity) |
 
@@ -41,7 +41,7 @@ Overpass-API queries the raw OSM database. Returns every tagged feature in a bou
 
 ## Compose file
 
-`/mnt/docker/overpass/compose.yaml`:
+`/mnt/docker/map/overpass/compose.yaml`:
 
 ```yaml
 name: overpass
@@ -54,7 +54,7 @@ services:
     expose:
       - "80"
     volumes:
-      - /mnt/docker/overpass/db:/db
+      - /mnt/docker/map/overpass/db:/db
     environment:
       TZ: America/Phoenix
       OVERPASS_MODE: init
@@ -86,7 +86,7 @@ services:
     depends_on:
       - overpass
     volumes:
-      - /mnt/docker/overpass/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /mnt/docker/map/overpass/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
     networks:
       - overpass-net
 
@@ -147,31 +147,31 @@ curl -i -X OPTIONS -H "Origin: http://example.com" http://192.168.0.179:12345/ap
 
 **Container status:**
 ```bash
-ssh root@192.168.0.179 'docker ps --filter name=overpass --format "{{.Names}} {{.Status}}"'
+ssh root@192.168.0.229 'docker ps --filter name=overpass --format "{{.Names}} {{.Status}}"'
 ```
 
 **Live logs (import progress):**
 ```bash
-ssh root@192.168.0.179 'docker logs -f overpass'
+ssh root@192.168.0.229 'docker logs -f overpass'
 ```
 
 **Restart:**
 ```bash
-ssh root@192.168.0.179 'cd /mnt/docker/overpass && docker compose restart'
+ssh root@192.168.0.229 'cd /mnt/docker/overpass && docker compose restart'
 ```
 
 **Force re-index from scratch (rare — destroys ~50 GB of indexed data):**
 ```bash
-ssh root@192.168.0.179 'cd /mnt/docker/overpass && docker compose down && rm -rf /mnt/docker/overpass/db/* && docker compose up -d'
+ssh root@192.168.0.229 'cd /mnt/docker/overpass && docker compose down && rm -rf /mnt/docker/map/overpass/db/* && docker compose up -d'
 ```
 
 ---
 
 ## Initial bring-up (2026-05-04)
 
-> **Track progress on jobs.home**: PBF→bz2-XML preprocess + index build is multi-hour. Track index dir growth via `jobctl track-file overpass-index /mnt/docker/overpass/db/db --total 32212254720 --interval 60 &`. Live progress at `http://jobs.home:8077`.
+> **Track progress on jobs.home**: PBF→bz2-XML preprocess + index build is multi-hour. Track index dir growth via `jobctl track-file overpass-index /mnt/docker/map/overpass/db/db --total 32212254720 --interval 60 &`. Live progress at `http://jobs.home:8077`.
 
-1. Compose + data colocated at `/mnt/docker/overpass/` (compose.yaml, db/, caddy/) — durable layout that survives CT 128 rebuilds. See `feedback_komodo_stacks.md` for the periphery `/mnt/docker` bind mount that makes this Komodo-manageable.
+1. Compose + data colocated at `/mnt/docker/map/overpass/` (compose.yaml, db/, caddy/) — durable layout that survives CT 128 rebuilds. See `feedback_komodo_stacks.md` for the periphery `/mnt/docker` bind mount that makes this Komodo-manageable.
 2. Pulled images (`wiktorn/overpass-api:v0.7.62.9`, `caddy:2-alpine`).
 3. `docker compose up -d` — stack came up; Overpass began downloading the NA PBF (~17.6 GB) and indexing.
 4. Registered in Komodo via `CreateStack` API on Local server (`server_id 696a12253d02f3852224737f`, files_on_host=true, run_directory=`/mnt/docker/overpass`, auto_pull=false).

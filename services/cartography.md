@@ -1,7 +1,7 @@
 # GIS Stack
 
 **Last Updated**: 2026-04-14
-**Container**: LXC 131 (gis-stack) — 192.168.0.229
+**Container**: LXC 131 (cartography) — 192.168.0.229
 **Managed By**: Komodo (192.168.0.179:9120)
 
 ## Summary
@@ -171,7 +171,7 @@ ssh claude@192.168.0.151 'sudo pct exec 131 -- docker compose -f /opt/gis/docker
 ```bash
 ssh claude@192.168.0.151 'sudo pct exec 131 -- docker logs gis-martin'
 ssh claude@192.168.0.151 'sudo pct exec 131 -- docker logs gis-postgis'
-ssh claude@192.168.0.151 'sudo pct exec 131 -- docker logs gis-nginx'
+ssh claude@192.168.0.151 'sudo pct exec 131 -- docker logs proxy-nginx'
 ```
 
 ### Run PDAL pipeline

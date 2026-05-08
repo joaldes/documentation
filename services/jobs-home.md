@@ -133,7 +133,7 @@ jobctl run nightly-rsync -- rsync -av /src /dst
 
 ```sh
 # Started Overpass index manually 30 min ago, want to track it now
-jobctl track-file overpass-indexing /mnt/docker/overpass/db/db --total 32G --interval 60 &
+jobctl track-file overpass-indexing /mnt/docker/map/overpass/db/db --total 32G --interval 60 &
 ```
 
 ---
@@ -188,17 +188,17 @@ JOBS_TOKEN=<32-byte hex>
 
 ### Restart
 ```bash
-ssh root@192.168.0.179 'cd /mnt/docker/jobsd && docker compose restart jobsd'
+ssh root@192.168.0.229 'cd /mnt/docker/jobsd && docker compose restart jobsd'
 ```
 
 ### Rebuild after code change
 ```bash
-ssh root@192.168.0.179 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
+ssh root@192.168.0.229 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
 ```
 
 ### View live logs
 ```bash
-ssh root@192.168.0.179 'docker logs -f jobsd'
+ssh root@192.168.0.229 'docker logs -f jobsd'
 ```
 
 ### Add a new host
@@ -221,7 +221,7 @@ Tokens are 32-byte hex (256-bit). Distribute via secure channel only.
 If `/mnt/docker/jobsd/data/jobs.db` is wiped or corrupted, the service rebuilds an empty DB on next start (the `init_db()` function in `app/main.py` runs `CREATE TABLE IF NOT EXISTS`). Just restart:
 
 ```bash
-ssh root@192.168.0.179 'rm -f /mnt/docker/jobsd/data/jobs.db
+ssh root@192.168.0.229 'rm -f /mnt/docker/jobsd/data/jobs.db
 cd /mnt/docker/jobsd && docker compose restart jobsd'
 ```
 
@@ -237,23 +237,23 @@ The DB is at `/mnt/docker/jobsd/data/jobs.db` on CT 128. WAL mode, safe to query
 
 ```sh
 # last 7 days of finished jobs
-ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
   \"SELECT name, host, status, duration FROM jobs
     WHERE ended_at > strftime('%s','now','-7 days')
     ORDER BY started_at DESC\""
 
 # slowest jobs ever (top 20)
-ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
   \"SELECT name, ROUND(duration/60,1) AS mins, status FROM jobs
     WHERE duration IS NOT NULL ORDER BY duration DESC LIMIT 20\""
 
 # rate-over-time for a specific job (for plotting)
-ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
   \"SELECT ts, current FROM progress_events
     WHERE job_id = 'overpass-indexing@komodo' ORDER BY ts\""
 
 # how many runs of each named job, success rate
-ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
   \"SELECT name, COUNT(*) AS runs,
            SUM(status='succeeded') AS ok,
            SUM(status='failed')    AS fail,
@@ -271,7 +271,7 @@ To add a new endpoint or change behavior:
 2. Edit in place via SSH or scp from a working copy
 3. Rebuild + redeploy:
    ```sh
-   ssh root@192.168.0.179 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
+   ssh root@192.168.0.229 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
    ```
 4. Container logs show import errors immediately if Python is broken: `docker logs jobsd --tail 30`
 

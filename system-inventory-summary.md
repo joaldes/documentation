@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-08 18:00 UTC*
+*Last updated: 2026-05-09 05:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.65, 2.06, 2.18 | RAM: 37/62 GB | Uptime: 96 days
+**Shipyard** (192.168.0.151) | CPU: 1.71, 1.79, 2.47 | RAM: 38/62 GB | Uptime: 96 days
 
 **47 services** — 23 LXC containers, 24 Docker stacks, 3 VMs, 11 storage pools
 
@@ -47,7 +47,7 @@
 | sonarr | lxc | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
 | syncthing | lxc | 192.168.0.45 | 8384 | http://192.168.0.45:8384 | running |
 | tandoor | docker | 192.168.0.179 | 8090 | http://192.168.0.179:8090 | running |
-| tplan | docker | 192.168.0.179 | 8082 | http://192.168.0.179:8082 | running |
+| tplan | docker | 192.168.0.179 | 8084 | http://192.168.0.179:8084 | running |
 | tracearr | lxc | 192.168.0.211 | 3000 | http://192.168.0.211:3000 | running |
 | trailhead | docker | 192.168.0.179 | 8076 | http://192.168.0.179:8076 | running |
 | unmanic | lxc | 192.168.0.207 | 8888 | http://192.168.0.207:8888 | running |
@@ -108,7 +108,7 @@
 | scanopy-daemon | - | 1/1 | 1 | running | - |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
-| tplan | 8082 | 2/2 | 0 | running | http://192.168.0.179:8082 |
+| tplan | 8084 | 3/3 | 0 | running | http://192.168.0.179:8084 |
 | trailhead | 8076 | 2/2 | 1 | running | http://192.168.0.179:8076 |
 
 ## VMs (3)
@@ -121,14 +121,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6060/10158 | 59% |
+| backups | dir | 6102/10158 | 60% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 819/1006 | 81% |
-| docker-data | dir | 267/2014 | 13% |
+| docker-data | dir | 268/2014 | 13% |
 | littlestorage | lvmthin | 138/1830 | 7% |
 | local | dir | 51/93 | 55% |
 | local-lvm | lvmthin | 286/348 | 82% |
 | smb-documents | dir | 65/921 | 7% |
-| smb-frigate | dir | 592/1006 | 58% |
-| smb-hometheater | dir | 16415/29679 | 55% |
+| smb-frigate | dir | 591/1006 | 58% |
+| smb-hometheater | dir | 16416/29679 | 55% |
 | smb-pictures | dir | 2340/10158 | 23% |

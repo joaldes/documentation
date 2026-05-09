@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-09 05:00 UTC*
+*Last updated: 2026-05-09 21:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.71, 1.79, 2.47 | RAM: 38/62 GB | Uptime: 96 days
+**Shipyard** (192.168.0.151) | CPU: 1.91, 2.09, 2.06 | RAM: 39/62 GB | Uptime: 97 days
 
 **47 services** — 23 LXC containers, 24 Docker stacks, 3 VMs, 11 storage pools
 
@@ -108,7 +108,7 @@
 | scanopy-daemon | - | 1/1 | 1 | running | - |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
-| tplan | 8084 | 3/3 | 0 | running | http://192.168.0.179:8084 |
+| tplan | 8084 | 2/2 | 0 | running | http://192.168.0.179:8084 |
 | trailhead | 8076 | 2/2 | 1 | running | http://192.168.0.179:8076 |
 
 ## VMs (3)
@@ -121,12 +121,12 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6102/10158 | 60% |
+| backups | dir | 6114/10158 | 60% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 819/1006 | 81% |
+| container-backups | dir | 821/1006 | 81% |
 | docker-data | dir | 268/2014 | 13% |
-| littlestorage | lvmthin | 138/1830 | 7% |
-| local | dir | 51/93 | 55% |
+| littlestorage | lvmthin | 139/1830 | 7% |
+| local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 286/348 | 82% |
 | smb-documents | dir | 65/921 | 7% |
 | smb-frigate | dir | 591/1006 | 58% |

@@ -1,6 +1,6 @@
 # jobs.home — Ambient Job Progress Visibility
 
-**Last Updated**: 2026-05-05
+**Last Updated**: 2026-05-13
 **Related Systems**: CT 128 (Komodo, 192.168.0.179), CT 124 (Claude AI), CT 102 (Emby), CT 101 (AdGuard DNS)
 
 ---
@@ -103,14 +103,24 @@ jobctl progress NAME CURRENT [--msg "..."]
 jobctl done NAME [--exit-code N]
 
 # automatic
-jobctl track-file NAME PATH [--total N] [--interval 30]
-  # foreground polling loop, stops when file size flat for 5 polls
+jobctl track-file NAME PATH [--total N] [--interval 30] [--auto-done]
+  # foreground polling loop; runs until killed (or until file size flat for 5
+  # polls iff --auto-done is given — OFF by default since 2026-05-13 to prevent
+  # false-success on bursty workloads like tar/bzip2/db-compaction)
 
 jobctl pipe-progress NAME [--total N] [--re REGEX]
   # consume stdin, parse out a number per line as current
 
 jobctl run NAME -- <cmd...>
-  # wraps a command: start, exec, capture exit, done
+  # wraps a command: start, exec, capture exit, done.
+  # Since 2026-05-13: non-blocking start (jobsd outages never block the work),
+  # 30s background heartbeat (dashboard stays alive even without progress posts),
+  # SIGINT/SIGTERM trap (Ctrl-C posts done with exit_code=130 instead of leaving
+  # a zombie "running" row), and auto-suffix on id-collision with active jobs.
+
+jobctl ls [--running]
+  # list jobs known to jobsd (added 2026-05-13). Use --running to filter to
+  # running+stalled. Cheap self-audit for "did I forget to wrap something?"
 ```
 
 ### Examples
@@ -159,6 +169,11 @@ services:
     environment:
       JOBS_DB: /data/jobs.db
       JOBS_TOKEN: ${JOBS_TOKEN:?JOBS_TOKEN must be set in .env}
+      # Hardening (2026-05-13)
+      JOBS_STALL_THRESHOLD_SEC: "600"   # mark running→stalled after 10min quiet
+      JOBS_SWEEP_INTERVAL_SEC: "60"     # how often the async sweeper runs
+      JOBS_PRUNE_DAYS: "30"             # delete terminal rows + events older than this
+      JOBS_BUSY_TIMEOUT_MS: "5000"      # sqlite busy_timeout for concurrent writers
       TZ: America/Phoenix
     deploy:
       resources:
@@ -342,10 +357,15 @@ Job ID convention: `<slug-of-name>@<short-hostname>` (host-scoped). `jobctl id N
 
 **500 on `/_partial/jobs`** — likely a Jinja template error. `docker logs jobsd` shows the trace. Templates are server-rendered and cached; rebuild with `docker compose up -d --build`.
 
-**Job "stuck" running** — usually because the `jobctl track-file` watcher process died (shell closed before it auto-completed). Two fixes:
+**Job "stuck" running** — since 2026-05-13 the server-side sweeper auto-marks any `running` job with `updated_at > JOBS_STALL_THRESHOLD_SEC` (default 10min) as `stalled`. A genuinely-orphaned watcher will surface in amber on its own within a minute. Manual override remains available:
 - Manual close: `jobctl done NAME --exit-code 0` from any host (host-scoped IDs — use `jobctl id NAME` to confirm exact ID)
 - Find + kill orphan watcher: `ps -ef | grep "jobctl track-file NAME"; kill <pid>` then `jobctl done NAME`
 - For long jobs that outlive a shell: run watchers in `tmux new-session -d -s "watch-NAME" 'jobctl track-file NAME …'` so they survive disconnection
+- `jobctl ls --running` lists every running/stalled row across hosts — quick self-audit for orphans
+
+**Ctrl-C left a stuck row (pre-2026-05-13 behavior)** — fixed: `jobctl run` now traps SIGINT/SIGTERM and posts `done --exit-code 130` (INT) or `143` (TERM) before exiting. If you see this on an old jobctl, run `jobctl done NAME --exit-code 130`.
+
+**Heartbeat noise in `progress_events`** — `jobctl run`'s 30s heartbeat sends `{}` (no `current` field), so it bumps `updated_at` only and does not append a row to `progress_events`. Rate/ETA math is unaffected.
 
 **Watcher detached too early** — `track-file` exits when file size is flat for 5 polls. For jobs with long pauses (e.g., osmium fileinfo phase between steps), use longer interval: `--interval 120`.
 

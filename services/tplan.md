@@ -1,7 +1,11 @@
 # tPlan — Self-Hosted Road-Trip Planner
 
-**Last Updated**: 2026-05-06
-**Related Systems**: CT 124 (Claude AI / FastAPI host, 192.168.0.180), CT 104 (Samba, static-asset writes), LXC 131 (cartography: Photon search at `photon.home:2322`, Valhalla routing at `gis.home:8002`, Overpass POI overlay at `overpass.home:12345`)
+**Last Updated**: 2026-05-08
+**Related Systems**: CT 128 (Komodo / Docker host, 192.168.0.179), CT 104 (Samba, exports `[docker]` share for static-asset edits), LXC 131 (cartography: Photon search at `photon.home:2322`, Valhalla routing at `gis.home:8002`, Overpass POI overlay at `overpass.home:12345`)
+
+## Migration to Docker (2026-05-08)
+
+Moved from native systemd on CT 124 (`/opt/tplan/`) to Dockerized stack on Komodo CT 128 (`/mnt/docker/tplan/`). Rationale: fits homelab convention (data in `/mnt/docker/<name>/`, compose in `/etc/komodo/stacks/<name>/`), unified backup story, Komodo manages restart/redeploy.
 
 ## Recent additions (2026-05-06)
 
@@ -14,24 +18,29 @@
 
 | Item | Live | Staging |
 |------|------|---------|
-| **URL** | http://192.168.0.180:8080/ | http://192.168.0.180:8081/ (also `tplan-staging.home:8081`) |
-| **Code dir** | `/opt/tplan/` | `/opt/tplan-staging/` |
-| **Static dir** | `/mnt/documents/personal/alec/claudeai/tplan/` | `/mnt/documents/personal/alec/claudeai/tplan-staging/` |
-| **SQLite DB** | `/opt/tplan/data/trips.db` | `/opt/tplan-staging/data/trips.db` (frozen snapshot) |
-| **systemd unit** | `tplan.service` | `tplan-staging.service` |
-| **No-cache headers** | not set (use `?v=...` cache-buster) | yes (middleware in `app.py`) |
-| **Backups** | `/opt/tplan/data/backups/` daily 3am, 14d retention | none |
+| **URL** | http://tplan.home:8084/ | http://tplan-staging.home:8085/ |
+| **Direct IP** | http://192.168.0.179:8084/ | http://192.168.0.179:8085/ |
+| **Container** | `tplan-live` | `tplan-staging` |
+| **Code dir** (shared) | `/mnt/docker/tplan/code/` (app.py, smart_search.py, requirements.txt, Dockerfile) — bind-mounted ro |
+| **Static dir** | `/mnt/docker/tplan/static-live/` | `/mnt/docker/tplan/static-staging/` |
+| **SQLite DB** | `/mnt/docker/tplan/data/trips.db` | `/mnt/docker/tplan/data-staging/trips.db` (frozen snapshot) |
+| **Compose** | `/etc/komodo/stacks/tplan/compose.yaml` (single stack, both services) |
+| **No-cache headers** | yes (middleware in `app.py`) | yes |
+| **Backups** | `/mnt/docker/tplan/backups/` daily 3am via `/etc/cron.d/tplan-backup` on CT 128, 14d retention. Both DBs covered. |
+| **Image rebuild** | `cd /etc/komodo/stacks/tplan && docker compose up -d --build` (after `requirements.txt` changes) |
 
 ---
 
 ## Architecture
 
 ```
-Browser
+Browser → tplan.home:8084 (or :8085 staging)
   ↓
-FastAPI (uvicorn, CT 124, port 8080)
+Docker container (tplan-live | tplan-staging on CT 128)
+  ↓
+FastAPI (uvicorn, container port 8080)
   ├── /api/trips* (CRUD)
-  └── / (StaticFiles → /mnt/documents/.../tplan/)
+  └── / (StaticFiles → /static = bind-mount of /mnt/docker/tplan/static-{live,staging}/)
         ├── index.html       (trip list)
         ├── mockup-dev.html  (the planner SPA)
         ├── css/             (8 modular files)
@@ -100,41 +109,42 @@ After the split, ~30 inline `style="..."` attributes remain. All are intentional
 
 ### Static file edits (HTML, JS, CSS)
 
-The Samba share `/mnt/documents/personal/alec/claudeai/tplan/` is owned by CT 104 (`claudeai:nogroup`). CT 124's uvicorn runs as root which maps to `nobody` (LXC user namespace) and falls into "other" perms. Direct writes from other containers create files that uvicorn can't read.
-
-**Always edit via CT 104**:
+Static files live in `/mnt/docker/tplan/static-{live,staging}/` on CT 128 — exposed via the Samba `[docker]` share. Edit via `\\samba.home\docker\tplan\static-live\` (or `static-staging`). The container bind-mounts these read-only; edits show up on the next request, no restart needed.
 
 ```bash
-# Single-file edit:
-cp /mnt/documents/personal/alec/claudeai/tplan/mockup-dev.html /tmp/
-# ... edit /tmp/mockup-dev.html ...
-scp -q /tmp/mockup-dev.html claude@192.168.0.151:/tmp/
-ssh claude@192.168.0.151 'sudo pct push 104 /tmp/mockup-dev.html /mnt/documents/personal/alec/claudeai/tplan/mockup-dev.html'
+# From CT 124 (where Claude runs), accessible via SSHFS at /mnt/komodo/docker/tplan/static-live/:
+# (read-only via that mount; write via samba or via ssh root@192.168.0.179)
 
-# Direct in-place edit via Python on CT 104:
-ssh claude@192.168.0.151 'sudo pct exec 104 -- python3 - << "PYEOF"
-... open/replace/write ...
-PYEOF'
-
-# After creating new files in css/ (or any subdir), chmod traversable:
-ssh claude@192.168.0.151 'sudo pct exec 104 -- bash -c "chmod 2777 /mnt/documents/personal/alec/claudeai/tplan/css && chmod 666 /mnt/documents/personal/alec/claudeai/tplan/css/*.css"'
+# Direct in-place edit via Python on CT 128:
+ssh claude@192.168.0.151 'sudo pct exec 128 -- python3 -c "
+src=open(\"/mnt/docker/tplan/static-live/index.html\").read()
+src=src.replace(...)
+open(\"/mnt/docker/tplan/static-live/index.html\",\"w\").write(src)
+"'
 ```
 
 ### Backend (`app.py`) edits
 
 ```bash
-# Edit + restart:
-ssh claude@192.168.0.151 'sudo pct exec 124 -- python3 -c "
-src=open(\"/opt/tplan/app.py\").read()
+# Edit + restart container (uvicorn doesn't auto-reload on bind-mount changes):
+ssh claude@192.168.0.151 'sudo pct exec 128 -- python3 -c "
+src=open(\"/mnt/docker/tplan/code/app.py\").read()
 src=src.replace(...)
-open(\"/opt/tplan/app.py\",\"w\").write(src)
+open(\"/mnt/docker/tplan/code/app.py\",\"w\").write(src)
 "'
-ssh claude@192.168.0.151 'sudo pct exec 124 -- systemctl restart tplan'
+ssh claude@192.168.0.151 'sudo pct exec 128 -- docker compose -f /etc/komodo/stacks/tplan/compose.yaml restart tplan-live'
+```
+
+### Adding Python deps
+
+Edit `/mnt/docker/tplan/code/requirements.txt`, then rebuild + redeploy:
+```bash
+ssh claude@192.168.0.151 'sudo pct exec 128 -- bash -c "cd /etc/komodo/stacks/tplan && docker compose up -d --build"'
 ```
 
 ### Cache-busting
 
-Live currently relies on the `?v=YYYYMMDDx` query string on each `<link href="css/...?v=...">` tag. Bump the version when CSS changes. Alternative: copy the `no_cache_dev_assets` middleware from staging's `app.py` (~10 lines, sets `Cache-Control: no-cache` on `/css/*` + `*.html`).
+`no_cache_dev_assets` middleware in `app.py` sets `Cache-Control: no-cache` on `/css/*`, `/js/*`, `*.html`, `/`. The `?v=YYYYMMDDx` query strings on `<link>` tags are belt-and-suspenders against any future proxy that ignores `Cache-Control`.
 
 ---
 

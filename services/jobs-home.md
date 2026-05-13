@@ -112,11 +112,24 @@ jobctl pipe-progress NAME [--total N] [--re REGEX]
   # consume stdin, parse out a number per line as current
 
 jobctl run NAME -- <cmd...>
-  # wraps a command: start, exec, capture exit, done.
-  # Since 2026-05-13: non-blocking start (jobsd outages never block the work),
-  # 30s background heartbeat (dashboard stays alive even without progress posts),
-  # SIGINT/SIGTERM trap (Ctrl-C posts done with exit_code=130 instead of leaving
-  # a zombie "running" row), and auto-suffix on id-collision with active jobs.
+  # The default wrapper. Start → exec → capture exit → done.
+  #
+  # Since 2026-05-13:
+  #  - Non-blocking start (jobsd outages never block the work).
+  #  - SIGINT/SIGTERM trap → done(130)/done(143). No more zombies on Ctrl-C.
+  #  - Auto-suffix id on collision with an active run of the same name.
+  #
+  # Auto-tracking (added later 2026-05-13):
+  #  - Sniffs the cmdline for known output-file flags: wget -O, curl -o,
+  #    aria2c -o (+ optional -d), --output, --output-document.
+  #  - If found: polls that file's size every 3s and reports it as progress.
+  #  - If a URL is present and --total wasn't given, HEADs the URL for
+  #    Content-Length and uses that as the total (so the dashboard shows
+  #    a real bar with %, MB/s rate, and ETA).
+  #  - If nothing detectable: falls back to a 30s heartbeat so the row
+  #    stays alive but shows no bar.
+  # Result: `jobctl run dl -- curl -o foo.iso http://...` Just Works —
+  # one command, progress bar fills in automatically.
 
 jobctl ls [--running]
   # list jobs known to jobsd (added 2026-05-13). Use --running to filter to

@@ -12,7 +12,7 @@ Three decoupled lifetimes:
 
 1. **tmux server** (`-L claude` socket, owned by `claudeai`) — holds the session and the `claude` process. Started once at boot by `claude-tmux.service`. Survives everything except container reboot or explicit `kill-server`.
 2. **ttyd** (`127.0.0.1:7681`) — thin attach-client. `Restart=on-failure` is safe because it never spawns claude, only attaches to the existing tmux. Multiple browsers can attach simultaneously (multi-writer).
-3. **Caddy** (`:443`) — terminates TLS with its local internal CA, reverse-proxies `claude.home` → ttyd. LAN-IP allowlist (RFC1918) as belt-and-suspenders. No auth (LAN-only, trusted).
+3. **Caddy** (`:443`) — terminates TLS with its local internal CA, reverse-proxies both `claude.home` and `192.168.0.180` (IP-bound site block, so it works before/without DNS) → ttyd. LAN-IP allowlist (RFC1918) as belt-and-suspenders. No auth (LAN-only, trusted). Use `systemctl restart caddy` (not reload) — `admin off` disables the reload endpoint.
 
 ```
 Browser (LAN) → https://claude.home → Caddy :443 → ttyd 127.0.0.1:7681 → tmux -L claude → claude
@@ -25,7 +25,7 @@ Browser (LAN) → https://claude.home → Caddy :443 → ttyd 127.0.0.1:7681 →
 | `/etc/systemd/system/claude-tmux.service` | Oneshot, creates tmux session at boot |
 | `/etc/systemd/system/claude-ttyd.service` | Runs ttyd, requires claude-tmux |
 | `/etc/caddy/Caddyfile` | TLS + reverse proxy |
-| `/home/claudeai/.tmux.conf` | Mouse, scrollback, status bar (clients counter) |
+| `/home/claudeai/.tmux.conf` | Scrollback, status bar (clients counter). **Mouse mode OFF** — interferes with browser typing/selection. |
 | `/etc/systemd/system/ttyd.service.bak` | Backup of legacy unit (port 3000) |
 
 ## Operations
@@ -111,3 +111,5 @@ sudo systemctl disable --now claude-ttyd claude-tmux caddy
 **Browser shows blank black screen**: ttyd up but tmux session gone. Check `claude-tmux.service`; restart will recreate.
 
 **Want a fresh claude conversation**: inside the session, exit claude (`/exit`), then run `claude` (no `--continue`). Window stays alive; agent state resets.
+
+**Can't type / can't highlight to copy**: tmux mouse mode was on. With `set -g mouse on`, scrolling drops you into copy-mode (intercepts keystrokes) and drag-select goes to tmux instead of the browser. Mouse mode is now **off** — keep it that way for shared-console use.

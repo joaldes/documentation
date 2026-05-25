@@ -1,0 +1,101 @@
+# ============================================================================
+# PHOTOGRAMMETRY - REST COMMANDS
+# ============================================================================
+# Version: 4.3.1
+# Updated: 2026-05-14 - Backend async-capture-2.3: pipeline completion rates (lockstep)
+# Part 2 of 5: API calls to backend photogrammetry service
+#
+# This file defines all REST API calls to the backend (192.168.0.176:5000):
+#   - Session control (start, pause, resume, stop, reset)
+#   - Turntable control (rotate, stop)
+#   - ADB device management (disconnect, select)
+#
+# All threading control endpoints use dynamic session_id from sensor attribute
+# ============================================================================
+
+rest_command:
+  # --- Session Control Commands (Threading System) ---
+
+  # Start new photogrammetry session (spawns background thread)
+  photogrammetry_start:
+    url: "http://192.168.0.176:5000/api/session/start"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {
+        "object_name": "{{ states('input_text.photogrammetry_object_name') }}",
+        "total_positions": {{ states('sensor.photogrammetry_calculated_positions') | int }},
+        "angular_distance": {{ states('input_number.photogrammetry_angular_distance') | float }},
+        "auto_crop_enabled": {% if is_state('input_boolean.photogrammetry_auto_crop', 'on') %}true{% else %}false{% endif %}
+      }
+
+  # Pause active session (thread waits at next position boundary)
+  photogrammetry_pause:
+    url: "http://192.168.0.176:5000/api/session/{{ state_attr('sensor.photogrammetry_session', 'session_id') | default('') }}/pause"
+    method: POST
+    content_type: "application/json"
+
+  # Resume paused session (restarts background thread if needed)
+  photogrammetry_resume:
+    url: "http://192.168.0.176:5000/api/session/{{ state_attr('sensor.photogrammetry_session', 'session_id') | default('') }}/resume"
+    method: POST
+    content_type: "application/json"
+
+  # Stop active session (signals thread to exit cleanly)
+  photogrammetry_stop:
+    url: "http://192.168.0.176:5000/api/session/{{ state_attr('sensor.photogrammetry_session', 'session_id') | default('') }}/stop"
+    method: POST
+    content_type: "application/json"
+
+  # Reset session state (clears interrupted/error status)
+  photogrammetry_reset:
+    url: "http://192.168.0.176:5000/api/session/{{ state_attr('sensor.photogrammetry_session', 'session_id') | default('') }}/reset"
+    method: POST
+    content_type: "application/json"
+
+  # --- Turntable Control Commands ---
+
+  # Rotate turntable by specific angle
+  turntable_rotate:
+    url: "http://192.168.0.176:5000/api/turntable/rotate"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {
+        "angle": {{ angle | default(0) }},
+        "speed": {{ states('input_number.turntable_stepper_speed') | int }}
+      }
+
+  # Emergency stop turntable
+  turntable_stop:
+    url: "http://192.168.0.176:5000/api/turntable/stop"
+    method: POST
+    content_type: "application/json"
+
+  # --- ADB Device Commands ---
+
+  # Disconnect all ADB devices
+  photogrammetry_disconnect_devices:
+    url: "http://192.168.0.176:5000/api/devices/disconnect"
+    method: POST
+    content_type: "application/json"
+
+  # Select Samsung S10 as active camera (mDNS resolved by backend)
+  photogrammetry_select_s10:
+    url: "http://192.168.0.176:5000/api/devices/select"
+    method: POST
+    content_type: "application/json"
+    payload: '{"device_ip": "adb-RF8M20STA5T-rIxgXQ._adb-tls-connect._tcp"}'
+
+  # Select Samsung S24 as active camera
+  photogrammetry_select_s24:
+    url: "http://192.168.0.176:5000/api/devices/select"
+    method: POST
+    content_type: "application/json"
+    payload: '{"device_ip": "192.168.0.17:34971"}'
+
+  # Delete specific session
+  photogrammetry_delete_session_cmd:
+    url: "http://192.168.0.176:5000/api/session/{{ session_id }}"
+    method: DELETE
+    content_type: "application/json"

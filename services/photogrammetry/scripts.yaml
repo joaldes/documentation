@@ -1,0 +1,65 @@
+# ============================================================================
+# PHOTOGRAMMETRY - HELPER SCRIPTS
+# ============================================================================
+# Version: 4.3.1
+# Updated: 2026-05-14 - Backend async-capture-2.3: pipeline completion rates (lockstep)
+# Part 3 of 5: Helper scripts for dynamic session_id handling
+#
+# These scripts wrap REST commands to handle dynamic session_id parameters.
+# Required because button tap_action.data doesn't support Jinja2 templates.
+#
+# Each script:
+#   1. Checks if session_id exists (not None/unknown/empty)
+#   2. Calls the appropriate rest_command if valid
+# ============================================================================
+
+script:
+  # Resume session with dynamic session_id
+  photogrammetry_resume_with_id:
+    alias: "Resume Photogrammetry Session"
+    mode: single
+    sequence:
+      - condition: template
+        value_template: "{{ state_attr('sensor.photogrammetry_session', 'session_id') not in [none, 'unknown', ''] }}"
+      - action: rest_command.photogrammetry_resume
+
+  # Pause session with dynamic session_id
+  photogrammetry_pause_with_id:
+    alias: "Pause Photogrammetry Session"
+    mode: single
+    sequence:
+      - condition: template
+        value_template: "{{ state_attr('sensor.photogrammetry_session', 'session_id') not in [none, 'unknown', ''] }}"
+      - action: rest_command.photogrammetry_pause
+
+  # Stop session with dynamic session_id
+  photogrammetry_stop_with_id:
+    alias: "Stop Photogrammetry Session"
+    mode: single
+    sequence:
+      - condition: template
+        value_template: "{{ state_attr('sensor.photogrammetry_session', 'session_id') not in [none, 'unknown', ''] }}"
+      - action: rest_command.photogrammetry_stop
+
+  # Reset session with dynamic session_id
+  photogrammetry_reset_with_id:
+    alias: "Reset Photogrammetry Session"
+    mode: single
+    sequence:
+      - condition: template
+        value_template: "{{ state_attr('sensor.photogrammetry_session', 'session_id') not in [none, 'unknown', ''] }}"
+      - action: rest_command.photogrammetry_reset
+
+  # Delete specific session
+  photogrammetry_delete_session:
+    alias: "Delete Photogrammetry Session"
+    mode: single
+    fields:
+      session_id:
+        description: "Session ID to delete"
+        example: "20231123_143022"
+        required: true
+    sequence:
+      - action: rest_command.photogrammetry_delete_session_cmd
+        data:
+          session_id: "{{ session_id }}"

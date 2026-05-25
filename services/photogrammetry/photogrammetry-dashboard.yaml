@@ -1,0 +1,816 @@
+views:
+  - type: sections
+    max_columns: 3
+    title: Control Panel
+    path: control
+    sections:
+      - type: grid
+        cards:
+          # v5.24 — drives the Chrome tab title from session progress so the
+          # tab strip shows "42% • Photogrammetry" during a capture. Zero-height.
+          - type: custom:photogrammetry-tab-title
+            entity: sensor.photogrammetry_progress
+            idle_title: Photogrammetry
+            active_format: "{pct}% • Photogrammetry"
+          - type: horizontal-stack
+            cards:
+              - type: conditional
+                conditions:
+                  - condition: or
+                    conditions:
+                      - condition: state
+                        entity: sensor.photogrammetry_can_resume
+                        state: 'True'
+                      - condition: state
+                        entity: sensor.photogrammetry_session
+                        state: error
+                card:
+                  show_name: true
+                  show_icon: true
+                  type: button
+                  name: RESUME
+                  icon: mdi:play-circle
+                  tap_action:
+                    action: call-service
+                    service: rest_command.photogrammetry_resume
+                    data:
+                      session_id: >-
+                        {{ state_attr('sensor.photogrammetry_session',
+                        'session_id') }}
+                  show_state: false
+                  icon_height: 40px
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.photogrammetry_session
+                    state_not: active
+                  - condition: state
+                    entity: sensor.photogrammetry_can_resume
+                    state: 'False'
+                  - condition: state
+                    entity: sensor.photogrammetry_session
+                    state_not: error
+                card:
+                  show_name: true
+                  show_icon: true
+                  type: button
+                  name: START
+                  icon: mdi:play
+                  tap_action:
+                    action: call-service
+                    service: input_boolean.turn_on
+                    target:
+                      entity_id: input_boolean.photogrammetry_active
+                  show_state: false
+                  icon_height: 40px
+              - type: conditional
+                conditions:
+                  - entity: sensor.photogrammetry_session
+                    state: active
+                card:
+                  show_name: true
+                  show_icon: true
+                  type: button
+                  name: PAUSE
+                  icon: mdi:pause
+                  tap_action:
+                    action: call-service
+                    service: rest_command.photogrammetry_stop_session
+                    data:
+                      session_id: >-
+                        {{ state_attr('sensor.photogrammetry_session',
+                        'session_id') }}
+                  show_state: false
+                  icon_height: 40px
+              - type: conditional
+                conditions:
+                  - entity: sensor.photogrammetry_session
+                    state: active
+                card:
+                  show_name: true
+                  show_icon: true
+                  type: button
+                  name: STOP
+                  icon: mdi:stop
+                  tap_action:
+                    action: call-service
+                    service: input_boolean.turn_off
+                    target:
+                      entity_id: input_boolean.photogrammetry_active
+                  show_state: false
+                  icon_height: 40px
+              - show_name: true
+                show_icon: true
+                type: button
+                name: RESET
+                icon: mdi:refresh-circle
+                tap_action:
+                  action: call-service
+                  service: rest_command.photogrammetry_reset
+                  confirmation:
+                    text: >-
+                      Stop active session and clear all session files and
+                      processing photos?
+                show_state: false
+                icon_height: 40px
+          - type: custom:button-card
+            title: Session Status
+            entity: sensor.photogrammetry_progress
+            name: Session Progress
+            show_state: true
+            show_icon: false
+            styles:
+              card:
+                - height: 70px
+                - background: |
+                    [[[
+                      const progress = parseFloat(entity.state) || 0;
+                      const percentage = Math.round(progress);
+                      let color;
+                      if (progress < 50) {
+                        const ratio = progress / 50;
+                        const r = 198;
+                        const g = Math.round(40 + (168 * ratio));
+                        const b = 40;
+                        color = `rgb(${r}, ${g}, ${b})`;
+                      } else {
+                        const ratio = (progress - 50) / 50;
+                        const r = Math.round(208 - (162 * ratio));
+                        const g = Math.round(208 - (83 * ratio));
+                        const b = Math.round(40 + (10 * ratio));
+                        color = `rgb(${r}, ${g}, ${b})`;
+                      }
+                      return `linear-gradient(90deg, ${color} 0%, ${color} ${percentage}%, #424242 ${percentage}%, #424242 100%), repeating-linear-gradient(90deg, transparent 0%, transparent 9.7%, rgba(255,255,255,0.15) 9.7%, rgba(255,255,255,0.15) 10%, transparent 10%, transparent 20%)`;
+                    ]]]
+              state:
+                - font-size: 28px
+                - font-weight: bold
+                - color: white
+                - text-shadow: 1px 1px 2px rgba(0,0,0,0.5)
+              name:
+                - font-size: 14px
+                - color: rgba(255, 255, 255, 0.7)
+          - type: entities
+            title: 📊 Session Status
+            entities:
+              - entity: sensor.photogrammetry_session
+                name: Status
+              - entity: sensor.photogrammetry_status_text
+                name: Current Activity
+                icon: mdi:information-outline
+              - entity: sensor.photogrammetry_current_position
+                name: Current Position
+              - entity: sensor.photogrammetry_total_positions
+                name: Total Positions
+              - entity: sensor.photogrammetry_remaining_positions
+                name: Pending Positions
+              - entity: sensor.photogrammetry_estimated_time_remaining
+                name: ⏱️ Time Remaining
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.photogrammetry_estimated_completion_time
+                    state_not: unavailable
+                row:
+                  entity: sensor.photogrammetry_estimated_completion_time
+                  name: 🎯 Est. Completion
+              - type: attribute
+                entity: sensor.photogrammetry_session
+                attribute: started_at
+                name: 🕐 Started At
+            view_layout:
+              grid-column: 2
+              grid-row: 2
+          - type: entities
+            title: ⏱️ Time Breakdown (per-position avg)
+            entities:
+              - entity: sensor.photogrammetry_avg_capture_time
+                name: 📸 Capture
+              - entity: sensor.photogrammetry_avg_download_time
+                name: ⬇️ Download (transfer)
+              - entity: sensor.photogrammetry_avg_processing_time
+                name: 🧱 Processing (stack)
+            view_layout:
+              grid-column: 2
+              grid-row: 3
+          - type: entities
+            title: ✅ Pipeline Completion
+            entities:
+              - entity: sensor.photogrammetry_capture_completion
+                name: 📸 Capture
+              - entity: sensor.photogrammetry_download_completion
+                name: ⬇️ Download
+              - entity: sensor.photogrammetry_processing_completion
+                name: 🧱 Processing
+              - entity: sensor.photogrammetry_overall_completion
+                name: 🎯 Overall
+            view_layout:
+              grid-column: 2
+              grid-row: 4
+      - type: grid
+        cards:
+          - show_name: true
+            show_icon: true
+            show_state: false
+            type: glance
+            entities:
+              - entity: button.turntable_stop
+                name: Stop
+              - entity: button.turntable_rotate_10deg
+                name: 10°
+              - entity: button.turntable_rotate_90deg
+                name: 90°
+              - entity: button.turntable_rotate_180deg_half
+                name: 180°
+              - entity: button.turntable_rotate_360deg_full
+                name: 360°
+            title: Manual Turntable Rotation
+            columns: 5
+          - type: entities
+            title: ⚙️ Configuration
+            entities:
+              - entity: input_text.photogrammetry_object_name
+                name: Object Name
+              - entity: input_number.photogrammetry_angular_distance
+                name: Angular Distance
+              - entity: sensor.photogrammetry_calculated_positions
+                name: Total Positions
+                icon: mdi:numeric-box-outline
+              - entity: sensor.photogrammetry_photos_per_burst
+              - entity: number.turntable_stepper_speed
+            view_layout:
+              grid-column: 1
+              grid-row: 2
+          - type: conditional
+            view_layout:
+              grid-column: 1
+              grid-row: 3
+            conditions:
+              - entity: sensor.photogrammetry_has_error
+                state: 'True'
+            card:
+              type: markdown
+              content: >
+                **⚠️ ERROR:** {{ state_attr('sensor.photogrammetry_session',
+                'error_message') }}
+      - type: grid
+        cards:
+          - type: entities
+            view_layout:
+              grid-column: 3
+              grid-row: 1 / 4
+            title: 🔄 Dual Stacking Pipeline
+            entities:
+              - type: section
+                label: 🔵 ODD Slot (1, 3, 5, 7...)
+              - entity: sensor.photogrammetry_odd_slot_stacking
+                name: Odd Slot Status
+              - entity: sensor.photogrammetry_odd_slot_position
+                name: Latest Odd Position
+              - entity: sensor.photogrammetry_odd_completed_count
+                name: Odd Complete
+              - type: section
+                label: 🟢 EVEN Slot (2, 4, 6, 8...)
+              - entity: sensor.photogrammetry_even_slot_stacking
+                name: Even Slot Status
+              - entity: sensor.photogrammetry_even_slot_position
+                name: Latest Even Position
+              - entity: sensor.photogrammetry_even_completed_count
+                name: Even Complete
+              - type: section
+                label: 📦 Overall
+              - entity: sensor.photogrammetry_stacks_processing
+                name: Stacks Processing Now
+              - entity: sensor.photogrammetry_completed_stacks
+                name: Total Stacks Complete
+              - entity: sensor.photogrammetry_remaining_positions
+                name: Pending Positions
+    header:
+      card:
+        type: markdown
+        content: |-
+          # 📷  Photogrammetry Control  📷
+          #
+        text_only: true
+      layout: center
+      badges_position: bottom
+      badges_wrap: wrap
+  - type: sections
+    max_columns: 4
+    title: ADB Dashboard
+    path: adb-devices
+    sections:
+      - type: grid
+        cards:
+          - type: entities
+            title: 📱 Samsung S10
+            show_header_toggle: false
+            entities:
+              - entity: sensor.photogrammetry_s10_adb_status
+                name: Connection Status
+                icon: mdi:cellphone-link
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Connect S10
+                icon: mdi:connection
+                tap_action:
+                  action: call-service
+                  service: rest_command.photogrammetry_select_s10
+                  data: {}
+              - type: button
+                name: Disconnect All
+                icon: mdi:close-network
+                tap_action:
+                  action: call-service
+                  service: rest_command.photogrammetry_disconnect_devices
+                  data: {}
+          - type: entities
+            title: 📱 Samsung S24
+            show_header_toggle: false
+            entities:
+              - entity: sensor.photogrammetry_s24_adb_status
+                name: Connection Status
+                icon: mdi:cellphone-link
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Connect S24
+                icon: mdi:connection
+                tap_action:
+                  action: call-service
+                  service: rest_command.photogrammetry_select_s24
+                  data: {}
+              - type: button
+                name: Disconnect All
+                icon: mdi:close-network
+                tap_action:
+                  action: call-service
+                  service: rest_command.photogrammetry_disconnect_devices
+                  data: {}
+  - type: sections
+    max_columns: 5
+    title: Performance Stats
+    path: photogrammetry-stats
+    icon: ''
+    badges: []
+    cards: []
+    sections:
+      - type: grid
+        cards:
+          - type: markdown
+            content: >
+              ### 📊 Overall Totals
+
+
+              **Total Sessions:** {{
+              states('sensor.photogrammetry_lifetime_stats') }}
+
+              {% set totals = state_attr('sensor.photogrammetry_lifetime_stats',
+              'session_totals') or {} %}
+
+              **Total Positions:** {{ totals.get('total_positions_completed', 0)
+              }}
+
+              **Total Photos:** {{ totals.get('total_photos_captured', 0) | int
+              }}
+
+
+              ---
+
+
+              ### 📈 Performance Trends
+
+              {% set trends = state_attr('sensor.photogrammetry_lifetime_stats',
+              'trends') or {} %}
+
+              {% if trends.get('last_5_sessions_avg_position_time') %}
+
+              **Recent (Last 5 Sessions)**
+
+              Average position time: **{{
+              trends.get('last_5_sessions_avg_position_time', 0) }}s**
+
+
+              **All-Time Performance**
+
+              Average position time: **{{
+              trends.get('all_time_avg_position_time', 0) }}s**
+
+              Trend: **{{ trends.get('trend_direction', 'stable') | capitalize
+              }}** ({{ trends.get('performance_change_percent', 0) }}%)
+
+              {% endif %}
+
+
+              **Total Processing Time:** {{
+              totals.get('total_processing_time_formatted', '0h 0m') }}
+
+              **Total Data Volume:** {{ totals.get('total_data_volume_gb', 0) }}
+              GB
+
+
+              ---
+
+
+              _Last updated: {{
+              state_attr('sensor.photogrammetry_lifetime_stats', 'last_updated')
+              | default('Never') }}_
+            grid_options:
+              columns: full
+      - type: grid
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: vertical-stack
+                cards:
+                  - type: markdown
+                    content: >
+                      ### 📷 10 Photos
+
+                      {% set metrics =
+                      state_attr('sensor.photogrammetry_lifetime_stats',
+                      'metrics_by_photo_count') or {} %} {% set data =
+                      metrics.get('10', {}) %}
+
+                      {% if data.get('total_sessions', 0) > 0 %}
+
+                      **{{ data.total_sessions }} sessions** • {{
+                      data.total_positions }} positions
+
+                      {% else %}
+
+                      _No data yet_
+
+                      {% endif %}
+                  - type: conditional
+                    conditions:
+                      - entity: sensor.photogrammetry_lifetime_stats
+                        state_not: unavailable
+                    card:
+                      type: markdown
+                      content: >
+                        {% set metrics =
+                        state_attr('sensor.photogrammetry_lifetime_stats',
+                        'metrics_by_photo_count') or {} %} {% set data =
+                        metrics.get('10', {}) %}
+
+                        {% if data.get('total_sessions', 0) > 0 %}
+
+                        **⏱️ Position Timing**
+
+                        • Avg: {{ data.avg_position_duration_seconds }}s
+
+                        • Median: {{ data.median_position_duration_seconds }}s
+
+                        • P95: {{ data.p95_position_duration_seconds }}s
+
+                        • Std Dev: ±{{ data.std_dev_seconds }}s
+
+
+                        **🔄 Phase Breakdown**
+
+                        • Capture: {{ data.avg_photo_capture_seconds }}s
+
+                        • Sync: {{ data.avg_server_sync_seconds }}s
+
+                        • Rotation: {{ data.avg_rotation_seconds }}s
+
+
+                        **📊 Throughput**
+
+                        • {{ data.avg_photos_per_minute }}/min
+
+                        • {{ data.avg_positions_per_hour }}/hr
+
+
+                        **🎯 Stacking**
+
+                        • Avg: {{ data.avg_stack_duration_seconds }}s
+
+                        • P95: {{ data.p95_stack_duration_seconds }}s
+
+                        • Success: {{ data.stack_success_rate_percent }}%
+
+                        {% else %}
+
+                        _Start a session with 10 photos per burst to see stats
+                        here._
+
+                        {% endif %}
+              - type: vertical-stack
+                cards:
+                  - type: markdown
+                    content: >
+                      ### 📷 20 Photos
+
+                      {% set metrics =
+                      state_attr('sensor.photogrammetry_lifetime_stats',
+                      'metrics_by_photo_count') or {} %} {% set data =
+                      metrics.get('20', {}) %}
+
+                      {% if data.get('total_sessions', 0) > 0 %}
+
+                      **{{ data.total_sessions }} sessions** • {{
+                      data.total_positions }} positions
+
+                      {% else %}
+
+                      _No data yet_
+
+                      {% endif %}
+                  - type: conditional
+                    conditions:
+                      - entity: sensor.photogrammetry_lifetime_stats
+                        state_not: unavailable
+                    card:
+                      type: markdown
+                      content: >
+                        {% set metrics =
+                        state_attr('sensor.photogrammetry_lifetime_stats',
+                        'metrics_by_photo_count') or {} %} {% set data =
+                        metrics.get('20', {}) %}
+
+                        {% if data.get('total_sessions', 0) > 0 %}
+
+                        **⏱️ Position Timing**
+
+                        • Avg: {{ data.avg_position_duration_seconds }}s
+
+                        • Median: {{ data.median_position_duration_seconds }}s
+
+                        • P95: {{ data.p95_position_duration_seconds }}s
+
+                        • Std Dev: ±{{ data.std_dev_seconds }}s
+
+
+                        **🔄 Phase Breakdown**
+
+                        • Capture: {{ data.avg_photo_capture_seconds }}s
+
+                        • Sync: {{ data.avg_server_sync_seconds }}s
+
+                        • Rotation: {{ data.avg_rotation_seconds }}s
+
+
+                        **📊 Throughput**
+
+                        • {{ data.avg_photos_per_minute }}/min
+
+                        • {{ data.avg_positions_per_hour }}/hr
+
+
+                        **🎯 Stacking**
+
+                        • Avg: {{ data.avg_stack_duration_seconds }}s
+
+                        • P95: {{ data.p95_stack_duration_seconds }}s
+
+                        • Success: {{ data.stack_success_rate_percent }}%
+
+                        {% else %}
+
+                        _Start a session with 20 photos per burst to see stats
+                        here._
+
+                        {% endif %}
+              - type: vertical-stack
+                cards:
+                  - type: markdown
+                    content: >
+                      ### 📷 30 Photos ⭐
+
+                      {% set metrics =
+                      state_attr('sensor.photogrammetry_lifetime_stats',
+                      'metrics_by_photo_count') or {} %} {% set data =
+                      metrics.get('30', {}) %}
+
+                      {% if data.get('total_sessions', 0) > 0 %}
+
+                      **{{ data.total_sessions }} sessions** • {{
+                      data.total_positions }} positions
+
+                      {% else %}
+
+                      _No data yet_
+
+                      {% endif %}
+                  - type: conditional
+                    conditions:
+                      - entity: sensor.photogrammetry_lifetime_stats
+                        state_not: unavailable
+                    card:
+                      type: markdown
+                      content: >
+                        {% set metrics =
+                        state_attr('sensor.photogrammetry_lifetime_stats',
+                        'metrics_by_photo_count') or {} %} {% set data =
+                        metrics.get('30', {}) %}
+
+                        {% if data.get('total_sessions', 0) > 0 %}
+
+                        **⏱️ Position Timing**
+
+                        • Avg: {{ data.avg_position_duration_seconds }}s
+
+                        • Median: {{ data.median_position_duration_seconds }}s
+
+                        • P95: {{ data.p95_position_duration_seconds }}s
+
+                        • Std Dev: ±{{ data.std_dev_seconds }}s
+
+
+                        **🔄 Phase Breakdown**
+
+                        • Capture: {{ data.avg_photo_capture_seconds }}s
+
+                        • Sync: {{ data.avg_server_sync_seconds }}s
+
+                        • Rotation: {{ data.avg_rotation_seconds }}s
+
+
+                        **📊 Throughput**
+
+                        • {{ data.avg_photos_per_minute }}/min
+
+                        • {{ data.avg_positions_per_hour }}/hr
+
+
+                        **🎯 Stacking**
+
+                        • Avg: {{ data.avg_stack_duration_seconds }}s
+
+                        • P95: {{ data.p95_stack_duration_seconds }}s
+
+                        • Success: {{ data.stack_success_rate_percent }}%
+
+                        {% else %}
+
+                        _Start a session with 30 photos per burst to see stats
+                        here._
+
+                        {% endif %}
+              - type: vertical-stack
+                cards:
+                  - type: markdown
+                    content: >
+                      ### 📷 40 Photos
+
+                      {% set metrics =
+                      state_attr('sensor.photogrammetry_lifetime_stats',
+                      'metrics_by_photo_count') or {} %} {% set data =
+                      metrics.get('40', {}) %}
+
+                      {% if data.get('total_sessions', 0) > 0 %}
+
+                      **{{ data.total_sessions }} sessions** • {{
+                      data.total_positions }} positions
+
+                      {% else %}
+
+                      _No data yet_
+
+                      {% endif %}
+                  - type: conditional
+                    conditions:
+                      - entity: sensor.photogrammetry_lifetime_stats
+                        state_not: unavailable
+                    card:
+                      type: markdown
+                      content: >
+                        {% set metrics =
+                        state_attr('sensor.photogrammetry_lifetime_stats',
+                        'metrics_by_photo_count') or {} %} {% set data =
+                        metrics.get('40', {}) %}
+
+                        {% if data.get('total_sessions', 0) > 0 %}
+
+                        **⏱️ Position Timing**
+
+                        • Avg: {{ data.avg_position_duration_seconds }}s
+
+                        • Median: {{ data.median_position_duration_seconds }}s
+
+                        • P95: {{ data.p95_position_duration_seconds }}s
+
+                        • Std Dev: ±{{ data.std_dev_seconds }}s
+
+
+                        **🔄 Phase Breakdown**
+
+                        • Capture: {{ data.avg_photo_capture_seconds }}s
+
+                        • Sync: {{ data.avg_server_sync_seconds }}s
+
+                        • Rotation: {{ data.avg_rotation_seconds }}s
+
+
+                        **📊 Throughput**
+
+                        • {{ data.avg_photos_per_minute }}/min
+
+                        • {{ data.avg_positions_per_hour }}/hr
+
+
+                        **🎯 Stacking**
+
+                        • Avg: {{ data.avg_stack_duration_seconds }}s
+
+                        • P95: {{ data.p95_stack_duration_seconds }}s
+
+                        • Success: {{ data.stack_success_rate_percent }}%
+
+                        {% else %}
+
+                        _Start a session with 40 photos per burst to see stats
+                        here._
+
+                        {% endif %}
+              - type: vertical-stack
+                cards:
+                  - type: markdown
+                    content: >
+                      ### 📷 50 Photos
+
+                      {% set metrics =
+                      state_attr('sensor.photogrammetry_lifetime_stats',
+                      'metrics_by_photo_count') or {} %} {% set data =
+                      metrics.get('50', {}) %}
+
+                      {% if data.get('total_sessions', 0) > 0 %}
+
+                      **{{ data.total_sessions }} sessions** • {{
+                      data.total_positions }} positions
+
+                      {% else %}
+
+                      _No data yet_
+
+                      {% endif %}
+                  - type: conditional
+                    conditions:
+                      - entity: sensor.photogrammetry_lifetime_stats
+                        state_not: unavailable
+                    card:
+                      type: markdown
+                      content: >
+                        {% set metrics =
+                        state_attr('sensor.photogrammetry_lifetime_stats',
+                        'metrics_by_photo_count') or {} %} {% set data =
+                        metrics.get('50', {}) %}
+
+                        {% if data.get('total_sessions', 0) > 0 %}
+
+                        **⏱️ Position Timing**
+
+                        • Avg: {{ data.avg_position_duration_seconds }}s
+
+                        • Median: {{ data.median_position_duration_seconds }}s
+
+                        • P95: {{ data.p95_position_duration_seconds }}s
+
+                        • Std Dev: ±{{ data.std_dev_seconds }}s
+
+
+                        **🔄 Phase Breakdown**
+
+                        • Capture: {{ data.avg_photo_capture_seconds }}s
+
+                        • Sync: {{ data.avg_server_sync_seconds }}s
+
+                        • Rotation: {{ data.avg_rotation_seconds }}s
+
+
+                        **📊 Throughput**
+
+                        • {{ data.avg_photos_per_minute }}/min
+
+                        • {{ data.avg_positions_per_hour }}/hr
+
+
+                        **🎯 Stacking**
+
+                        • Avg: {{ data.avg_stack_duration_seconds }}s
+
+                        • P95: {{ data.p95_stack_duration_seconds }}s
+
+                        • Success: {{ data.stack_success_rate_percent }}%
+
+                        {% else %}
+
+                        _Start a session with 50 photos per burst to see stats
+                        here._
+
+                        {% endif %}
+            grid_options:
+              columns: full
+              rows: auto
+        column_span: 4
+    header:
+      card:
+        type: markdown
+        text_only: true
+        content: |-
+          # 📸 Photogrammetry Performance Analysis
+           
+           

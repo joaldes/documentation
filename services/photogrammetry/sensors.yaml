@@ -1,0 +1,637 @@
+# ============================================================================
+# PHOTOGRAMMETRY - SENSORS
+# ============================================================================
+# Version: 4.3.1
+# Updated: 2026-05-14 - Backend async-capture-2.3: pipeline completion rates (lockstep)
+# Part 5 of 5: REST sensors and Template sensors
+#
+# This file defines all sensor entities for the photogrammetry system:
+#
+# SECTION A: TEMPLATE SENSORS (30+ sensors)
+#   - Derived/calculated values from REST sensor data
+#   - Progress tracking, status text, stacking info, threading status
+#   - All depend on sensor.photogrammetry_session
+#
+# SECTION B: REST SENSORS (3 sensors)
+#   - Primary data sources from backend API (192.168.0.176:5000)
+#   - Photogrammetry Session (polled every 5s)
+#   - ADB Info (polled every 10s)
+#   - Statistics (polled every 60s)
+# ============================================================================
+
+# ===========================================================================
+# SECTION A: TEMPLATE SENSORS
+# ===========================================================================
+# Derived/calculated values from REST sensor data
+
+template:
+  - sensor:
+      # Can session be resumed?
+      - name: "Photogrammetry Can Resume"
+        unique_id: photogrammetry_can_resume
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'status') | default('') in ['paused', 'blocked', 'interrupted', 'stopped'] }}
+        icon: mdi:play-pause
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Overall session progress percentage
+      - name: "Photogrammetry Progress"
+        unique_id: photogrammetry_progress
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'progress_percent') | float(0) }}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:percent
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Calculated positions for 360 scan
+      - name: "Photogrammetry Calculated Positions"
+        unique_id: photogrammetry_calculated_positions
+        state: >-
+          {{ (360 / states('input_number.photogrammetry_angular_distance') | float) | int(0) }}
+        unit_of_measurement: "positions"
+        icon: mdi:calculator
+        availability: "{{ states('input_number.photogrammetry_angular_distance') | float(0) > 0 }}"
+
+      # Photos captured per position (focus stacking)
+      - name: "Photogrammetry Photos Per Burst"
+        unique_id: photogrammetry_photos_per_burst
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'photos_per_burst') | int(0) }}
+        unit_of_measurement: "photos"
+        icon: mdi:camera-burst
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # v5.10 / async-capture-2.0: Partial failures count
+      # Number of positions captured but never synced within deadline (10 min).
+      # Shows 0 in healthy sessions; >0 means user should re-shoot specific positions.
+      - name: "Photogrammetry Partial Failures"
+        unique_id: photogrammetry_partial_failures
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'partial_failures') | int(0) }}
+        unit_of_measurement: "positions"
+        icon: mdi:alert-circle-outline
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # v5.10 / async-capture-2.0: Reconciler active flag
+      - name: "Photogrammetry Reconciler Active"
+        unique_id: photogrammetry_reconciler_active
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'reconciler_active') | default(false) }}
+        icon: mdi:cog-sync
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # User-friendly status text
+      - name: "Photogrammetry Status Text"
+        unique_id: photogrammetry_status_text
+        state: >-
+          {% set status = states('sensor.photogrammetry_session') %}
+          {% set current = state_attr('sensor.photogrammetry_session', 'current_position') | int(0) %}
+          {% set total = state_attr('sensor.photogrammetry_session', 'total_positions') | int(0) %}
+          {% set retry = state_attr('sensor.photogrammetry_session', 'current_retry_count') | int(0) %}
+          {% set failed = (state_attr('sensor.photogrammetry_session', 'failed_positions') or []) | length %}
+          {% set error = state_attr('sensor.photogrammetry_session', 'error_message') | default('Unknown') %}
+          {% if status == 'idle' %}
+            Idle: Ready to scan
+          {% elif status == 'active' %}
+            Processing: Position {{ current }}/{{ total }}
+          {% elif status == 'paused' %}
+            Paused: Position {{ current }}/{{ total }}
+          {% elif status == 'stopped' %}
+            Stopped: Position {{ current }}/{{ total }}
+          {% elif status == 'retrying' %}
+            Retrying: Position {{ current }} ({{ retry }}/2)
+          {% elif status == 'complete' %}
+            Complete: {{ total }} positions
+          {% elif status == 'complete_with_errors' %}
+            Complete: {{ total }} positions ({{ failed }} failed)
+          {% elif status == 'complete_with_failures' %}
+            Complete: {{ total }} positions ({{ failed }} sync failures)
+          {% elif status == 'interrupted' %}
+            Interrupted: Resume to continue
+          {% elif status == 'error' %}
+            Error: {{ error }}
+          {% elif status == 'blocked' %}
+            Blocked: Position {{ current }} - Fix and resume
+          {% else %}
+            {{ status | title }}: Unknown state
+          {% endif %}
+        icon: mdi:information
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Progress Tracking Sensors idle-
+
+      # Current position being processed
+      - name: "Photogrammetry Current Position"
+        unique_id: photogrammetry_current_position
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'current_position') | int(0) }}
+        icon: mdi:map-marker
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Number of completed positions
+      - name: "Photogrammetry Completed Count"
+        unique_id: photogrammetry_completed_count
+        state: >-
+          {{ (state_attr('sensor.photogrammetry_session', 'completed_positions') or []) | length }}
+        unit_of_measurement: "positions"
+        state_class: measurement
+        icon: mdi:check-all
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Remaining positions
+      - name: "Photogrammetry Remaining Positions"
+        unique_id: photogrammetry_remaining_positions
+        state: >-
+          {% set total = state_attr('sensor.photogrammetry_session', 'total_positions') | int(0) %}
+          {% set completed = (state_attr('sensor.photogrammetry_session', 'completed_positions') or []) | length %}
+          {{ total - completed }}
+        unit_of_measurement: "positions"
+        state_class: measurement
+        icon: mdi:timer-sand
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Estimated time remaining (seconds)
+      - name: "Photogrammetry Estimated Time Remaining"
+        unique_id: photogrammetry_estimated_time_remaining
+        state: >-
+          {% set secs = state_attr('sensor.photogrammetry_session', 'estimated_seconds_remaining') | int(0) %}
+          {% if secs <= 0 %}
+            idle
+          {% else %}
+            {{ (secs // 60) }}min {{ (secs % 60) }}sec
+          {% endif %}
+        icon: mdi:clock-outline
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Estimated completion timestamp
+      - name: "Photogrammetry Estimated Completion Time"
+        unique_id: photogrammetry_estimated_completion_time
+        state: >-
+          {% set ts = state_attr('sensor.photogrammetry_session', 'estimated_completion_time') %}
+          {% if ts %}
+            {{ as_timestamp(ts) | timestamp_custom('%I:%M %p') }}
+          {% else %}
+            idle
+          {% endif %}
+        icon: mdi:clock-end
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown', 'idle'] }}"
+
+      # v2.2 / v4.2.5 - 3-part time breakdown (capture / download / processing)
+      # mean per-position seconds for each phase, from the time_breakdown attribute
+      - name: "Photogrammetry Avg Capture Time"
+        unique_id: photogrammetry_avg_capture_time
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'time_breakdown') or {}).get('capture', {}).get('mean')) | float(0) | round(1) }}
+        unit_of_measurement: "s"
+        state_class: measurement
+        icon: mdi:camera-timer
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      - name: "Photogrammetry Avg Download Time"
+        unique_id: photogrammetry_avg_download_time
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'time_breakdown') or {}).get('download', {}).get('mean')) | float(0) | round(1) }}
+        unit_of_measurement: "s"
+        state_class: measurement
+        icon: mdi:download
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      - name: "Photogrammetry Avg Processing Time"
+        unique_id: photogrammetry_avg_processing_time
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'time_breakdown') or {}).get('processing', {}).get('mean')) | float(0) | round(1) }}
+        unit_of_measurement: "s"
+        state_class: measurement
+        icon: mdi:layers
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # v2.3 / v4.2.6 - 4 pipeline completion rates (capture / download / processing / overall)
+      # capture = burst confirmed on phone; download = archived to server;
+      # processing = focus-stack done; overall = mean of the three.
+      - name: "Photogrammetry Capture Completion"
+        unique_id: photogrammetry_capture_completion
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'pipeline_progress') or {}).get('capture_pct')) | float(0) | round(1) }}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:camera-timer
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      - name: "Photogrammetry Download Completion"
+        unique_id: photogrammetry_download_completion
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'pipeline_progress') or {}).get('download_pct')) | float(0) | round(1) }}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:download
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      - name: "Photogrammetry Processing Completion"
+        unique_id: photogrammetry_processing_completion
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'pipeline_progress') or {}).get('processing_pct')) | float(0) | round(1) }}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:layers
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      - name: "Photogrammetry Overall Completion"
+        unique_id: photogrammetry_overall_completion
+        state: >-
+          {{ ((state_attr('sensor.photogrammetry_session', 'pipeline_progress') or {}).get('overall_pct')) | float(0) | round(1) }}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:progress-check
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Stacking Status Sensors idle-
+
+      # Odd stacking slot status
+      - name: "Photogrammetry Odd Slot Stacking"
+        unique_id: photogrammetry_odd_slot_stacking
+        state: >-
+          {% set val = state_attr('sensor.photogrammetry_session', 'odd_slot_stacking') %}{% if val == true %}stacking{% elif val == false %}idle{% else %}unknown{% endif %}
+        icon: mdi:stack-overflow
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Even stacking slot status
+      - name: "Photogrammetry Even Slot Stacking"
+        unique_id: photogrammetry_even_slot_stacking
+        state: >-
+          {% set val = state_attr('sensor.photogrammetry_session', 'even_slot_stacking') %}{% if val == true %}stacking{% elif val == false %}idle{% else %}unknown{% endif %}
+        icon: mdi:stack-overflow
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Total stacks currently processing
+      - name: "Photogrammetry Stacks Processing"
+        unique_id: photogrammetry_stacks_processing
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'stacks_processing') | int(0) }}
+        unit_of_measurement: "stacks"
+        state_class: measurement
+        icon: mdi:layers-triple
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Total stacks completed (same as completed positions count)
+      - name: "Photogrammetry Completed Stacks"
+        unique_id: photogrammetry_completed_stacks
+        state: >-
+          {{ (state_attr('sensor.photogrammetry_session', 'completed_positions') or []) | length }}
+        unit_of_measurement: "stacks"
+        state_class: measurement
+        icon: mdi:check-all
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Threading Status Sensors (v4.0) idle-
+
+      # Background thread active status
+      - name: "Photogrammetry Thread Active"
+        unique_id: photogrammetry_thread_active
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'thread_active') | default(false) }}
+        icon: >-
+          {{ 'mdi:cog' if state_attr('sensor.photogrammetry_session', 'thread_active') else 'mdi:cog-off' }}
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Current retry count for failing position
+      - name: "Photogrammetry Retry Count"
+        unique_id: photogrammetry_retry_count
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'retry_count') | int(0) }}
+        unit_of_measurement: "retries"
+        state_class: measurement
+        icon: mdi:refresh
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Consecutive failures (circuit breaker)
+      - name: "Photogrammetry Consecutive Failures"
+        unique_id: photogrammetry_consecutive_failures
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'consecutive_failures') | int(0) }}
+        unit_of_measurement: "failures"
+        state_class: measurement
+        icon: >-
+          {% set failures = state_attr('sensor.photogrammetry_session', 'consecutive_failures') | int(0) %}
+          {{ 'mdi:alert-circle' if failures >= 3 else 'mdi:check-circle' }}
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Odd/Even Slot Position Tracking idle-
+
+      # Latest odd-numbered position completed (1, 3, 5, 7...)
+      - name: "Photogrammetry Odd Slot Position"
+        unique_id: photogrammetry_odd_slot_position
+        state: >-
+          {% set completed = state_attr('sensor.photogrammetry_session', 'completed_positions') or [] %}
+          {% set odd_positions = completed | select('odd') | list %}
+          {{ odd_positions | last | default(0) }}
+        icon: mdi:numeric-1-circle
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Count of odd-numbered positions completed
+      - name: "Photogrammetry Odd Completed Count"
+        unique_id: photogrammetry_odd_completed_count
+        state: >-
+          {% set completed = state_attr('sensor.photogrammetry_session', 'completed_positions') or [] %}
+          {{ completed | select('odd') | list | length }}
+        unit_of_measurement: "positions"
+        icon: mdi:counter
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Latest even-numbered position completed (2, 4, 6, 8...)
+      - name: "Photogrammetry Even Slot Position"
+        unique_id: photogrammetry_even_slot_position
+        state: >-
+          {% set completed = state_attr('sensor.photogrammetry_session', 'completed_positions') or [] %}
+          {% set even_positions = completed | select('even') | list %}
+          {{ even_positions | last | default(0) }}
+        icon: mdi:numeric-2-circle
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Count of even-numbered positions completed
+      - name: "Photogrammetry Even Completed Count"
+        unique_id: photogrammetry_even_completed_count
+        state: >-
+          {% set completed = state_attr('sensor.photogrammetry_session', 'completed_positions') or [] %}
+          {{ completed | select('even') | list | length }}
+        unit_of_measurement: "positions"
+        icon: mdi:counter
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Session Details Sensors idle-
+
+      # Current session ID
+      - name: "Photogrammetry Session ID"
+        unique_id: photogrammetry_session_id
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'session_id') | default('unknown') }}
+        icon: mdi:identifier
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      - name: "Photogrammetry Angular Distance"
+        unique_id: photogrammetry_angular_distance
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'angular_distance') | float(0) }}
+        unit_of_measurement: "°"
+        icon: mdi:angle-acute
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Total positions in session
+      - name: "Photogrammetry Total Positions"
+        unique_id: photogrammetry_total_positions
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'total_positions') | int(0) }}
+        unit_of_measurement: "positions"
+        icon: mdi:numeric
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Session start timestamp
+      - name: "Photogrammetry Started At"
+        unique_id: photogrammetry_started_at
+        state: >-
+          {% set ts = state_attr('sensor.photogrammetry_session', 'started_at') %}
+          {% if ts %}
+            {{ as_timestamp(ts) | timestamp_custom('%I:%M %p') }}
+          {% else %}
+            idle
+          {% endif %}
+        icon: mdi:clock-start
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Last update timestamp
+      - name: "Photogrammetry Last Updated"
+        unique_id: photogrammetry_last_updated
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'last_updated') | default(None) }}
+        device_class: timestamp
+        icon: mdi:update
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Error Handling Sensors idle-
+
+      # Error message (if status is error)
+      - name: "Photogrammetry Error Message"
+        unique_id: photogrammetry_error_message
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'error_message') | default('None') }}
+        icon: mdi:alert-circle
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Pause reason (if status is paused)
+      - name: "Photogrammetry Pause Reason"
+        unique_id: photogrammetry_pause_reason
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'pause_reason') | default('None') }}
+        icon: mdi:pause-circle
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Auto-Crop Sensors (v3.0) idle-
+
+      # Crop progress percentage
+      - name: "Photogrammetry Crop Progress"
+        unique_id: photogrammetry_crop_progress
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'crop_progress_percent') | float(0) }}
+        unit_of_measurement: "%"
+        icon: mdi:crop
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Crop status with failure warnings
+      - name: "Photogrammetry Crop Status"
+        unique_id: photogrammetry_crop_status
+        state: >-
+          {% set auto_crop = state_attr('sensor.photogrammetry_session', 'auto_crop_enabled') | default(false) %}
+          {% set cropped = state_attr('sensor.photogrammetry_session', 'total_cropped') | int(0) %}
+          {% set failures = state_attr('sensor.photogrammetry_session', 'crop_failures') | int(0) %}
+          {% set total = state_attr('sensor.photogrammetry_session', 'total_positions') | int(0) %}
+          {% set status = states('sensor.photogrammetry_session') %}
+          {% if not auto_crop %}
+            Auto-crop disabled
+          {% elif status == 'idle' %}
+            Auto-crop enabled, ready
+          {% elif status == 'active' %}
+            Cropping: {{ cropped }}/{{ total }} ({{ ((cropped / total * 100) if total > 0 else 0) | round(1) }}%)
+          {% elif status == 'complete' or status == 'complete_with_errors' %}
+            {% if failures > 0 %}
+              Cropped {{ cropped }} images, {{ failures }} failed
+            {% else %}
+              Cropped {{ cropped }}/{{ total }} images successfully
+            {% endif %}
+          {% else %}
+            {{ status | title }}
+          {% endif %}
+        icon: mdi:crop
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Total successfully cropped images
+      - name: "Photogrammetry Total Cropped"
+        unique_id: photogrammetry_total_cropped
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'total_cropped') | int(0) }}
+        unit_of_measurement: "images"
+        state_class: measurement
+        icon: mdi:image-check
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # Number of crop failures
+      - name: "Photogrammetry Crop Failures"
+        unique_id: photogrammetry_crop_failures
+        state: >-
+          {{ state_attr('sensor.photogrammetry_session', 'crop_failures') | int(0) }}
+        unit_of_measurement: "images"
+        state_class: measurement
+        icon: mdi:image-off
+        availability: "{{ states('sensor.photogrammetry_session') not in ['unavailable', 'unknown'] }}"
+
+      # idle- ADB Status Sensors idle-
+
+      # ADB server status
+      - name: "Photogrammetry ADB Server Status"
+        unique_id: photogrammetry_adb_server_status
+        state: >-
+          {{ state_attr('sensor.photogrammetry_adb_info', 'adb_server_running') | default('unknown') }}
+        icon: mdi:server
+        availability: "{{ states('sensor.photogrammetry_adb_info') not in ['unavailable', 'unknown'] }}"
+
+      # Connected ADB devices
+      - name: "Photogrammetry ADB Device Status"
+        unique_id: photogrammetry_adb_device_status
+        state: >-
+          {% set devices = state_attr('sensor.photogrammetry_adb_info', 'devices') or [] %}
+          {{ devices | selectattr('status', 'eq', 'connected') | map(attribute='name') | list | join(', ') if devices else 'No devices' }}
+        icon: mdi:cellphone-link
+        availability: "{{ states('sensor.photogrammetry_adb_info') not in ['unavailable', 'unknown'] }}"
+
+      # Samsung S10 ADB status
+      - name: "Photogrammetry S10 ADB Status"
+        unique_id: photogrammetry_s10_adb_status
+        state: >-
+          {% set devices = state_attr('sensor.photogrammetry_adb_info', 'devices') or [] %}
+          {% set s10 = devices | selectattr('name', 'search', 'S10', ignorecase=True) | list | first | default(none) %}
+          {{ s10.status if s10 else 'disconnected' }}
+        icon: >-
+          {% set devices = state_attr('sensor.photogrammetry_adb_info', 'devices') or [] %}
+          {% set s10 = devices | selectattr('name', 'search', 'S10', ignorecase=True) | list | first | default(none) %}
+          {{ 'mdi:cellphone-check' if s10 and s10.status == 'connected' else 'mdi:cellphone-off' }}
+        availability: "{{ states('sensor.photogrammetry_adb_info') not in ['unavailable', 'unknown'] }}"
+
+      # Samsung S24 ADB status
+      - name: "Photogrammetry S24 ADB Status"
+        unique_id: photogrammetry_s24_adb_status
+        state: >-
+          {% set devices = state_attr('sensor.photogrammetry_adb_info', 'devices') or [] %}
+          {% set s24 = devices | selectattr('name', 'search', 'S24', ignorecase=True) | list | first | default(none) %}
+          {{ s24.status if s24 else 'disconnected' }}
+        icon: >-
+          {% set devices = state_attr('sensor.photogrammetry_adb_info', 'devices') or [] %}
+          {% set s24 = devices | selectattr('name', 'search', 'S24', ignorecase=True) | list | first | default(none) %}
+          {{ 'mdi:cellphone-check' if s24 and s24.status == 'connected' else 'mdi:cellphone-off' }}
+        availability: "{{ states('sensor.photogrammetry_adb_info') not in ['unavailable', 'unknown'] }}"
+
+      # idle- Lifetime Statistics Sensor idle-
+
+# DISABLED:       # Cumulative session statistics
+# DISABLED:       - name: "Photogrammetry Lifetime Stats"
+# DISABLED:         unique_id: photogrammetry_lifetime_stats
+# DISABLED:         state: >-
+# DISABLED:           {{ (state_attr('sensor.photogrammetry_statistics', 'session_totals') or {}).get('total_sessions_completed', 0) | int(0) }}
+# DISABLED:         unit_of_measurement: "sessions"
+# DISABLED:         icon: mdi:chart-line
+# DISABLED:         availability: "{{ states('sensor.photogrammetry_statistics') not in ['unavailable', 'unknown'] }}"
+# DISABLED:         attributes:
+# DISABLED:           last_updated: >-
+# DISABLED:             {{ state_attr("sensor.photogrammetry_statistics", "last_updated") | default("Never") }}
+# DISABLED:           session_totals: >-
+# DISABLED:             {{ state_attr('sensor.photogrammetry_statistics', 'session_totals') | default({}) }}
+# DISABLED:           metrics_by_photo_count: >-
+# DISABLED:             {{ state_attr('sensor.photogrammetry_statistics', 'metrics_by_photo_count') | default({}) }}
+# DISABLED:           trends: >-
+# DISABLED:             {{ state_attr('sensor.photogrammetry_statistics', 'trends') | default({}) }}
+
+# ===========================================================================
+# SECTION B: REST SENSORS (Modern Format)
+# ===========================================================================
+# Main data sources from backend API (http://192.168.0.176:5000)
+# Using the modern 'rest:' integration format (works in packages)
+
+rest:
+  # idle- Primary Session Sensor idle-
+  # Main sensor providing all session data (polled every 60 seconds when idle)
+  # CRITICAL: All template sensors depend on this sensor!
+  # NOTE: Automation increases polling to 5s when session is active
+  - resource: "http://192.168.0.176:5000/api/session/current"
+    scan_interval: 3
+    timeout: 10
+    sensor:
+      - name: "Photogrammetry Session"
+        unique_id: photogrammetry_session_main
+        value_template: "{{ value_json.status | default('unknown') }}"
+        json_attributes:
+          - session_id
+          - status
+          - object_name
+          - current_position
+          - total_positions
+          - completed_positions
+          - failed_positions
+          - photos_per_burst
+          - progress_percent
+          - crop_progress_percent
+          - total_cropped
+          - crop_failures
+          - crop_stats
+          - auto_crop_enabled
+          - odd_slot_stacking
+          - even_slot_stacking
+          - stacks_processing
+          - started_at
+          - last_updated
+          - error_message
+          - estimated_seconds_remaining
+          - estimated_completion_time
+          - thread_active
+          - current_retry_count
+          - consecutive_failures
+          - angular_distance
+          - session_number
+          - time_breakdown
+          - pipeline_progress
+        availability: "{{ value_json is mapping and 'status' in value_json }}"
+
+  # idle- ADB Information Sensor idle-
+  # ADB device status and connections (polled every 60 seconds when idle)
+  # NOTE: Automation increases polling to 10s when session is active
+  - resource: "http://192.168.0.176:5000/api/devices/status"
+    scan_interval: 10
+    timeout: 10
+    sensor:
+      - name: "Photogrammetry ADB Info"
+        unique_id: photogrammetry_adb_info_main
+        value_template: "{{ value_json.adb_server_running | default(false) }}"
+        json_attributes:
+          - adb_server_running
+          - devices
+          - connected_count
+          - timestamp
+        availability: "{{ value_json is mapping and 'adb_server_running' in value_json }}"
+
+  # idle- Statistics Sensor idle-
+# DISABLED:   # Lifetime statistics and metrics (polled every 60 seconds)
+# DISABLED:   - resource: "http://192.168.0.176:5000/api/statistics"
+# DISABLED:     scan_interval: 10
+# DISABLED:     timeout: 10
+# DISABLED:     sensor:
+# DISABLED:       - name: "Photogrammetry Statistics"
+# DISABLED:         unique_id: photogrammetry_statistics_main
+# DISABLED:         value_template: >-
+# DISABLED:           {% if value_json.get('error') %}
+# DISABLED:             0
+# DISABLED:           {% else %}
+# DISABLED:             {{ (value_json | default({})).get('session_totals', {}).get('total_sessions_completed', 0) }}
+# DISABLED:           {% endif %}
+# DISABLED:         availability: "{{ 'error' not in (value_json | default({})) }}"
+# DISABLED:         json_attributes:
+# DISABLED:           - session_totals
+# DISABLED:           - metrics_by_photo_count
+# DISABLED:           - trends
+# DISABLED:           - last_updated

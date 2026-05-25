@@ -45,6 +45,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
 | [timeteam-downloads.md](services/timeteam-downloads.md) | Time Team complete download system — YouTube + Patreon to Emby library |
 | [timeteam-runbook.md](services/timeteam-runbook.md) | Time Team library processing runbook — download, classify, rename, Emby sync |
+| [photogrammetry/photogrammetry.md](services/photogrammetry/photogrammetry.md) | Photogrammetry automation system — Samsung S10 + ADB + RC + turntable marker rig + HA dashboard (v5.24) |
 
 ### Incidents
 

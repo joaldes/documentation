@@ -1,0 +1,156 @@
+# ============================================================================
+# PHOTOGRAMMETRY - AUTOMATIONS
+# ============================================================================
+# Version: 4.3.1
+# Updated: 2026-05-14 - Backend async-capture-2.3: pipeline completion rates (lockstep)
+# Part 4 of 5: Automatic session start/stop with threading system
+#
+# This file defines automation rules that link UI controls to backend actions:
+#   - Auto-start: When toggle turns ON, spawn background thread
+#   - Auto-stop: When toggle turns OFF, signal thread to exit cleanly
+#   - Fast polling: When session becomes active (5s updates)
+#   - Stop polling: When session goes idle/complete (no updates)
+#
+# Threading System:
+#   - Start spawns a background thread that auto-processes all positions
+#   - Stop signals the thread to exit after completing current position
+# ============================================================================
+
+automation:
+  # Auto-start session when master toggle is turned on (spawns thread)
+  - id: photogrammetry_auto_start_threading
+    alias: "Photogrammetry: Auto-Start with Threading"
+    description: "Automatically starts a new session with background thread when toggle is on"
+    trigger:
+      - trigger: state
+        entity_id: input_boolean.photogrammetry_active
+        to: "on"
+    action:
+      - action: rest_command.photogrammetry_start
+    mode: single
+
+  # Auto-stop session when master toggle is turned off (signals thread to exit)
+  - id: photogrammetry_auto_stop_threading
+    alias: "Photogrammetry: Auto-Stop Threading"
+    description: "Automatically stops active session and background thread when toggle is off"
+    trigger:
+      - trigger: state
+        entity_id: input_boolean.photogrammetry_active
+        to: "off"
+    condition:
+      # Stop if session is active, paused, or retrying
+      - condition: template
+        value_template: "{{ states('sensor.photogrammetry_session') in ['active', 'paused', 'retrying'] }}"
+    action:
+      - action: rest_command.photogrammetry_stop
+    mode: single
+
+  # Immediate sensor update when session starts
+  - id: photogrammetry_immediate_update_on_start
+    alias: "Photogrammetry: Immediate Update on Start"
+    description: "Update sensor immediately when start button is clicked for instant dashboard feedback"
+    trigger:
+      - trigger: state
+        entity_id: input_boolean.photogrammetry_active
+        to: "on"
+    action:
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.photogrammetry_session
+    mode: single
+
+  # ============================================================================
+  # NOTIFICATION AUTOMATIONS (v5.5)
+  # ============================================================================
+
+  # Notify when session completes successfully
+  - id: photogrammetry_notify_complete
+    alias: "Photogrammetry: Notify Session Complete"
+    trigger:
+      - trigger: state
+        entity_id: sensor.photogrammetry_session
+        to: "complete"
+    action:
+      - action: persistent_notification.create
+        data:
+          title: "Photogrammetry Complete"
+          message: >-
+            Session '{{ state_attr('sensor.photogrammetry_session', 'object_name') | default('Unknown') }}'
+            finished - {{ state_attr('sensor.photogrammetry_session', 'total_positions') | int(0) }} positions
+          notification_id: "photogrammetry_complete"
+      - action: notify.mobile_app
+        data:
+          title: "Photogrammetry Complete"
+          message: >-
+            Session '{{ state_attr('sensor.photogrammetry_session', 'object_name') | default('Unknown') }}' finished
+          data:
+            tag: "photogrammetry_complete"
+    mode: single
+
+  # Notify when session encounters an error
+  - id: photogrammetry_notify_error
+    alias: "Photogrammetry: Notify Error"
+    trigger:
+      - trigger: state
+        entity_id: sensor.photogrammetry_session
+        to: "error"
+    action:
+      - action: persistent_notification.create
+        data:
+          title: "Photogrammetry Error"
+          message: >-
+            {% set err = state_attr('sensor.photogrammetry_session', 'error_message') | default('Unknown error') %}
+            {% set pos = state_attr('sensor.photogrammetry_session', 'current_position') | int(0) %}
+            Position {{ pos }} failed: {{ err[:150] }}
+          notification_id: "photogrammetry_error"
+      - action: notify.mobile_app
+        data:
+          title: "Photogrammetry Error"
+          message: >-
+            {% set err = state_attr('sensor.photogrammetry_session', 'error_message') | default('Unknown error') %}
+            Position failed: {{ err[:100] }}
+          data:
+            tag: "photogrammetry_error"
+            importance: high
+    mode: single
+
+  # Clear old notifications when new session starts
+  - id: photogrammetry_clear_notifications
+    alias: "Photogrammetry: Clear Old Notifications"
+    trigger:
+      - trigger: state
+        entity_id: sensor.photogrammetry_session
+        from: "idle"
+        to: "active"
+    action:
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: "photogrammetry_complete"
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: "photogrammetry_error"
+    mode: single
+
+  # Notify when session is blocked waiting for intervention
+  - id: photogrammetry_notify_blocked
+    alias: Photogrammetry: Notify Blocked
+    trigger:
+      - trigger: state
+        entity_id: sensor.photogrammetry_session
+        to: blocked
+    action:
+      - action: persistent_notification.create
+        data:
+          title: Photogrammetry BLOCKED
+          message: >-
+            Position {{ state_attr('sensor.photogrammetry_session', 'current_position') | int(0) }}
+            failed - fix issue and click Resume
+          notification_id: photogrammetry_blocked
+      - action: notify.mobile_app
+        data:
+          title: Photogrammetry BLOCKED
+          message: Position failed - fix and resume
+          data:
+            tag: photogrammetry_blocked
+            importance: high
+    mode: single

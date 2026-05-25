@@ -1,0 +1,56 @@
+# ============================================================================
+# PHOTOGRAMMETRY - INPUT CONTROLS
+# ============================================================================
+# Version: 4.3.1
+# Updated: 2026-05-14 - Backend async-capture-2.3: pipeline completion rates (lockstep)
+# Part 1 of 5: User-facing controls for configuring and controlling sessions
+#
+# This file defines all input controls used by the photogrammetry system:
+#   - Boolean toggles for on/off settings
+#   - Text inputs for object names
+#   - Numeric inputs for angles, positions, and motor speeds
+# ============================================================================
+
+# --- Boolean Toggles ---
+input_boolean:
+  # Master toggle for starting/stopping sessions
+  photogrammetry_active:
+    name: "Photogrammetry Active"
+    icon: mdi:camera-3d
+
+  # Enable/disable automatic image cropping (v3.0)
+  photogrammetry_auto_crop:
+    name: "Auto-Crop Enabled"
+    icon: mdi:crop
+    initial: true
+
+# --- Text Inputs ---
+input_text:
+  # Object name for current scan
+  photogrammetry_object_name:
+    name: "Object Name"
+    initial: "unknown"
+    max: 100
+
+# --- Numeric Inputs ---
+input_number:
+  # Degrees between positions (1.0 - 45.0)
+  photogrammetry_angular_distance:
+    name: "Angular Distance"
+    min: 1.0
+    max: 45.0
+    step: 0.5
+    initial: 10.0
+    mode: box
+    unit_of_measurement: "°"
+    icon: mdi:angle-acute
+
+  # Turntable motor speed (steps per second)
+  turntable_stepper_speed:
+    name: "Turntable Speed"
+    min: 100
+    max: 2000
+    step: 50
+    initial: 500
+    unit_of_measurement: "steps/s"
+    icon: mdi:speedometer

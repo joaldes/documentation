@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-17 01:00 UTC*
+*Last updated: 2026-05-25 09:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 2.75, 2.04, 2.68 | RAM: 43/62 GB | Uptime: 104 days
+**Shipyard** (192.168.0.151) | CPU: 5.68, 4.16, 3.05 | RAM: 44/62 GB | Uptime: 113 days
 
-**48 services** — 23 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
+**49 services** — 24 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (48)
+## All Services (49)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -18,6 +18,7 @@
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
+| garmin | lxc | 192.168.0.132 | - | - | running |
 | grafana | docker | 192.168.0.179 | 3001 | http://192.168.0.179:3001 | running |
 | homelable | lxc | 192.168.0.218 | - | - | running |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
@@ -57,7 +58,7 @@
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
-## LXC Containers (23)
+## LXC Containers (24)
 | CT | Name | IP | Port | URL | Status |
 |-----|------------------|----------------|-------|------------------------------|---------|
 | 101 | adguard | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -83,6 +84,7 @@
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | 130 | ollama | 192.168.0.130 | - | - | running |
 | 131 | cartography | 192.168.0.229 | - | - | running |
+| 132 | garmin | 192.168.0.132 | - | - | running |
 
 ## Docker Stacks (25) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
@@ -111,7 +113,7 @@
 | shoplist | 8086 | 1/1 | 0 | running | http://192.168.0.179:8086 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
 | tplan | 8084 | 2/2 | 0 | running | http://192.168.0.179:8084 |
-| trailhead | 8076 | 2/2 | 0 | running | http://192.168.0.179:8076 |
+| trailhead | 8076 | 2/2 | 2 | running | http://192.168.0.179:8076 |
 
 ## VMs (3)
 | VMID | Name | Status |
@@ -123,14 +125,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6505/10158 | 64% |
+| backups | dir | 6699/10158 | 65% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 822/1006 | 81% |
-| docker-data | dir | 362/2014 | 18% |
-| littlestorage | lvmthin | 141/1830 | 7% |
-| local | dir | 52/93 | 55% |
-| local-lvm | lvmthin | 292/348 | 83% |
+| container-backups | dir | 846/1006 | 84% |
+| docker-data | dir | 367/2014 | 18% |
+| littlestorage | lvmthin | 134/1830 | 7% |
+| local | dir | 51/93 | 54% |
+| local-lvm | lvmthin | 298/348 | 85% |
 | smb-documents | dir | 76/921 | 8% |
 | smb-frigate | dir | 591/1006 | 58% |
-| smb-hometheater | dir | 16433/29679 | 55% |
-| smb-pictures | dir | 2401/10158 | 23% |
+| smb-hometheater | dir | 16449/29679 | 55% |
+| smb-pictures | dir | 2405/10158 | 23% |

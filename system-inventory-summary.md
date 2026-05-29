@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-25 09:00 UTC*
+*Last updated: 2026-05-29 07:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 5.68, 4.16, 3.05 | RAM: 44/62 GB | Uptime: 113 days
+**Shipyard** (192.168.0.151) | CPU: 2.02, 3.06, 3.32 | RAM: 40/62 GB | Uptime: 117 days
 
-**49 services** — 24 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
+**50 services** — 24 LXC containers, 26 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (49)
+## All Services (50)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -30,6 +30,7 @@
 | komodo | lxc | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | komodo | docker | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | lubelogger | docker | 192.168.0.179 | 8071 | http://192.168.0.179:8071 | running |
+| magazine | docker | 192.168.0.179 | 8089 | http://192.168.0.179:8089 | running |
 | manyfold | docker | 192.168.0.179 | 3214 | http://192.168.0.179:3214 | running |
 | mealie | docker | 192.168.0.179 | 9925 | http://192.168.0.179:9925 | running |
 | nginxproxymanager | lxc | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
@@ -86,7 +87,7 @@
 | 131 | cartography | 192.168.0.229 | - | - | running |
 | 132 | garmin | 192.168.0.132 | - | - | running |
 
-## Docker Stacks (25) — 192.168.0.179
+## Docker Stacks (26) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -101,6 +102,7 @@
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
 | komodo | 9120 | 7/7 | 2 | running | http://192.168.0.179:9120 |
 | lubelogger | 8071 | 1/1 | 0 | running | http://192.168.0.179:8071 |
+| magazine | 8089 | 1/1 | 0 | running | http://192.168.0.179:8089 |
 | manyfold | 3214 | 1/1 | 1 | running | http://192.168.0.179:3214 |
 | mealie | 9925 | 1/1 | 1 | running | http://192.168.0.179:9925 |
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
@@ -125,14 +127,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6699/10158 | 65% |
+| backups | dir | 6711/10158 | 66% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 846/1006 | 84% |
-| docker-data | dir | 367/2014 | 18% |
-| littlestorage | lvmthin | 134/1830 | 7% |
+| container-backups | dir | 838/1006 | 83% |
+| docker-data | dir | 369/2014 | 18% |
+| littlestorage | lvmthin | 145/1830 | 7% |
 | local | dir | 51/93 | 54% |
-| local-lvm | lvmthin | 298/348 | 85% |
-| smb-documents | dir | 76/921 | 8% |
+| local-lvm | lvmthin | 303/348 | 87% |
+| smb-documents | dir | 77/921 | 8% |
 | smb-frigate | dir | 591/1006 | 58% |
-| smb-hometheater | dir | 16449/29679 | 55% |
+| smb-hometheater | dir | 16448/29679 | 55% |
 | smb-pictures | dir | 2405/10158 | 23% |

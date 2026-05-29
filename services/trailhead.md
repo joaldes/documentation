@@ -411,7 +411,7 @@ Two-column layout (CSS Grid `3fr 2fr`, max-width 1400px):
 - **Right column**: Scrollable chronological episode list grouped by date, auto-scrolls to today on load. Past days dimmed at 50% opacity.
 
 **Interactivity** (client-side JavaScript):
-- Clicking a calendar day with episodes selects it and shows its episodes below the calendar
+- Clicking a calendar day with episodes selects it, shows its episodes in the detail panel below the calendar, and scrolls the right-column episode list to that day (with a brief flash highlight on the day header)
 - Today is auto-selected on page load (or first day with episodes in current month)
 - Month navigation auto-selects the first episode day in the new month
 - Days with episodes get `cursor: pointer` and a selected highlight (blue outline)

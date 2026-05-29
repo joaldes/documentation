@@ -1,6 +1,6 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-05-29
 
 **Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Sonarr (CT 110), Frigate NVR, AdGuard (CT 101), NPM (CT 112), Authentik SSO (192.168.0.179:9000)
 
@@ -38,6 +38,24 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | `nginx.conf` | Static server + Authentik forward auth + security headers |
 | `logged-out.html` | Static logout landing page with 5s redirect countdown |
 | `requirements.txt` | Pinned Python dependencies |
+
+### Deploying config / bookmark changes (NO rebuild)
+
+As of **2026-05-29** the host `trailhead.yaml` is **bind-mounted** into the generator
+(`- /mnt/docker/trailhead/trailhead.yaml:/app/trailhead.yaml:ro` in `compose.yaml`), so edits
+take effect **without rebuilding the image**:
+
+1. Edit `/mnt/docker/trailhead/trailhead.yaml`.
+2. Trigger a regen: `docker exec trailhead-generator touch /tmp/regen` (the entrypoint loop
+   applies it within ~5s), or `POST http://trailhead-generator:8077/regen`. The 5-minute loop
+   regenerates on its own too.
+
+The `Dockerfile` still `COPY`s `trailhead.yaml` as a baked fallback, but the live mount wins.
+**Do NOT `docker compose build` just for a yaml/bookmark change** — that was the old, wrong
+procedure (the generator used to read the baked-in copy, so edits did nothing until a rebuild).
+
+> **Reachability:** prefer `http://192.168.0.179:<port>` for bookmark `url:`/`local:` over
+> `*.home`/`*.lan` hostnames — those don't resolve on every client (e.g. work laptops).
 | `fonts/` | NPS typefaces (Frutiger, National Park, NPS 1935, NPS 1945 signage) |
 
 Compose file: `/mnt/docker/trailhead/compose.yaml`

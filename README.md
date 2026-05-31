@@ -47,6 +47,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [timeteam-runbook.md](services/timeteam-runbook.md) | Time Team library processing runbook — download, classify, rename, Emby sync |
 | [photogrammetry/photogrammetry.md](services/photogrammetry/photogrammetry.md) | Photogrammetry automation system — Samsung S10 + ADB + RC + turntable marker rig + HA dashboard (v5.24) |
 | [magazine.md](services/magazine.md) | The Curious — self-writing fun-fact magazine (CT 128, 4-agent Claude pipeline, adversarial fact-check, source archiving, magazine.home:8089) |
+| [vpn.md](services/vpn.md) | Self-hosted WireGuard VPN with deep traffic logging (Zeek + Suricata + Loki/Grafana, CT 133) |
 
 ### Incidents
 

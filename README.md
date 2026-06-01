@@ -36,7 +36,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + Authentik SSO + NPS design) |
-| [tplan.md](services/tplan.md) | tPlan — Self-hosted road-trip planner (FastAPI + SQLite, live + staging stacks, modular CSS, Tabulator/Leaflet) |
+| [tplan.md](services/tplan.md) | tPlan — Self-hosted road-trip planner (FastAPI + SQLite, live + dev stacks, modular CSS, Tabulator/Leaflet) |
 | [photon.md](services/photon.md) | Photon — Self-hosted geocoder (CT 128, planet OSM index, used by tPlan for search/reverse-geocode) |
 | [overpass.md](services/overpass.md) | Overpass-NA — Self-hosted OSM query API (CT 128, NA extract + Caddy CORS sidecar, for tPlan POI overlay) |
 | [jobs-home.md](services/jobs-home.md) | jobs.home — Ambient job-progress dashboard for ad-hoc scripts across all homelab hosts |

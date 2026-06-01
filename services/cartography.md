@@ -31,7 +31,7 @@ All containers run on the external Docker network `cartography_net` (created wit
 | `map-overpass-caddy` | caddy:2-alpine | `12345` (CORS reverse-proxy in front of overpass) | `/mnt/docker/map/overpass/caddy/Caddyfile` |
 | `map-valhalla` | ghcr.io/nilsnolde/docker-valhalla/valhalla:latest | `8002` | `/mnt/docker/map/valhalla` (~4 GB; **US-West states only**) |
 
-Used by tplan (CT 124). DNS hostname: `gis.home` (legacy from pre-rename) covers all of these.
+Used by tplan (CT 128). DNS hostname: `gis.home` (legacy from pre-rename) covers all of these.
 
 ### `gis` stack (`/mnt/docker/gis/compose.yaml`, project name `gis` — pinned)
 
@@ -112,7 +112,7 @@ docker compose -f /mnt/docker/gis-tools/compose.yaml run --rm pdal <command>
 ## Networking
 
 ```
-[ tplan (CT 124) ]                          [ QGIS Desktop ]
+[ tplan (CT 128) ]                          [ QGIS Desktop ]
         │                                          │
         ▼                                          ▼
  gis.home:2322  → map-photon                gis.home:5432 → gis-postgis

@@ -1,7 +1,7 @@
 # Photon — Self-Hosted Geocoder
 
 **Last Updated**: 2026-05-06
-**Related Systems**: LXC 131 (cartography, 192.168.0.229), CT 124 (tPlan, consumes), CT 101 (AdGuard DNS)
+**Related Systems**: LXC 131 (cartography, 192.168.0.229), CT 128 (tPlan, consumes), CT 101 (AdGuard DNS)
 
 ---
 

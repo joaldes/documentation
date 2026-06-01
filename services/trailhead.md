@@ -1183,3 +1183,22 @@ Authentik may be down or the outpost may not have the provider assigned. Check:
 docker logs authentik-server --tail 20
 curl -s -o /dev/null -w '%{http_code}' -H 'Host: home.1701.me' http://192.168.0.179:9000/outpost.goauthentik.io/auth/nginx
 ```
+
+## Today's Dispatch (The Curious magazine card)
+
+A native NPS-styled block at the top of the dashboard that surfaces the latest article from [The Curious](magazine.md). Distinct from the **Magazine** bookmark card under Bookmarks — the bookmark is one-tap entry into the magazine, this block is the day's headline.
+
+### Source
+- `GET http://192.168.0.179:8089/api/today` on the magazine container → `{available, slug, title, dek, published_at, url, magazine_url}`.
+- Fetched in `generate.py` during each regen (4s timeout, non-fatal on failure — the dispatch block is just hidden if the magazine is unreachable).
+
+### Visual (Wayside-B variant)
+- Half-width white card with a brown header band (`var(--nps-brown)`) — "TODAY'S DISPATCH" in uppercase tracking-spaced sans.
+- Body has the article headline as a serif title (`.curious-headline`, 23px), then the dek in a sans serif (`.curious-dek`, 16px), then a "Read at The Curious →" link (`.curious-read`, 13px brown).
+- All sizing tuned via iteration; do not bump without checking the dashboard balance.
+
+### Rendered if and only if
+The `magazine` template var is non-null AND `magazine.available` is True. Otherwise the block is fully omitted, no placeholder.
+
+### Bookmark card
+Under the **Bookmarks** tab, `id: magazine`, `title: Magazine`, `category: The Curious` (the title is the displayed card name; `category` is the small label above), `url: http://192.168.0.179:8089`. Ordered alphabetically by title.

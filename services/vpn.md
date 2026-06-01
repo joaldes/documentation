@@ -82,3 +82,31 @@ Added user_rule: `/.*/$dnstype=HTTPS` — blocks DNS type-65 (HTTPS RR) records 
 | Zeek logs empty | `systemctl status zeek-vpn`. nsenter target PID changes on wg-easy restart — service should auto-restart. |
 | Grafana not loading | `docker logs grafana` — slow first start due to DB migrations |
 | DoH blocklist stale | `systemctl status doh-refresh.timer`, `cat /opt/vpn-data/state/doh_count` |
+
+## MITM HTTPS Interception (Added 2026-06-01, laptop-only)
+
+mitmproxy 12.2.3 decrypts HTTPS for peer 10.8.0.2 only (laptop). All other peers untouched. Custom CA (\`Home Network Root CA\`, 10-year, SHA256 \`DC:D9:7A:3F:D7:6B:F7:EA:1E:1C:14:5F:B1:DE:3B:E1:B6:DF:DE:46:71:10:4C:EB:1C:54:E9:FF:85:19:E6:A6\`) installed on Windows laptop trust store.
+
+### Architecture
+- mitmproxy 12.2.3 standalone binary at \`/usr/local/bin/mitmdump\`
+- Runs via \`mitm-vpn.service\` -> \`nsenter\` into wg-easy netns -> listens on :8080 transparent mode
+- iptables in wg-easy netns: REDIRECT \`-s 10.8.0.2 tcp dport 80,443 -> :8080\`, REJECT \`udp dport 443\` (force H3->H2)
+- JSON logger addon \`/opt/vpn-data/mitm/json_logger.py\` -> \`/var/log/mitm/flows.json\` -> Promtail -> Loki -> Grafana panel "URLs visited (mitm, last hour)"
+- ignore_hosts regex list in \`/root/.mitmproxy/config.yaml\` covers cert-pinned apps (Apple, banks, MS, Signal, etc.)
+
+### Key Files
+- \`/root/.mitmproxy/\` - CA bundle + config.yaml
+- \`/opt/vpn-data/mitm/json_logger.py\` - JSON flow logger addon
+- \`/opt/vpn-data/mitm/config.yaml\` - source-of-truth ignore_hosts (mirrored to confdir)
+- \`/etc/systemd/system/mitm-vpn.service\` - daemon
+- \`/opt/vpn-data/scripts/apply-wg-firewall.sh\` - has the per-peer iptables block
+
+### Windows CA install
+See \`/mnt/documents/personal/alec/claudeai/vpn/mitm-windows-install.md\` for the user-facing guide.
+
+### Adding a host to ignore_hosts when an app breaks
+1. \`vi /root/.mitmproxy/config.yaml\` -> add regex under \`ignore_hosts:\`
+2. \`systemctl restart mitm-vpn.service\`
+
+### Rollback
+\`systemctl mask --now mitm-vpn.service\` + delete the 3 iptables rules with \`-s 10.8.0.2\` (see Windows install doc for exact commands). wg-easy/Zeek/Suricata untouched.

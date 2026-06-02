@@ -1,11 +1,16 @@
 # tPlan — Self-Hosted Road-Trip Planner
 
-**Last Updated**: 2026-06-01
+**Last Updated**: 2026-06-02
 **Related Systems**: CT 128 (Komodo / Docker host, 192.168.0.179), CT 104 (Samba, exports `[docker]` share for static-asset edits), LXC 131 (cartography: Photon search at `photon.home:2322`, Valhalla routing at `gis.home:8002`, Overpass POI overlay at `overpass.home:12345`), Google Maps Platform (basemap tiles + Places API via backend proxy)
 
 ## Migration to Docker (2026-05-08)
 
 Moved from native systemd on CT 124 (`/opt/tplan/`) to Dockerized stack on Komodo CT 128 (`/mnt/docker/tplan/`). Rationale: fits homelab convention (data in `/mnt/docker/<name>/`, compose in `/etc/komodo/stacks/<name>/`), unified backup story, Komodo manages restart/redeploy.
+
+## Recent additions (2026-06-02)
+
+- **`If-Match` server-side validation** — `PUT` and `PATCH /api/trips/{tid}` now read the `If-Match` header (client has been sending it since the rewrite) and return `412 Precondition Failed` with body `{"detail":{"server_updated_at":"..."}}` when the supplied timestamp doesn't match the row's `updated_at`. Closes a silent data-loss path when the same trip is edited from two devices. Backward-compatible: clients that omit `If-Match` still get the prior behavior.
+- **Public hostname migration** (in progress) — `SHARE_HOST` default + `SHARE_BASE` in `js/share-modal.js` flipped from `trip.1701.me` → `trips.1701.me`. The new NPM proxy host (Authentik forward-auth gated, `/s/*` exempted) is not yet provisioned — see plan at `/home/claudeai/.claude/plans/use-multiple-agents-to-glimmering-storm.md`. Live until NPM/Authentik land: editor remains LAN-only at `tplan.lan:8084`; existing `trip.1701.me/s/*` share viewer keeps working unchanged. After NPM cutover, `trip.1701.me` becomes a 301 to `trips.1701.me`.
 
 ## Recent additions (2026-05-08 → 2026-05-14)
 
@@ -283,8 +288,9 @@ All three regressions surfaced during the Phase 5 verification ("Clear all reser
 | ~~Day drag-reorder doesn't auto-recalc routes~~ | DONE 2026-05-04 | After `renderAll()` in `js/day-sortable.js onEnd`, iterate days and call `global.recalcRoutes(d.id)` when `global.autoRoute` is on. (Required `let autoRoute` → `var autoRoute` in core for window access.) |
 | ~~Add Day briefly shows previous day's stops~~ | DONE 2026-05-04 | Removed premature `setGroupValues` from `addDay`. `replaceData()` sets groups via `_dayId`. (Sibling `reorderDays`/`deleteDay` unchanged — not reported broken.) |
 | No automated tests | Won't fix (2026-05-04) | Playwright design done; declined to add test infra for a single-user app. Manual verification on dev before promote remains the workflow. |
-| No auth on `/api/` | **Blocks road access** | Open `/api/trips*` + `/api/places/*` would let anyone on the public internet read/write your trip DB and burn your Google Places quota. Must solve before exposing outside the LAN. Three viable approaches: (1) VPN-only access via CT 133 WireGuard — done today, zero code change; (2) Cloudflare Tunnel + Cloudflare Access in front of `tplan-live` — TLS + SSO at the edge, no app changes; (3) shared-secret/basic-auth middleware in `app.py` — cheap but uglier. Trip-sharing `/s/{slug}` viewer is already read-only and slug-scoped, so it's safe to expose even without auth on `/api/`. |
-| Frontend hits LAN hostnames directly | Blocks road access (browser) | `js/search.js`, `js/edit-location.js`, `js/overpass.js`, importer all reference `photon.home`, `overpass.home`, `gis.home` from the browser. These don't resolve from cellular. Either route every call through the existing backend proxies (`/api/photon/{path}`, `/api/overpass`, `/api/route`) or ensure the road-access path tunnels DNS too (WireGuard does; Cloudflare Tunnel doesn't). |
+| No auth on `/api/` | **In progress** | Decision (2026-06-02): Authentik forward-auth at the NPM edge for `trips.1701.me`, with `/s/*` path-exempted. Zero auth code in tplan. Code changes (`SHARE_HOST`, `If-Match`) landed. NPM proxy host + Authentik provider/application are next; see plan `/home/claudeai/.claude/plans/use-multiple-agents-to-glimmering-storm.md`. |
+| ~~Frontend hits LAN hostnames directly~~ | DONE (2026-06-02 audit) | Re-verified: no `photon.home`/`overpass.home`/`gis.home` references in shipped `static-live/js/*`. All API calls go through same-origin `/api/...` proxies. Earlier audit note was based on a pre-promotion build; current code is proxy-clean. |
+| ~~No `If-Match` validation server-side~~ | DONE 2026-06-02 | `PUT` and `PATCH /api/trips/{tid}` now return 412 on stale `If-Match`. Client already handled 412. Smoke-tested on dev. |
 | No offline mode | Optional (road access nice-to-have) | localStorage drafts already buffer edits during save failures. Full offline would need a service-worker pre-caching the active trip JSON + map tiles for a bbox. Defer until road testing shows it's needed. |
 
 ---

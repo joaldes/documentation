@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-05-31 06:00 UTC*
+*Last updated: 2026-06-03 05:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 3.14, 3.35, 3.59 | RAM: 40/62 GB | Uptime: 119 days
+**Shipyard** (192.168.0.151) | CPU: 2.04, 3.29, 4.77 | RAM: 28/62 GB | Uptime: 0 days
 
 **51 services** — 25 LXC containers, 26 Docker stacks, 3 VMs, 11 storage pools
 
@@ -20,7 +20,7 @@
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
 | garmin | lxc | 192.168.0.132 | - | - | running |
 | grafana | docker | 192.168.0.179 | 3001 | http://192.168.0.179:3001 | running |
-| homelable | lxc | 192.168.0.218 | - | - | running |
+| homelable | lxc |  | - | - | stopped |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
 | immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | running |
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
@@ -43,7 +43,7 @@
 | reyday | docker | 192.168.0.179 | 8105 | http://192.168.0.179:8105 | running |
 | samba | lxc | 192.168.0.176 | - | - | running |
 | sander | docker | 192.168.0.179 | 8100 | http://192.168.0.179:8100 | running |
-| scanopy | lxc | 192.168.0.219 | - | - | running |
+| scanopy | lxc |  | - | - | stopped |
 | scanopy-daemon | docker | 192.168.0.179 | - | - | running |
 | sftp | docker | 192.168.0.179 | 8070 | http://192.168.0.179:8070 | running |
 | shoplist | docker | 192.168.0.179 | 8086 | http://192.168.0.179:8086 | running |
@@ -58,7 +58,7 @@
 | urbackup | lxc | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
 | vpn | lxc | 192.168.0.220 | - | - | running |
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
-| zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
+| zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | stopped |
 
 ## LXC Containers (25)
 | CT | Name | IP | Port | URL | Status |
@@ -69,8 +69,8 @@
 | 104 | samba | 192.168.0.176 | - | - | running |
 | 105 | unmanic | 192.168.0.207 | 8888 | http://192.168.0.207:8888 | running |
 | 107 | radarr | 192.168.0.42 | 7878 | http://192.168.0.42:7878 | running |
-| 108 | zwave-js-ui | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
-| 109 | homelable | 192.168.0.218 | - | - | running |
+| 108 | zwave-js-ui | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | stopped |
+| 109 | homelable |  | - | - | stopped |
 | 110 | sonarr | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
 | 111 | urbackup | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
 | 112 | nginxproxymanager | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
@@ -81,7 +81,7 @@
 | 117 | wikijs | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | 118 | homepage | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
 | 120 | pulse | 192.168.0.175 | 7655 | http://192.168.0.175:7655 | running |
-| 121 | scanopy | 192.168.0.219 | - | - | running |
+| 121 | scanopy |  | - | - | stopped |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | 130 | ollama | 192.168.0.130 | - | - | running |
@@ -129,14 +129,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6757/10158 | 66% |
+| backups | dir | 6764/10158 | 66% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 849/1006 | 84% |
-| docker-data | dir | 370/2014 | 18% |
-| littlestorage | lvmthin | 150/1830 | 8% |
+| container-backups | dir | 866/1006 | 86% |
+| docker-data | dir | 373/2014 | 18% |
+| littlestorage | lvmthin | 157/1830 | 8% |
 | local | dir | 51/93 | 54% |
-| local-lvm | lvmthin | 306/348 | 87% |
+| local-lvm | lvmthin | 308/348 | 88% |
 | smb-documents | dir | 77/921 | 8% |
 | smb-frigate | dir | 591/1006 | 58% |
-| smb-hometheater | dir | 16433/29679 | 55% |
+| smb-hometheater | dir | 16724/29679 | 56% |
 | smb-pictures | dir | 2405/10158 | 23% |

@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-03 05:00 UTC*
+*Last updated: 2026-06-03 11:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 2.04, 3.29, 4.77 | RAM: 28/62 GB | Uptime: 0 days
+**Shipyard** (192.168.0.151) | CPU: 1.37, 1.26, 2.14 | RAM: 34/62 GB | Uptime: 0 days
 
 **51 services** — 25 LXC containers, 26 Docker stacks, 3 VMs, 11 storage pools
 
@@ -58,7 +58,7 @@
 | urbackup | lxc | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
 | vpn | lxc | 192.168.0.220 | - | - | running |
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
-| zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | stopped |
+| zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
 ## LXC Containers (25)
 | CT | Name | IP | Port | URL | Status |
@@ -69,7 +69,7 @@
 | 104 | samba | 192.168.0.176 | - | - | running |
 | 105 | unmanic | 192.168.0.207 | 8888 | http://192.168.0.207:8888 | running |
 | 107 | radarr | 192.168.0.42 | 7878 | http://192.168.0.42:7878 | running |
-| 108 | zwave-js-ui | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | stopped |
+| 108 | zwave-js-ui | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 | 109 | homelable |  | - | - | stopped |
 | 110 | sonarr | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
 | 111 | urbackup | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
@@ -129,11 +129,11 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6764/10158 | 66% |
+| backups | dir | 6780/10158 | 66% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 866/1006 | 86% |
-| docker-data | dir | 373/2014 | 18% |
-| littlestorage | lvmthin | 157/1830 | 8% |
+| docker-data | dir | 383/2014 | 19% |
+| littlestorage | lvmthin | 158/1830 | 8% |
 | local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 308/348 | 88% |
 | smb-documents | dir | 77/921 | 8% |

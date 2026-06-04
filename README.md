@@ -67,6 +67,12 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-04-16-lizard-tank-overheat.md](incidents/2026-04-16-lizard-tank-overheat.md) | Lizard tank aux heat stuck ON 5hrs — old NR flow binary sensor gate blocked turn-off |
 | [2026-05-01-ha-unreachable-claude-ai-overload.md](incidents/2026-05-01-ha-unreachable-claude-ai-overload.md) | HA unreachable 55min — Claude AI CT overload starved Proxmox host, stalled HA vCPU, missed DHCP renewal |
 
+### Troubleshoot
+
+| Document | Description |
+|----------|-------------|
+| [lxc-usb-passthrough.md](troubleshoot/lxc-usb-passthrough.md) | LXC USB passthrough — stable device mapping (avoid `dev0:` bus/device pins; use `lxc.mount.entry` with `/dev/serial/by-id`) |
+
 ---
 
 ## Folder Structure

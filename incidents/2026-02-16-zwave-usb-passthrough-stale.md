@@ -15,6 +15,8 @@ USB device numbers assigned by the kernel (`/dev/bus/usb/BBB/DDD`) are not stabl
 ## Solution
 Updated the `dev0` line in `/etc/pve/lxc/108.conf` to the current device number and started the container.
 
+> **2026-06-03 update**: this fix was a workaround that guaranteed recurrence — the next host reboot (Jun 2) re-renumbered the stick again and broke startup the same way. The **permanent fix** (remove `dev0:` entirely and rely on the existing stable `lxc.mount.entry` bindings) is documented in [troubleshoot/lxc-usb-passthrough.md](../troubleshoot/lxc-usb-passthrough.md).
+
 ## Implementation Details
 
 ### Steps Performed

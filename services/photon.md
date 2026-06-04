@@ -1,7 +1,7 @@
 # Photon — Self-Hosted Geocoder
 
-**Last Updated**: 2026-05-06
-**Related Systems**: LXC 131 (cartography, 192.168.0.229), CT 128 (tPlan, consumes), CT 101 (AdGuard DNS)
+**Last Updated**: 2026-05-04
+**Related Systems**: CT 128 (Komodo, 192.168.0.179), CT 124 (tPlan, consumes), CT 101 (AdGuard DNS)
 
 ---
 
@@ -9,18 +9,15 @@
 
 | Item | Value |
 |------|-------|
-| **Host** | LXC 131 (cartography, 192.168.0.229) — *migrated from CT 128 on 2026-05-06* |
+| **Host** | CT 128 (Komodo, 192.168.0.179) |
 | **Port** | 2322 |
-| **DNS** | `photon.home → 192.168.0.229` (AdGuard rewrite, enabled) |
-| **Recommended URL** | `http://photon.home:2322` (use in code; AdGuard handles resolution) |
+| **DNS** | `photon.home → 192.168.0.179` (AdGuard rewrite) |
+| **Direct URL** | `http://192.168.0.179:2322` (use this in code; not all browsers resolve `.home`) |
 | **Container** | `photon` (Docker, image `rtuszik/photon-docker:latest`) |
-| **Compose** | `/mnt/docker/map/photon/compose.yaml` (managed by Komodo Periphery on 131) |
-| **Data dir** | `/mnt/docker/map/photon/data` (~92 GB extracted index, shared bind-mount) |
+| **Compose** | `/etc/komodo/stacks/photon/compose.yaml` |
+| **Data dir** | `/mnt/docker/photon/data` (~92 GB extracted index) |
 | **Index** | Komoot planet build (~57 GB compressed → ~92 GB extracted), monthly auto-refresh |
 | **Source mirror** | `https://r2.koalasec.org/public/photon-db-planet-1.0-latest.tar.bz2` |
-
-## Migration note (2026-05-06)
-Photon was relocated from CT 128 (Komodo apps host) to LXC 131 (cartography) without data movement: both LXCs bind-mount the same host `/mnt/docker`, so the cutover was just `docker stop` on 128 + `docker compose up -d` on 131. Six tPlan code references updated from `192.168.0.179:2322` → `photon.home:2322`. AdGuard rewrite for `photon.home` was re-enabled (was disabled) and pointed at 192.168.0.229.
 
 ---
 
@@ -37,9 +34,7 @@ LAN-fast: queries return in ~20–50 ms vs ~300–800 ms for komoot.io public Ph
 
 ## Compose file
 
-> **Track progress on jobs.home**: initial 92 GB index extract takes ~1 hr. Wrap with `jobctl track-file photon-extract /mnt/docker/map/photon/data --total 100000000000 --interval 60 &`. Live at `http://jobs.home:8077`.
-
-`/mnt/docker/map/photon/compose.yaml`:
+`/etc/komodo/stacks/photon/compose.yaml`:
 
 ```yaml
 name: photon
@@ -52,7 +47,7 @@ services:
     ports:
       - "2322:2322"
     volumes:
-      - /mnt/docker/map/photon/data:/photon/data
+      - /mnt/docker/photon/data:/photon/data
     environment:
       TZ: America/Phoenix
       UPDATE_STRATEGY: PARALLEL
@@ -96,7 +91,7 @@ CT 128's root LXC volume is only ~70 GB, so the data must live on `/mnt/docker` 
 The image's process runs as **uid 9011** (`photon`) inside the container. The host data dir must be owned/traversable by that uid:
 
 ```bash
-ssh root@192.168.0.229 'chown -R 9011:9011 /mnt/docker/photon'
+ssh root@192.168.0.179 'chown -R 9011:9011 /mnt/docker/photon'
 ```
 
 If perms are wrong, the disk-space check sees the wrong filesystem and fails with `Insufficient temp space: need 149.10 GB, have 69.21 GB`.
@@ -142,21 +137,21 @@ Restart AdGuard after edits: `sudo pct exec 101 -- systemctl restart AdGuardHome
 
 ### Check status
 ```bash
-ssh root@192.168.0.229 'docker ps --filter name=photon --format "{{.Status}}"; docker logs photon --tail 5'
+ssh root@192.168.0.179 'docker ps --filter name=photon --format "{{.Status}}"; docker logs photon --tail 5'
 curl -s "http://192.168.0.179:2322/api?q=fossil+butte&limit=1" | head -c 300
 ```
 
 ### Restart
 ```bash
-ssh root@192.168.0.229 'cd /mnt/docker/photon && docker compose restart photon'
+ssh root@192.168.0.179 'cd /etc/komodo/stacks/photon && docker compose restart photon'
 ```
 
 ### Force a re-pull of the index (rare; auto-updates monthly)
-Set `FORCE_UPDATE=True` in the compose env, restart, then unset. Or delete `/mnt/docker/map/photon/data/photon_data/` and restart — the container will re-download.
+Set `FORCE_UPDATE=True` in the compose env, restart, then unset. Or delete `/mnt/docker/photon/data/photon_data/` and restart — the container will re-download.
 
 ### Disk check
 ```bash
-ssh root@192.168.0.229 'du -sh /mnt/docker/map/photon/data; df -h /mnt/docker'
+ssh root@192.168.0.179 'du -sh /mnt/docker/photon/data; df -h /mnt/docker'
 ```
 
 ---
@@ -165,7 +160,7 @@ ssh root@192.168.0.229 'du -sh /mnt/docker/map/photon/data; df -h /mnt/docker'
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Insufficient temp space` on first boot | Image extracts to LXC root (70 GB) instead of `/mnt/docker` | Confirm volume mount is `/mnt/docker/map/photon/data:/photon/data` (NOT `/photon/photon_data`) |
+| `Insufficient temp space` on first boot | Image extracts to LXC root (70 GB) instead of `/mnt/docker` | Confirm volume mount is `/mnt/docker/photon/data:/photon/data` (NOT `/photon/photon_data`) |
 | Permission denied during setup | Host data dir not owned by uid 9011 | `chown -R 9011:9011 /mnt/docker/photon` |
 | Browser CORS error fetching `/api` | `-cors-any` flag not passed to Photon | Add `PHOTON_PARAMS: "-cors-any"` to compose env, recreate container |
 | `ERR_NAME_NOT_RESOLVED` for `photon.home` | Browser DNS not pointed at AdGuard | Use IP `192.168.0.179:2322` in code; AdGuard rewrite is convenience-only |

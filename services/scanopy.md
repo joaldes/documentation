@@ -5,13 +5,13 @@
 
 ## Summary
 
-Scanopy (CT 121) is a network scanner and host inventory tool that discovers and catalogs all devices, services, and ports on the LAN. It runs at `http://scanopy.lan` (192.168.0.219:60072) and provides a visual network map with service groups. A daemon runs on Komodo (CT 128) to discover Docker containers automatically.
+Scanopy (CT 121) is a network scanner and host inventory tool that discovers and catalogs all devices, services, and ports on the LAN. It runs at `http://scanopy.home` (192.168.0.219:60072) and provides a visual network map with service groups. A daemon runs on Komodo (CT 128) to discover Docker containers automatically.
 
 ## Access
 
 | Item | Value |
 |------|-------|
-| Web UI | `http://scanopy.lan` |
+| Web UI | `http://scanopy.home` |
 | API | `http://192.168.0.219:60072/api/v1` |
 | API Token | `Bearer scp_u_SbQNNIfPqOvIKALLKop8zhiaMPEtrs0A` |
 | Container | CT 121 (192.168.0.219) |
@@ -44,65 +44,65 @@ Scanopy (CT 121) is a network scanner and host inventory tool that discovers and
 
 | Host | Hostname | Management URL | Description |
 |------|----------|----------------|-------------|
-| AdGuard DNS | `adguard.lan` | `http://adguard.lan` | CT 101 — DNS server, DHCP |
-| Bazarr | `bazarr.lan` | `http://bazarr.lan` | CT 115 — subtitle management |
-| Claude AI | `claude.lan` | `http://claude.lan` | CT 124 — AI assistant |
-| Emby | `emby.lan` | `http://emby.lan` | CT 102 — media server |
-| Home Assistant | `homeassistant.lan` | `http://homeassistant.lan` | VM 100 — home automation |
-| Homelable | `homelable.lan` | `http://homelable.lan` | CT 109 — network diagram |
-| Homepage | `homepage.lan` | `http://homepage.lan` | CT 118 — dashboard |
-| Jellyseerr | `jellyseerr.lan` | `http://jellyseerr.lan` | CT 113 — media requests |
-| Komodo | `komodo.lan` | `http://komodo.lan` | CT 128 — Docker host (32 services) |
-| Nginx Proxy Manager | `npm.lan` | `http://npm.lan` | CT 112 — reverse proxy |
-| Ollama | `ollama.lan` | `http://ollama.lan` | CT 130 — LLM server + Open WebUI |
-| Pulse | `pulse.lan` | `http://pulse.lan` | CT 120 — system pulse |
-| Radarr | `radarr.lan` | `http://radarr.lan` | CT 107 — movie management |
+| AdGuard DNS | `adguard.home` | `http://adguard.home` | CT 101 — DNS server, DHCP |
+| Bazarr | `bazarr.home` | `http://bazarr.home` | CT 115 — subtitle management |
+| Claude AI | `claude.home` | `http://claude.home` | CT 124 — AI assistant |
+| Emby | `emby.home` | `http://emby.home` | CT 102 — media server |
+| Home Assistant | `homeassistant.home` | `http://homeassistant.home` | VM 100 — home automation |
+| Homelable | `homelable.home` | `http://homelable.home` | CT 109 — network diagram |
+| Homepage | `homepage.home` | `http://homepage.home` | CT 118 — dashboard |
+| Jellyseerr | `jellyseerr.home` | `http://jellyseerr.home` | CT 113 — media requests |
+| Komodo | `komodo.home` | `http://komodo.home` | CT 128 — Docker host (32 services) |
+| Nginx Proxy Manager | `npm.home` | `http://npm.home` | CT 112 — reverse proxy |
+| Ollama | `ollama.home` | `http://ollama.home` | CT 130 — LLM server + Open WebUI |
+| Pulse | `pulse.home` | `http://pulse.home` | CT 120 — system pulse |
+| Radarr | `radarr.home` | `http://radarr.home` | CT 107 — movie management |
 | Samba Server | `192.168.0.176` | — | CT 104 — file shares (no web UI) |
-| Sonarr | `sonarr.lan` | `http://sonarr.lan` | CT 110 — TV show management |
-| Syncthing | `syncthing.lan` | `http://syncthing.lan` | CT 103 — file sync |
-| Tracearr | `tracearr.lan` | `http://tracearr.lan` | CT 116 — media tracking |
-| Unmanic | `unmanic.lan` | `http://unmanic.lan` | CT 105 — media transcoding |
-| Uptime Kuma | `uptimekuma.lan` | `http://uptimekuma.lan` | CT 114 — monitoring |
-| UrBackup | `urbackup.lan` | `http://urbackup.lan` | CT 111 — backup server |
-| Wiki.js | `wikijs.lan` | `http://wikijs.lan` | CT 117 — wiki |
-| Z-Wave JS | `zwave.lan` | `http://zwave.lan` | CT 108 — Z-Wave controller |
+| Sonarr | `sonarr.home` | `http://sonarr.home` | CT 110 — TV show management |
+| Syncthing | `syncthing.home` | `http://syncthing.home` | CT 103 — file sync |
+| Tracearr | `tracearr.home` | `http://tracearr.home` | CT 116 — media tracking |
+| Unmanic | `unmanic.home` | `http://unmanic.home` | CT 105 — media transcoding |
+| Uptime Kuma | `uptimekuma.home` | `http://uptimekuma.home` | CT 114 — monitoring |
+| UrBackup | `urbackup.home` | `http://urbackup.home` | CT 111 — backup server |
+| Wiki.js | `wikijs.home` | `http://wikijs.home` | CT 117 — wiki |
+| Z-Wave JS | `zwave.home` | `http://zwave.home` | CT 108 — Z-Wave controller |
 
 ### Docker Services on Komodo (32 services)
 
 All run on 192.168.0.179 and are managed via Komodo stacks:
 
-| Service | Port | .lan Domain |
+| Service | Port | .home Domain |
 |---------|------|-------------|
-| Authentik | 9000 | `authentik.lan` |
-| BentoPDF | 8095 | `bentopdf.lan` |
-| BirdNET-Go | 8060 | `birds.lan` |
+| Authentik | 9000 | `authentik.home` |
+| BentoPDF | 8095 | `bentopdf.home` |
+| BirdNET-Go | 8060 | `birds.home` |
 | Blackbox Exporter | 9115 | — |
-| Fragments | 8075 | `fragments.lan` |
+| Fragments | 8075 | `fragments.home` |
 | Frigate | 5000 | — |
-| Grafana | 3001 | `grafana.lan` |
-| Immich | 2283 | `immich.lan` |
-| Jellystat | 3000 | `jellystat.lan` |
+| Grafana | 3001 | `grafana.home` |
+| Immich | 2283 | `immich.home` |
+| Jellystat | 3000 | `jellystat.home` |
 | Karakeep | 8055 | — |
-| Komodo | 9120 | `komodo.lan` |
-| Manyfold | 3214 | `manyfold.lan` |
-| Mealie | 9925 | `mealie.lan` |
-| Notifiarr | 8120 | `notifiarr.lan` |
-| Paperless | 8010 | `paperless.lan` |
-| Paperless AI | 3030 | `paperless-ai.lan` |
-| Prometheus | 9092 | `prometheus.lan` |
-| Reyday | 8105 | `reyday.lan` |
-| Sander | 8100 | `sander.lan` |
+| Komodo | 9120 | `komodo.home` |
+| Manyfold | 3214 | `manyfold.home` |
+| Mealie | 9925 | `mealie.home` |
+| Notifiarr | 8120 | `notifiarr.home` |
+| Paperless | 8010 | `paperless.home` |
+| Paperless AI | 3030 | `paperless-ai.home` |
+| Prometheus | 9092 | `prometheus.home` |
+| Reyday | 8105 | `reyday.home` |
+| Sander | 8100 | `sander.home` |
 | Stirling PDF | 8070/8080 | — |
-| Tandoor | 8090 | `tandoor.lan` |
-| Tdarr | 7828 | `tdarr.lan` |
-| Trailhead | 8076 | `weather.lan` |
+| Tandoor | 8090 | `tandoor.home` |
+| Tdarr | 7828 | `tdarr.home` |
+| Trailhead | 8076 | `weather.home` |
 
 ### Network Infrastructure (2 hosts + Shipyard)
 
 | Host | IP | Description |
 |------|-----|-------------|
 | Router | 192.168.0.1 | Netgear Nighthawk gateway |
-| Shipyard | 192.168.0.151 | Proxmox VE host (`https://proxmox.lan`) |
+| Shipyard | 192.168.0.151 | Proxmox VE host (`https://proxmox.home`) |
 
 ### IoT Devices (28 hosts)
 

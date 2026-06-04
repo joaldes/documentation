@@ -1,6 +1,6 @@
 # Time Team Library - Processing Runbook
 
-**Last Updated**: 2026-04-19 (post Metadata sweep)
+**Last Updated**: 2026-04-20 (post Canary re-transcription)
 **Library**: `/mnt/hometheater/TV Shows/` — 5 separate Emby shows for Time Team content
 **Project Files**: `/mnt/documents/personal/alec/claudeai/timeteam/`
 
@@ -182,14 +182,53 @@ YouTube blocks server IPs for automated requests. Subtitle downloads must run fr
 - `timeteam/dl_yt_subs_retry.py` -- batch subtitle downloader with error logging
 - `timeteam/dl_transcripts.py` -- youtube-transcript-api approach (also blocked from server)
 
-### Subtitle coverage (2026-04-20 FINAL)
+### Subtitle coverage (2026-04-21 FINAL)
 - Has SRT: 1,224 / 1,226 (99.8%)
+- Canary-transcribed: 1,028 (84% of library)
+- Original YouTube/Patreon (GOOD quality, kept): ~196
 - No-avail: 2 (S01E01 0KB file + Boden Fogou Wall Fame no audio track)
-- Missing: 0
-- Sources: yt-dlp download (1,043), Whisper transcription (177), pre-existing (4)
-- Post-processing: backslash-h artifacts cleaned from 245 Whisper-generated SRT files
+- Silent clips (no speech): 18 (timelapses, trailers, aerial tours)
+- Archive: `/mnt/documents/personal/alec/claudeai/timeteam/srt-archive/` (1,146 old SRTs)
 
-### Whisper transcription (2026-04-20)
+### Canary-1b-v2 re-transcription (2026-04-20)
+NVIDIA Canary-1b-v2 via NeMo toolkit on RunPod A5000 GPU. Replaces Whisper-base subtitles with properly punctuated, capitalized, sentence-segmented SRTs.
+
+**Batch 1 — Whisper replacements (146 files, 2026-04-20):**
+- 150 SRTs produced from 173 Whisper-generated files (13 silent clips skipped)
+- Processing rate: 49-54x realtime on A5000 (72 min for 3,508 min audio)
+
+**Batch 2 — Full library re-transcription (917 files, 2026-04-21):**
+- 899 SRTs produced from 917 files (18 silent clips skipped: timelapses, trailers, aerial tours)
+- Processing rate: 43x realtime on RTX 4000 Ada (160 min for 10,600 min audio)
+- 258 files initially failed due to RecursionError in split_cue — fixed with try/except, re-run successful
+- Total: **1,028 Canary SRTs deployed** across all 5 shows. 1,027 passed verification (1 non-monotonic, cosmetic)
+- Old SRTs archived: `/mnt/documents/personal/alec/claudeai/timeteam/srt-archive/` (1,146 files)
+
+**YouTube caption quality analysis (pre-Canary):**
+- KARAOKE (rolling/duplicate cues): 878 files (77%) — unusable as subtitles
+- NO_PUNCT / CAPS_ONLY: 40 files (4%) — missing punctuation
+- GOOD (proper punct + caps): 220 files (19%)
+- All 918 bad + 27 broken Whisper = 945 re-transcribed with Canary
+
+**Canary setup:**
+- Model: `nvidia/canary-1b-v2` via `nemo_toolkit[asr]==2.5.0`
+- Transcribe call: `model.transcribe([wav], pnc='yes', timestamps=True)`
+- Segment key: `output[0].timestamp['segment']` (NOT `'text'`)
+- Files >20 min: chunk with ffmpeg into 20-min segments, offset timestamps, rejoin
+- SRT format: commas in timestamps (`00:01:23,456`), atomic writes (`.tmp` → rename)
+- Post-processing: split cues >10s at sentence boundaries, merge cues <0.5s, RecursionError catch
+- TMPDIR=/workspace required for model unpacking on RunPod
+- Install: `pip install --break-system-packages nemo_toolkit[asr]==2.5.0`
+- Upload: `tar czf` compressed pipe (WAVs compress ~50%, but gzip CPU can bottleneck upstream — consider `pigz` or uncompressed if bandwidth allows)
+
+**Canary vs YouTube comparison (8-file test across all 5 shows):**
+- Canary produces proper sentences with punctuation and capitalization
+- YouTube karaoke subs have 1.94x word inflation from rolling duplicates
+- YouTube newer content (S21+, TT Online, Digs) especially bad — zero punctuation
+- Canary handles British place names well but occasionally misspells obscure foreign names
+- England's Pompeii: YouTube had 1,954 cues (1,942 duplicates), Canary had 612 clean cues
+
+### Whisper transcription (2026-04-20, superseded by Canary)
 faster-whisper base model on LXC 104 (CPU, 4 threads, int8). 177 files, 84 hours of audio, ~10 hours processing time.
 Used for: 85 TVDB classics + 53 Patreon Vimeo + 39 YouTube no-caption files.
 2 failures: S01E01 (0KB empty file), Boden Fogou Wall Fame (no audio track in video).
@@ -402,6 +441,7 @@ This walks all disk files + chains through `rename-mapping.csv`, `s21-s24-rename
 | **Phase F (TTO)** | **2026-04-13** | **Split Time Team Online into Time Team Crews (30, 9 seasons) + Time Team Digs (340, 5 seasons) + Time Team - Sutton Hoo (62, 1 season) + 2 Promos redirects** | **434** |
 | **Sutton Hoo reorg** | **2026-04-17** | **Split 62-ep S01 into S00 Extras (24) + S01 The Dig (12) + S02 The Ship (6) + S03 The Return (9) + S04 Livestreams (11). Added 3-char category abbreviations (BTS, PRV, QNA, LVS, DGW, etc.). Emby extras subfolders (behind the scenes, interviews, specials, featurettes, trailers, shorts). Metadata push via API: show overview/genres/year, season names/overviews, episode display names and cleaned overviews** | **62** |
 | **Metadata sweep** | **2026-04-17–19** | **Built timeteam-library-master.csv (1,226 files, 28 columns). 5-strategy source matching: 100% matched. YouTube metadata harvest: 1,134 JSONs (99.6%). Ollama description generation for 410 empty-description files. Subtitle download: 1,043/1,226 (85%). Emby API metadata push for Sutton Hoo S01.** | **1226** |
+| **Canary re-transcription** | **2026-04-20–21** | **Re-transcribed entire library with Canary-1b-v2. Batch 1: 150 Whisper SRTs on A5000 (72 min). Analysis: 77% of YouTube subs were karaoke garbage. Batch 2: 899 SRTs on RTX 4000 Ada (160 min). Total: 1,028 Canary SRTs deployed, 1,027 verified. Old subs archived (1,146 files). Total RunPod cost: ~$4.** | **1028** |
 
 ---
 
@@ -419,6 +459,10 @@ This walks all disk files + chains through `rename-mapping.csv`, `s21-s24-rename
 | Season name setter | `/tmp/set_season_names.py` | Custom display names for S491-S500 |
 | Phase E migrator | `/tmp/phase_e_specials.py` | Classic Specials → S00 + merges |
 | Phase F migrator | `/tmp/phase_f.py` | TTO split → Crews/Digs/Sutton Hoo |
+| Canary batch script | `/tmp/transcribe_batch.py` | RunPod batch transcription with Canary-1b-v2 |
+| Audio staging | Samba `timeteam/audio-staging/` | Extracted WAVs for transcription (16kHz mono) |
+| Canary SRTs | `/tmp/canary_srts/` | 158 completed Canary SRTs (150 Whisper replacements + 8 YouTube tests) |
+| YT sub analysis | `/tmp/yt_sub_analysis.json` | Quality classification of all 720 YouTube-sourced SRTs |
 | Master CSV | Samba `timeteam/timeteam-master.csv` | Original per-video metadata |
 | Audit CSV | Samba `timeteam/timeteam-audit.csv` | Consolidated rename history |
 | AUDIT.md | Samba `timeteam/AUDIT.md` | Human-readable audit trail for all phases |

@@ -216,13 +216,51 @@ Prefer per-service config — explicit and reviewable per stack.
 | Hostname | Cert source | Notes |
 |---|---|---|
 | `<svc>.1701.me` | Let's Encrypt via NPM | Either per-service HTTP-01 challenge or one wildcard `*.1701.me` DNS-01 challenge (preferred). Real browser-trusted cert. |
-| `<svc>.home` | NPM self-signed OR HTTP-only | LE can't issue certs for made-up TLDs. Either use NPM's self-signed cert (browser warning per device per first-visit) or serve HTTP. |
+| `<svc>.home` | **mkcert local CA** (live as of 2026-06-05) | Local CA on CT 112 issues an explicit-SAN cert covering every `<svc>.home` name in NPM. Browser-trusted on any device with the root CA installed. |
 
-**Recommended**: wildcard `*.1701.me` LE cert via DNS-01 against Google Domains. Issue once, auto-renews, covers every present and future `<svc>.1701.me`. Bind to every proxy_host. For `.home` aliases, accept HTTP-only or NPM self-signed.
+### mkcert setup (live state)
 
-**Bad patterns to avoid**:
+- Root CA on CT 112 at `/root/.local/share/mkcert/rootCA.pem`
+- Cert covers explicit SAN list of every `<svc>.home` in NPM (re-issued whenever the list changes)
+- Bound in NPM as cert id=27 to ~45 proxy_host entries that didn't already have an LE cert
+- Root CA distributed via Samba: `\\<server>\documents\personal\alec\claudeai\rootCA-home.pem`
+
+**Why explicit SANs instead of `*.home` wildcard**: OpenSSL and modern browsers reject `*.home` as too-broad because `home` isn't a registrable public suffix. Wildcards only work one level deep within a registrable domain.
+
+### Adding a new `.home` service to the mkcert cert
+
+```bash
+# On CT 112
+ssh claude@192.168.0.151 'sudo pct exec 112 -- bash -c "
+export PATH=/usr/local/bin:\$PATH
+cd /data/custom_ssl/mkcert
+# Re-issue cert with all current .home names from NPM + the new one
+NAMES=\$(sqlite3 /data/database.sqlite ... | python3 ...)   # collect from NPM
+mkcert -cert-file home.crt -key-file home.key \$NAMES
+cp home.crt /data/custom_ssl/npm-27/fullchain.pem
+cp home.crt /data/custom_ssl/npm-27/chain.pem
+cp home.key /data/custom_ssl/npm-27/privkey.pem
+chmod 600 /data/custom_ssl/npm-27/privkey.pem
+nginx -s reload
+"'
+```
+
+### Installing the root CA on a device
+
+| Platform | Steps |
+|---|---|
+| **Windows** | Double-click `rootCA-home.pem` → Install Certificate → Local Machine → "Trusted Root Certification Authorities" → restart browsers |
+| **macOS** | Double-click → Keychain Access → drag to "System" keychain → expand cert → Trust → "Always Trust" → restart browsers |
+| **Linux** | `sudo cp rootCA-home.pem /usr/local/share/ca-certificates/mkcert-rootCA.crt && sudo update-ca-certificates`. For Firefox: about:preferences → Privacy → Certificates → Authorities → Import |
+| **iOS** | AirDrop to phone → install profile in Settings → Settings → General → About → Certificate Trust Settings → enable trust for mkcert |
+| **Android** | Copy to phone storage → Settings → Security → Encryption & credentials → Install certificate → CA certificate |
+
+### Bad patterns to avoid
+
 - Per-service LE certs via HTTP-01 — each renewal needs the public endpoint reachable; if a service is internal-only via wildcard `*.1701.me → public IP`, renewals can fail silently.
 - Letting certs expire and not noticing — set a monitoring alert. NPM has built-in renewal but the alarms don't fire to anywhere visible.
+- Using `*.home` wildcard certs — rejected by browsers/OpenSSL. Use explicit SANs.
+- Storing mkcert root CA PRIVATE KEY (`rootCA-key.pem`) outside CT 112 — the `.pem` (public cert) is OK to distribute; the `-key.pem` is the entire trust root for your `.home` zone.
 
 ## Specific patterns for common service types
 

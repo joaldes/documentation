@@ -13,12 +13,29 @@ Standard for how services in the OV House homelab are named, addressed, and call
 |---|---|---|---|
 | Browser, mobile, bookmarks | Any user-facing service | `https://<svc>.1701.me` | Single URL works at home AND remote (split-horizon) |
 | Type-it-fast at home | Any user-facing service | `https://<svc>.home` | Short typing alias; LAN-only |
-| Service-to-service across hosts (LXC/VM/host boundary) | Backend API on another host | `http://<svc>.home:<port>` via **env var** | Hides IP; centrally renameable via AdGuard |
+| Service-to-service across hosts (LXC/VM/host boundary) | Backend API on another host | `http://<svc>.home/path` via **env var** (NO port — NPM dispatches to backend port). Only include port when `<svc>.home` has a specific AdGuard entry pointing at the backend IP directly. | Hides IP; centrally renameable via AdGuard. See "The port rule" section below. |
 | Service-to-service within same Docker network | Sibling container in compose | `http://<containername>:<port>` | Zero DNS dependency, Docker-native |
 | Bypass NPM (service has own reverse proxy on :80/:443) | That service | Specific AdGuard `<svc>.home → <IP>` | Avoids unnecessary NPM hop |
 | One-off scripts, debugging | Anywhere | Raw IP:port acceptable | Pragmatic; don't bake into application code |
 
 **Never** put raw IPs in application code. Always wrap in an env var, even if the value is a hostname.
+
+## The port rule (critical — do not forget)
+
+When you write a URL like `http://<svc>.home/path`, **what port the browser/code uses depends on which routing tier handles `<svc>.home`**:
+
+| Tier resolving `<svc>.home` | Port in URL? | Example |
+|---|---|---|
+| **Wildcard `*.home → NPM (192.168.0.30)`** | **DROP THE PORT** — NPM only listens on :80 and :443. Including the actual backend port hits NPM on a port it doesn't serve, connection refused. | `http://magazine.home/api/today` ✓ <br> `http://magazine.home:8089/api/today` ✗ |
+| **Specific AdGuard entry `<svc>.home → backend IP`** | **INCLUDE THE PORT** — DNS sends you straight to the backend, which serves on its own port (not :80/:443). | `http://overpass.home:12345/api/interpreter` ✓ <br> `http://overpass.home/api/interpreter` ✗ (port 80 on .229 has no listener) |
+| **No special handling (just `*.home → NPM` and NPM has the entry)** | Same as wildcard row — DROP THE PORT. NPM dispatches by Host header to the correct backend port internally. | `http://ollama-api.home/api/embed` ✓ |
+
+**Quick decision tree when writing a new URL:**
+1. Does the service have its OWN reverse proxy on the target IP (Caddy, nginx) that listens on :80/:443? → use bare `<svc>.home` (no port)
+2. Does NPM have a `proxy_host` entry for this hostname? → use bare `<svc>.home` (no port), NPM dispatches internally
+3. Does AdGuard have a specific entry pointing `<svc>.home → backend_IP` (not NPM's .30)? → include `:port` because you're talking to the backend directly
+
+The wildcard `*.home → 192.168.0.30` is option #2 (NPM). It's the default path for any name without a more specific entry.
 
 ## The architecture
 

@@ -23,6 +23,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [docker-cpu-optimization.md](infrastructure/docker-cpu-optimization.md) | Docker CPU resource limits & cAdvisor tuning (CT 128) |
 | [subtitle-standardization.md](infrastructure/subtitle-standardization.md) | Subtitle filename standardization (Emby naming conventions) |
 | [samba-smb3-migration.md](infrastructure/samba-smb3-migration.md) | Samba minimum protocol raised to SMB3, LANMAN/NTLMv1 disabled (CT 104) |
+| [url-naming-standard.md](infrastructure/url-naming-standard.md) | Standard for service URLs (split-horizon `.1701.me` + `.home` aliases), env-var patterns, container DNS, NPM/AdGuard conventions |
 
 ### Services
 

@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-08 10:00 UTC*
+*Last updated: 2026-06-08 12:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.00, 2.22, 4.02 | RAM: 33/62 GB | Uptime: 5 days
+**Shipyard** (192.168.0.151) | CPU: 9.14, 6.09, 4.98 | RAM: 33/62 GB | Uptime: 5 days
 
 **51 services** — 25 LXC containers, 26 Docker stacks, 3 VMs, 11 storage pools
 
@@ -21,7 +21,7 @@
 | garmin | lxc | 192.168.0.132 | - | - | running |
 | grafana | docker | 192.168.0.179 | 3001 | http://192.168.0.179:3001 | running |
 | homelable | lxc | 192.168.0.218 | - | - | stopped |
-| homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
+| homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | stopped |
 | immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | running |
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | jellystat | docker | 192.168.0.179 | 3000 | http://192.168.0.179:3000 | running |
@@ -79,7 +79,7 @@
 | 115 | bazarr | 192.168.0.48 | 6767 | http://192.168.0.48:6767 | running |
 | 116 | tracearr | 192.168.0.211 | 3000 | http://192.168.0.211:3000 | running |
 | 117 | wikijs | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
-| 118 | homepage | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | running |
+| 118 | homepage | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | stopped |
 | 120 | pulse | 192.168.0.175 | 7655 | http://192.168.0.175:7655 | running |
 | 121 | scanopy | 192.168.0.219 | - | - | stopped |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
@@ -131,7 +131,7 @@
 |-----------------|---------|---------------|--------|
 | backups | dir | 6974/10158 | 68% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 879/1006 | 87% |
+| container-backups | dir | 878/1006 | 87% |
 | docker-data | dir | 384/2014 | 19% |
 | littlestorage | lvmthin | 157/1830 | 8% |
 | local | dir | 50/93 | 54% |

@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-08 17:00 UTC*
+*Last updated: 2026-06-08 18:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 0.90, 1.42, 1.95 | RAM: 34/62 GB | Uptime: 5 days
+**Shipyard** (192.168.0.151) | CPU: 1.78, 1.48, 2.02 | RAM: 33/62 GB | Uptime: 5 days
 
 **50 services** — 25 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
 
@@ -22,6 +22,7 @@
 | grafana | docker | 192.168.0.179 | 3001 | http://192.168.0.179:3001 | running |
 | homelable | lxc | 192.168.0.218 | - | - | stopped |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | stopped |
+| hometheaterfiles | docker | 192.168.0.179 | 8100 | http://192.168.0.179:8100 | running |
 | immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | running |
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | jellystat | docker | 192.168.0.179 | 3000 | http://192.168.0.179:3000 | running |
@@ -42,7 +43,6 @@
 | radarr | lxc | 192.168.0.42 | 7878 | http://192.168.0.42:7878 | running |
 | reyday | docker | 192.168.0.179 | 8105 | http://192.168.0.179:8105 | running |
 | samba | lxc | 192.168.0.176 | - | - | running |
-| sander | docker | 192.168.0.179 | 8100 | http://192.168.0.179:8100 | running |
 | scanopy | lxc | 192.168.0.219 | - | - | stopped |
 | sftp | docker | 192.168.0.179 | 8070 | http://192.168.0.179:8070 | running |
 | shoplist | docker | 192.168.0.179 | 8086 | http://192.168.0.179:8086 | running |
@@ -97,6 +97,7 @@
 | fragments | 8075 | 2/2 | 0 | running | http://192.168.0.179:8075 |
 | frigate | 5000 | 1/1 | 1 | running | http://192.168.0.179:5000 |
 | grafana | 3001 | 1/1 | 1 | running | http://192.168.0.179:3001 |
+| hometheaterfiles | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
 | immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
 | jobsd | 8077 | 1/1 | 0 | running | http://192.168.0.179:8077 |
@@ -110,7 +111,6 @@
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
 | prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
-| sander | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | shoplist | 8086 | 1/1 | 0 | running | http://192.168.0.179:8086 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |

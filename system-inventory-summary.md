@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-08 18:00 UTC*
+*Last updated: 2026-06-10 10:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.78, 1.48, 2.02 | RAM: 33/62 GB | Uptime: 5 days
+**Shipyard** (192.168.0.151) | CPU: 22.89, 16.81, 16.88 | RAM: 33/62 GB | Uptime: 7 days
 
 **50 services** — 25 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
 
@@ -16,6 +16,7 @@
 | cartography | lxc | 192.168.0.229 | - | - | running |
 | claudeai | lxc | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
+| foundry | lxc | 192.168.0.130 | - | - | running |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
 | garmin | lxc | 192.168.0.132 | - | - | running |
@@ -35,7 +36,6 @@
 | manyfold | docker | 192.168.0.179 | 3214 | http://192.168.0.179:3214 | running |
 | mealie | docker | 192.168.0.179 | 9925 | http://192.168.0.179:9925 | running |
 | nginxproxymanager | lxc | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
-| ollama | lxc | 192.168.0.130 | - | - | running |
 | paperless | docker | 192.168.0.179 | 8010 | http://192.168.0.179:8010 | running |
 | paperless-ai | docker | 192.168.0.179 | 3030 | http://192.168.0.179:3030 | running |
 | prometheus | docker | 192.168.0.179 | 9092 | http://192.168.0.179:9092 | running |
@@ -83,7 +83,7 @@
 | 121 | scanopy | 192.168.0.219 | - | - | stopped |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
-| 130 | ollama | 192.168.0.130 | - | - | running |
+| 130 | foundry | 192.168.0.130 | - | - | running |
 | 131 | cartography | 192.168.0.229 | - | - | running |
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
@@ -127,14 +127,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6980/10158 | 68% |
+| backups | dir | 6908/10158 | 68% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 878/1006 | 87% |
-| docker-data | dir | 385/2014 | 19% |
-| littlestorage | lvmthin | 157/1830 | 8% |
+| container-backups | dir | 879/1006 | 87% |
+| docker-data | dir | 345/2014 | 17% |
+| littlestorage | lvmthin | 174/1830 | 9% |
 | local | dir | 50/93 | 54% |
-| local-lvm | lvmthin | 310/348 | 88% |
+| local-lvm | lvmthin | 311/348 | 89% |
 | smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 586/1006 | 58% |
-| smb-hometheater | dir | 16920/29679 | 57% |
+| smb-frigate | dir | 587/1006 | 58% |
+| smb-hometheater | dir | 16931/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |

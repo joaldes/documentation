@@ -1,21 +1,34 @@
 # tPlan — Self-Hosted Road-Trip Planner
 
-**Last Updated**: 2026-05-04
-**Related Systems**: CT 124 (Claude AI / FastAPI host, 192.168.0.180), CT 104 (Samba, static-asset writes), CT 128 (Photon search, 192.168.0.179:2322), LXC 131 (Valhalla routing, gis.home:8002)
+**Last Updated**: 2026-06-10
+**Related Systems**: CT 128 (Komodo / Docker host, 192.168.0.179), CT 104 (Samba, static-asset writes), LXC 131 (Valhalla + Photon + Overpass, 192.168.0.229), Ollama (smart-search embeddings)
 
 ---
 
-## Quick Reference
+## Quick Reference (Dockerized on CT 128 since 2026-05-08)
 
-| Item | Live | Staging |
-|------|------|---------|
-| **URL** | http://192.168.0.180:8080/ | http://192.168.0.180:8081/ (also `tplan-staging.home:8081`) |
-| **Code dir** | `/opt/tplan/` | `/opt/tplan-staging/` |
-| **Static dir** | `/mnt/documents/personal/alec/claudeai/tplan/` | `/mnt/documents/personal/alec/claudeai/tplan-staging/` |
-| **SQLite DB** | `/opt/tplan/data/trips.db` | `/opt/tplan-staging/data/trips.db` (frozen snapshot) |
-| **systemd unit** | `tplan.service` | `tplan-staging.service` |
-| **No-cache headers** | not set (use `?v=...` cache-buster) | yes (middleware in `app.py`) |
-| **Backups** | `/opt/tplan/data/backups/` daily 3am, 14d retention | none |
+| Item | Live | Dev |
+|------|------|-----|
+| **URL** | http://192.168.0.179:8084/ (`tplan.home`) | http://192.168.0.179:8085/ (`tplan-dev.home`) |
+| **Container** | `tplan-live` | `tplan-dev` |
+| **Code (shared!)** | `/mnt/docker/tplan/code/` (bind-mounted `:ro` into BOTH — app.py changes hit live on its restart) | same |
+| **Static dir** | `/mnt/docker/tplan/static-live/` | `/mnt/docker/tplan/static-dev/` |
+| **Data dir** | `/mnt/docker/tplan/data/` (`trips.db`, `amtrak.db` when promoted) | `/mnt/docker/tplan/data-dev/` |
+| **Compose** | `/etc/komodo/stacks/tplan/compose.yaml` | same file |
+| **Restart** | `docker restart tplan-live` | `docker restart tplan-dev` |
+| **Cache-busting** | service worker `sw.js` — shell cache is **cache-first**: bump `VERSION` on ANY static change or browsers serve stale files | same |
+
+---
+
+## Amtrak Rail Legs (⛔ DEV-ONLY as of 2026-06-10 — do not promote without explicit approval)
+
+Real train legs mixed with car/POI stops: a leg whose **both endpoints have the train icon** (`mdi-train`) routes via Amtrak GTFS — actual track geometry, real schedule times in each **station's local timezone**, `+Nd` badge for overnight/multi-day trains. One train icon alone = still a driving leg (blue 🚆 warn glyph flags orphans).
+
+- **Data**: `build_amtrak.py` (in `code/`) downloads Amtrak GTFS → sidecar `amtrak.db` next to `trips.db` (534 rail-served stations, 49 routes; shape-completeness checked; >24h overnight times parsed as raw seconds; agency-TZ→station-TZ conversion server-side). Re-run manually to refresh: `docker exec tplan-dev python3 /app/build_amtrak.py --gtfs /data/gtfs.zip --out /data/amtrak.db` (atomic replace; omit `--gtfs` to download fresh).
+- **Endpoints** (file-guarded — return `{ok:false, reason:"amtrak_unavailable"}` until `amtrak.db` exists in that env's data dir, which is how live stays dormant): `GET /api/amtrak/stations?q=` / `?all=1`, `POST /api/amtrak/route {from:{stop_id|lat,lng}, to:{...}}`.
+- **Frontend** (static-dev only): rail branch in `recalcRoutes`; rail-aware `cascadeArriveTimes` anchors arrivals to the absolute GTFS time (survives force-recalc); rail miles excluded from drive-distance/fuel totals (fare still counts via Cost); via-inserts rejected on rail legs; station search merged into the search dropdown (🚆 rows); **Amtrak Stations map chip** (last chip row) shows all stations, pin click → add-stop popup carrying `amtrakStopId`; warn glyphs: red 🚆 no-direct-route (add the transfer station as its own stop), amber 🚆 approximate geometry, blue 🚆 orphan train icon.
+- **Limitations (v1)**: single-route legs only — transfers are modeled as explicit stops; schedule indicative as-of-feed-date; rail line drawn solid (per-leg dashed styling = deferred Phase 3).
+- **Promote checklist (when approved)**: copy `static-dev/{planner.html,sw.js}`, `static-dev/js/{time,search,overpass,undo,edit-location}.js`, `static-dev/css/{map,components}.css` → `static-live/` (backup in place first); copy `data-dev/amtrak.db` → `data/`; `docker restart tplan-live`; verify live `/api/trips` unchanged + DEN→CHI route returns dep 18:59 MT / arr 14:39 CT `+1d`.
 
 ---
 

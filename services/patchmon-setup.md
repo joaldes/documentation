@@ -104,7 +104,7 @@ patchmon-agent update-crontab
 | 120 | pulse | Pulse |
 | 124 | claudeai | Claude AI |
 | 128 | komodo | Docker stacks (Immich, Authentik, Frigate, Paperless, etc.) |
-| 130 | ollama | Ollama + Open WebUI |
+| 130 | foundry | Ollama + Open WebUI |
 
 Binary download can be batched via `pct exec`, but API credentials are generated per-host from the PatchMon UI (each host gets unique API_ID/API_KEY).
 

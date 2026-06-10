@@ -42,7 +42,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [overpass.md](services/overpass.md) | Overpass-NA — Self-hosted OSM query API (CT 128, NA extract + Caddy CORS sidecar, for tPlan POI overlay) |
 | [jobs-home.md](services/jobs-home.md) | jobs.home — Ambient job-progress dashboard for ad-hoc scripts across all homelab hosts |
 | [claude-home.md](services/claude-home.md) | claude.home — Browser-based shared Claude Code console (tmux + ttyd + Caddy on CT 124) |
-| [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130) |
+| [ollama.md](services/ollama.md) | Ollama + Open WebUI — Local LLM inference on Intel iGPU (CT 130 — foundry) |
 | [scanopy.md](services/scanopy.md) | Scanopy — Network scanner & host inventory (CT 121) |
 | [timeteam-downloads.md](services/timeteam-downloads.md) | Time Team complete download system — YouTube + Patreon to Emby library |
 | [timeteam-runbook.md](services/timeteam-runbook.md) | Time Team library processing runbook — download, classify, rename, Emby sync |

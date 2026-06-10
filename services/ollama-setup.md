@@ -11,7 +11,7 @@ Dedicated LXC container running Ollama with Intel Iris Xe iGPU acceleration (via
 | Setting | Value |
 |---------|-------|
 | CTID | 130 |
-| Hostname | ollama |
+| Hostname | foundry |
 | IP | 192.168.0.130 |
 | OS | Ubuntu 22.04 LTS |
 | Mode | Privileged |

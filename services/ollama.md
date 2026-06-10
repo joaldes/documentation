@@ -1,7 +1,7 @@
-# Ollama (Container 130)
+# Ollama (Container 130 — host: foundry)
 
 **Last Updated**: 2026-03-25
-**Related Systems**: LXC 130 (192.168.0.130), Open WebUI (:8085), Ollama API (:11434), SearXNG (:8888)
+**Related Systems**: LXC 130 "foundry" (192.168.0.130), Open WebUI (:8085), Ollama API (:11434), SearXNG (:8888)
 
 ## Summary
 

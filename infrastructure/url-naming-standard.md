@@ -30,6 +30,8 @@ When you write a URL like `http://<svc>.home/path`, **what port the browser/code
 | **Specific AdGuard entry `<svc>.home → backend IP`** | **INCLUDE THE PORT** — DNS sends you straight to the backend, which serves on its own port (not :80/:443). | `http://overpass.home:12345/api/interpreter` ✓ <br> `http://overpass.home/api/interpreter` ✗ (port 80 on .229 has no listener) |
 | **No special handling (just `*.home → NPM` and NPM has the entry)** | Same as wildcard row — DROP THE PORT. NPM dispatches by Host header to the correct backend port internally. | `http://ollama-api.home/api/embed` ✓ |
 
+> **Note (2026-06-10):** CT 130 was renamed `ollama` → `foundry`. `ollama-api.home` is **deliberately retained** — it names the Ollama *service*, not the box (tplan depends on it). `foundry.home` → Open WebUI (:8085) is the box landing page.
+
 **Quick decision tree when writing a new URL:**
 1. Does the service have its OWN reverse proxy on the target IP (Caddy, nginx) that listens on :80/:443? → use bare `<svc>.home` (no port)
 2. Does NPM have a `proxy_host` entry for this hostname? → use bare `<svc>.home` (no port), NPM dispatches internally

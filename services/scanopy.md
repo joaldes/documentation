@@ -54,7 +54,7 @@ Scanopy (CT 121) is a network scanner and host inventory tool that discovers and
 | Jellyseerr | `jellyseerr.home` | `http://jellyseerr.home` | CT 113 — media requests |
 | Komodo | `komodo.home` | `http://komodo.home` | CT 128 — Docker host (32 services) |
 | Nginx Proxy Manager | `npm.home` | `http://npm.home` | CT 112 — reverse proxy |
-| Ollama | `ollama.home` | `http://ollama.home` | CT 130 — LLM server + Open WebUI |
+| Ollama | `ollama.home` | `http://ollama.home` | CT 130 (foundry) — LLM server + Open WebUI |
 | Pulse | `pulse.home` | `http://pulse.home` | CT 120 — system pulse |
 | Radarr | `radarr.home` | `http://radarr.home` | CT 107 — movie management |
 | Samba Server | `192.168.0.176` | — | CT 104 — file shares (no web UI) |

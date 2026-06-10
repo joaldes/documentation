@@ -235,7 +235,7 @@ Used for: 85 TVDB classics + 53 Patreon Vimeo + 39 YouTube no-caption files.
 ffmpeg fallback for incompatible codecs (extract audio to WAV first, then transcribe).
 
 ### Description generation
-For 411 files with empty YouTube/Patreon descriptions, Ollama (qwen2.5:1.5b on LXC 130 at 192.168.0.130:11434) generates 1-sentence summaries from episode titles. Results stored in `description_ollama` CSV column.
+For 411 files with empty YouTube/Patreon descriptions, Ollama (qwen2.5:1.5b on LXC 130 (foundry) at 192.168.0.130:11434) generates 1-sentence summaries from episode titles. Results stored in `description_ollama` CSV column.
 
 ---
 

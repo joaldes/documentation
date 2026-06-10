@@ -51,6 +51,16 @@ again if the cache is deleted.
 | `athena_urgent.wav` (+`.txt`) | 5.3s | alarm/warning delivery |
 | `athena_ref_best.wav` | 26s | general, top-7 clips overall |
 | `athena_ref_short.wav` (+`.txt`) | 9.5s | strict word-boundary cut, digit-free transcript |
+| `athena_natural.wav` (+`.txt`) | 30s | actress's natural speaking voice (YouTube interviews, pooled best windows) |
+| `majel_natural.wav` (+`.txt`) | 21.3s | **Majel Barrett — TNG Enterprise computer**, status-report register |
+| `majel_urgent.wav` (+`.txt`) | 14.0s | Majel Barrett, warning/alert register |
+| `majel.wav` (+`.txt`) | 14.5s | Majel from a YouTube sketch (mixed registers; superseded by the TNG cuts) |
+
+The Majel references were mined from the TNG Blu-ray SDH subs with the same pipeline
+(`SHOW=majel`, profile in the script): 318 `COMPUTER:` cues across 7 seasons → solo/SFX/
+dash-dialogue gates → 297 clips → ASR+SNR scoring (`majel_scores.csv`) → register picks.
+Plain `COMPUTER:` is Majel in TNG; the 3 `MALE COMPUTER VOICE:` cues never match the
+start-anchored label pattern.
 
 Pass any of them as `voice_wav`. The `.txt` transcripts exist for engines that need
 reference text (Pocket TTS does not).

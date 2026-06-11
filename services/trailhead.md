@@ -1,8 +1,8 @@
 # Trailhead — Weather & Wildlife Dashboard
 
-**Last Updated**: 2026-05-29
+**Last Updated**: 2026-06-11
 
-**Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Sonarr (CT 110), Frigate NVR, AdGuard (CT 101), NPM (CT 112), Authentik SSO (192.168.0.179:9000)
+**Related Systems**: Komodo (CT 128), BirdNET-Go, Ecowitt Weather Station, Sonarr (CT 110), Frigate NVR, AdGuard (CT 101), NPM (CT 112), tinyauth (homepage.1701.me → 192.168.0.179:3005)
 
 ## Summary
 
@@ -19,7 +19,7 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | Service | Image | Role | Limits |
 |---------|-------|------|--------|
 | `generator` | python:3.12-slim | Fetches data, renders HTML + charts every 5 min | 1 CPU / 512MB |
-| `web` | nginx:alpine | Static file server on :8076 with Authentik forward auth | 0.5 CPU / 128MB |
+| `web` | nginx:alpine | Static file server on :8076 with tinyauth forward auth | 0.5 CPU / 128MB |
 
 ### Source Files (`/mnt/docker/trailhead/`)
 
@@ -35,7 +35,7 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | `regen-server.py` | Tiny HTTP server — `POST /regen` touches trigger file for immediate regeneration |
 | `alerts.json` | Alert banner data — array of `{message, type, expires}` objects (bind-mounted into container) |
 | `Dockerfile` | Python 3.12-slim, runs as non-root `appuser` |
-| `nginx.conf` | Static server + Authentik forward auth + security headers |
+| `nginx.conf` | Static server + tinyauth forward auth + security headers |
 | `logged-out.html` | Static logout landing page with 5s redirect countdown |
 | `requirements.txt` | Pinned Python dependencies |
 
@@ -203,7 +203,7 @@ docker exec trailhead-generator python3 /app/generate.py
 ├── sky-events.html      # Jinja2 template for /sky reference page
 ├── requirements.txt     # Python dependencies
 ├── trailhead.yaml       # Access groups + sidebar tab/card definitions
-├── nginx.conf           # Authentik forward auth + reference page routing + security headers
+├── nginx.conf           # tinyauth forward auth + reference page routing + security headers
 ├── logged-out.html      # Static logout page with 5s redirect countdown
 ├── compose.yaml         # Docker Compose (generator + nginx)
 └── fonts/
@@ -451,10 +451,9 @@ Reference pages (`/sky`, `/tv`) share a single regex location block in `nginx.co
 
 ```nginx
 location ~ ^/(sky|tv)(\.html)?$ {
-    auth_request        /outpost.goauthentik.io/auth/nginx;
-    error_page          401 = @goauthentik_proxy_signin;
-    auth_request_set    $auth_cookie $upstream_http_set_cookie;
-    add_header          Set-Cookie $auth_cookie;
+    auth_request        /tinyauth;
+    auth_request_set    $redirection_url $upstream_http_x_tinyauth_location;
+    error_page          401 403 =302 $redirection_url;
     add_header X-Content-Type-Options "nosniff" always;
     try_files /$1.html =404;
 }
@@ -672,6 +671,7 @@ Use the warm NPS palette via CSS custom properties defined in `:root`. Avoid har
 | Domain | Forward To | ID | SSL |
 |--------|------------|-----|-----|
 | `home.1701.me` | `192.168.0.179:8076` (HTTP) | 23 | Let's Encrypt (cert 18), Force SSL, HTTP/2 |
+| `homepage.1701.me` | `192.168.0.179:3005` (HTTP) | 209 | Let's Encrypt (cert 83), Force SSL — tinyauth login UI |
 | `weather.home` | `192.168.0.179:8076` (HTTP) | 75 | None (internal only) |
 
 ### Request Flow (Local Network)
@@ -680,7 +680,7 @@ Use the warm NPS palette via CSS custom properties defined in `:root`. Avoid har
 Browser → https://home.1701.me
   → AdGuard DNS: *.1701.me → 192.168.0.30
     → NPM: home.1701.me → 192.168.0.179:8076 (SSL termination at NPM)
-      → nginx container (Authentik forward auth) → static files from page-output volume
+      → nginx container (tinyauth forward auth) → static files from page-output volume
 ```
 
 ## Scheduling
@@ -851,47 +851,64 @@ The web container starts only after the generator is healthy (`depends_on: condi
 
 ---
 
-## Access Control (Authentik SSO)
+## Access Control (tinyauth)
 
-Per-user access filtering using Authentik SSO forward auth. A single `index.html` is generated every 5 minutes with ALL cards. Client-side JavaScript filters cards based on the authenticated user's group memberships. The main content (weather, charts, birds, sky, park, synopsis) is identical for all users. The sidebar supports multiple tabs (Bookmarks, Cameras) with per-card group-based access control.
+As of **2026-06-11**, Trailhead is gated by **tinyauth** (lightweight forward-auth), which replaced
+Authentik. The full auth-service deployment — container, env, NPM host, SSO, user management — is
+documented in **[tinyauth.md](tinyauth.md)**. This section covers only how Trailhead *uses* it and
+the client-side card filtering.
+
+A single `index.html` is generated every 5 minutes with ALL cards. The nginx layer authenticates the
+request, injects the username/groups/network-type into the HTML, and client-side JavaScript filters
+cards based on group membership. Main content (weather, charts, birds, sky, park, synopsis) is
+identical for everyone; the sidebar (Bookmarks, Cameras tabs) supports per-card group access control.
 
 ### Auth Architecture
 
 ```
 Browser → NPM (192.168.0.30) → trailhead-web (:8076)
-  nginx auth_request → Authentik embedded outpost (192.168.0.179:9000)
-    401 → redirect to http://home.1701.me/outpost.goauthentik.io/start (hardcoded in nginx; NPM upgrades to HTTPS)
-    200 → auth_request_set captures $authentik_username
+  nginx auth_request → tinyauth  (/api/auth/nginx @ 192.168.0.179:3005)
+    401 → 302 to the X-Tinyauth-Location header
+          (https://homepage.1701.me/login?redirect_uri=<this host>/ — auto-derived, NOT hardcoded)
+    200 → auth_request_set captures $upstream_http_remote_user  (the username)
          → sub_filter injects username into TWO placeholders (dropdown + JS var)
-         → sub_filter injects $network_type (Local/Remote) from X-Forwarded-For
+         → sub_filter injects groups ('admin' — single user) and $network_type (Local/Remote)
          → try_files /index.html (single file for all users)
-         → JS reads TRAILHEAD_USERNAME + TRAILHEAD_USER_GROUPS (case-insensitive lookup)
-         → JS hides cards where data-access doesn't match user's groups
+         → JS reads TRAILHEAD_USERNAME + TRAILHEAD_GROUPS_RAW; hides cards by data-access
 ```
 
-**Domain routing**: AdGuard DNS (192.168.0.11) rewrites `*.1701.me → 192.168.0.30` (NPM reverse proxy). NPM proxies `home.1701.me → 192.168.0.179:8076`. Users must access via `home.1701.me`, not the IP:port directly.
+The session cookie is scoped to `.1701.me`, so one login at `homepage.1701.me` is single sign-on
+across every `*.1701.me` app behind tinyauth. Because tinyauth derives the per-host return URL itself,
+there is no hardcoded redirect (the old Authentik config had a hardcoded `rd=http://…` that tripped
+NPM's block-exploits → 403; that class of bug cannot recur here).
 
-### Access Groups
+**Domain routing**: AdGuard DNS (192.168.0.11) rewrites `*.1701.me → 192.168.0.30` (NPM). NPM proxies
+`home.1701.me → 192.168.0.179:8076` and `homepage.1701.me → 192.168.0.179:3005` (tinyauth). Access via
+`home.1701.me`, not IP:port.
 
-Each card in `trailhead.yaml` has an optional `access` field with a list of access tags:
+### Group Injection & Card Filtering
+
+Currently there is a **single admin user** (`alec`), so the nginx config injects a static group of
+`admin` into `<!--AUTHENTIK_GROUPS-->` (placeholder name kept for template compatibility). With
+`admin`, the client-side filter shows all cards. Username comes from tinyauth's `Remote-User` header.
+
+To do real **per-user** filtering, map tinyauth groups into a `remote-groups` header in the
+`auth_request` response and inject that instead of the static `admin`.
+
+Each card in `trailhead.yaml` has an optional `access` field (list of tags). JS hides cards whose
+tags don't intersect the user's groups; cards without `access` show for all authenticated users.
+Lookup is case-insensitive.
 
 ```yaml
 - id: mealie
   title: Mealie
   access:
     - apps-family
-- id: grafana
-  title: Grafana
-  access:
-    - apps-friends
 ```
 
-Access tags currently used:
-- `apps-family` — Mealie, Tandoor, Immich (family-only apps)
-- `apps-friends` — BirdNET, Grafana, Paperless, Stirling PDF (shared with friends)
-- `camera` — Driveway camera (cameras tab)
-
-Cards without an `access` field are visible to all authenticated users. JS client-side filtering hides cards where the user's groups (from `TRAILHEAD_USER_GROUPS`) don't include any of the card's access tags. The lookup is **case-insensitive** (`TRAILHEAD_USERNAME.toLowerCase()`).
+Access tags currently defined: `apps-family` (Mealie, Tandoor, Immich), `apps-friends` (BirdNET,
+Grafana, Paperless, Stirling PDF), `camera` (Driveway camera). These are dormant while there is one
+admin user but remain in the template/yaml for when multi-user filtering is wired up.
 
 ### Sidebar Tabs
 
@@ -902,288 +919,19 @@ Cards without an `access` field are visible to all authenticated users. JS clien
 
 Empty tabs (all cards hidden) are automatically hidden by JS.
 
-### Authentik Configuration
-
-Configured via API. Components created:
-
-- **Proxy Provider**: `trailhead` — forward auth single application, external host `https://home.1701.me`
-- **Application**: `Trailhead`, slug `trailhead`, pk `4c8c0fb6-c9ab-4ca2-aa19-4a17e4a21087`
-  - `launch_url`: `http://home.1701.me` (must match external host domain, not IP:port)
-- **Embedded outpost**: `authentik_host` = `https://auth.1701.me`, `authentik_host_browser` = `https://auth.1701.me`
-- **Brand**: UUID `e137649b-f669-43e7-abdf-6e52a6b7e952` (default brand, customized)
-- **Authentication flow**: `default-authentication-flow` — title "Welcome, please login", identification + password on one page
-- **API token**: `BVcngz0VAdh81uKFTOd93NHHD2sXF5624hml3LLFuYTSQMYyd7vA8pOLDLgx` (for programmatic brand/flow changes)
-- **Users**: `alec` (type: `external`, `is_superuser: true`), `akadmin` (default admin, type: `internal`)
-  - `alec` is set to `external` so that `RootRedirectView` redirects to `default_application` (Trailhead) instead of the admin dashboard when `next=/` is hit after logout. `is_superuser` remains `true`, so admin UI at `/if/admin/` is still accessible.
-
-To add a new user:
-1. Create user in Authentik admin: http://192.168.0.179:9000/if/admin/#/identity/users
-2. Add username to the appropriate groups in `trailhead.yaml` under `access_groups`
-3. Rebuild: `cd /mnt/docker/trailhead && docker compose build generator && docker compose up -d`
-
-### Login Page Branding
-
-The Authentik login page is styled to match the NPS design of the Trailhead homepage. Branding is applied via the Authentik Brand API (`/api/v3/core/brands/{uuid}/`).
-
-#### Brand Settings
-
-| Field | Value |
-|-------|-------|
-| `branding_title` | Trailhead |
-| `branding_logo` | `/static/dist/assets/icons/trailhead-logo.svg` |
-| `branding_default_flow_background` | `/static/dist/assets/images/blank.png` |
-| `branding_custom_css` | NPS-themed CSS (see below) |
-
-#### TRAILHEAD Logo
-
-SVG text logo at `/web/dist/assets/icons/trailhead-logo.svg` inside the `authentik-server` container. Also backed up at `/mnt/docker/authentik/media/custom/trailhead-logo.svg` on Komodo host.
-
-**Note**: This file lives inside the container image (not a volume mount). It will be lost on container rebuild/update and must be re-copied:
-```bash
-docker cp /mnt/docker/authentik/media/custom/trailhead-logo.svg authentik-server:/web/dist/assets/icons/trailhead-logo.svg
-```
-
-#### Flow Configuration
-
-The identification stage (`default-authentication-identification`) has `password_stage` set to `default-authentication-password`, which shows both username and password fields on a single page.
-
-The "Login to continue to Trailhead." subtitle was suppressed by editing `/web/dist/chunks/XROP4FSD.js` inside the container (changed `this.challenge.applicationPre?` to `false?`). This edit is lost on container rebuild.
-
-The logout page (`/web/dist/src/flow/providers/chunks/52MQAQ3X.js`) was modified to auto-redirect to `http://home.1701.me/logged-out` using `connectedCallback()` (fires before `render()`). The `render()` method shows a "Logging out..." message as a brief fallback while the redirect executes. Uses `window.location.replace()` to avoid a back-button return to the session-end page. Backed up at `/mnt/docker/authentik/media/custom/52MQAQ3X.js`. This edit is lost on container rebuild.
-
-#### Custom CSS
-
-The brand CSS uses direct PatternFly class selectors (Authentik injects brand CSS into the Shadow DOM):
-
-```css
-@import url("https://fonts.googleapis.com/css2?family=Cabin:wght@400;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap");
-
-:root {
-  --ak-font-family-sans-serif: "Cabin", sans-serif !important;
-  --ak-font-family-heading: "Cabin", sans-serif !important;
-  --pf-global--primary-color--100: #5C462B !important;   /* NPS brown buttons */
-  --pf-global--primary-color--200: #C56C39 !important;   /* Copper accent */
-  --ak-global--background-image: none !important;
-}
-
-body { background-color: #F5F5F0 !important; }            /* Cream page bg */
-
-.pf-c-login__main {                                       /* White card */
-  background-color: #FFFFFF !important;
-  border-bottom: 3px solid #6F4930 !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-}
-
-.pf-c-title { color: #333333 !important; }                /* Dark text */
-.pf-c-form__label-text { color: #333333 !important; opacity: 1 !important; }
-.pf-c-form-control {                                       /* Input fields */
-  background-color: #FFFFFF !important;
-  border: 1px solid #D4C4A8 !important;
-  color: #333333 !important;
-}
-.pf-c-button.pf-m-block,
-.pf-c-button.pf-m-primary {                               /* Brown button */
-  background-color: #5C462B !important;
-  color: #FFFFFF !important;
-}
-.pf-c-list.pf-m-inline { visibility: hidden !important; } /* Hide footer */
-.pf-c-login__main-footer-band { background-color: #FFFFFF !important; }
-a { color: #C56C39 !important; }                           /* Copper links */
-```
-
-#### Things Lost on Container Rebuild
-
-After an Authentik update/rebuild, re-apply:
-1. **Logo SVG**: `docker cp /mnt/docker/authentik/media/custom/trailhead-logo.svg authentik-server:/web/dist/assets/icons/trailhead-logo.svg`
-2. **Subtitle suppression**: Re-edit `XROP4FSD.js` (the chunk filename may change between versions)
-3. **Logout page redirect**: `docker cp /mnt/docker/authentik/media/custom/52MQAQ3X.js authentik-server:/web/dist/src/flow/providers/chunks/52MQAQ3X.js` (chunk filename may change between versions — search for `ak-stage-session-end` to find the right file)
-4. **Brand CSS + settings**: Persisted in the database, survives rebuilds
-5. **Flow title + password_stage**: Persisted in the database, survives rebuilds
-
-### Access Control Files
-
-| File | Purpose |
-|------|---------|
-| `trailhead.yaml` | Access groups + tabs with per-card access fields |
-| `generate.py` | Renders single `index.html` with all cards + user_groups JSON (lowercase keys) |
-| `template.html` | Multi-tab sidebar, data-access attributes, JS filtering, Local/Remote badge |
-| `nginx.conf` | Authentik forward auth, network type detection, `sub_filter_once off`, `try_files /index.html` |
-| `logged-out.html` | Static "You've been logged out" page with 5s countdown + auto-redirect (no auth) |
-| `compose.yaml` | Generator + nginx services, healthcheck on `index.html` |
-
-### nginx.conf — Auth Details
-
-#### Network Type Detection
-
-A `map` block classifies clients as Local or Remote based on the `X-Forwarded-For` header set by NPM:
-
-```nginx
-map $http_x_forwarded_for $network_type {
-    ~^192\.168\.  Local;
-    ~^10\.        Local;
-    default       Remote;
-}
-```
-
-The `$network_type` variable is injected into HTML via `sub_filter`:
-
-```nginx
-sub_filter '<!--AUTHENTIK_USERNAME-->' $authentik_username;
-sub_filter '<!--NETWORK_TYPE-->' $network_type;
-sub_filter_once off;    # Multiple replacements: username (dropdown + JS var) + network type
-try_files /index.html =404;
-```
-
-#### Auth Redirect (Hardcoded Domain)
-
-The `@goauthentik_proxy_signin` location **must** hardcode `home.1701.me`:
-
-```nginx
-location @goauthentik_proxy_signin {
-    internal;
-    add_header Set-Cookie $auth_cookie;
-    return 302 http://home.1701.me/outpost.goauthentik.io/start?rd=http://home.1701.me$request_uri;
-}
-```
-
-**Why hardcoded**: If the user accesses via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`, using `$http_host` would produce a redirect URL with the wrong domain. The outpost compares the redirect URI against `external_host` (`https://home.1701.me`) and rejects mismatches with "redirect URI did not contain external host". This caused callback failures (HTTP 400), session mismatches, and users ending up at the Authentik dashboard instead of Trailhead.
-
-**Note**: The nginx.conf redirects use `http://` but NPM's Force SSL upgrades all external requests to HTTPS. The internal redirect from nginx to Authentik outpost stays HTTP (container-to-container on the same host).
-
-#### Logout
-
-Logout clears the proxy cookie and redirects to the OIDC end-session endpoint:
-
-```nginx
-location = /logout {
-    add_header Set-Cookie 'authentik_proxy_ee210d03=; Path=/; Max-Age=0' always;
-    return 302 http://192.168.0.179:9000/application/o/trailhead/end-session/?post_logout_redirect_uri=http://home.1701.me/;
-}
-```
-
-The OIDC end-session endpoint triggers the `default-provider-invalidation-flow`, which has a **User Logout Stage** (`default-invalidation-logout`) at order 0. This stage calls `logout(request)` to destroy the Authentik server session.
-
-**Known Authentik limitation** (GitHub #10430, #4248): The User Logout Stage destroys the Django session, which also destroys `SESSION_KEY_PLAN` containing the flow plan context. This means `post_logout_redirect_uri` is lost after session destruction. The Authentik SPA detects the session loss and redirects to the auth flow with `next=/`, which after re-login leads to the Authentik dashboard instead of Trailhead.
-
-**Workaround — dual-path redirect:**
-
-The `52MQAQ3X.js` file (session-end stage component) was modified to redirect to a static "logged out" page on Trailhead before the SPA's session-loss detection kicks in. As a safety net, user `alec` was changed to `external` type so `RootRedirectView` redirects to `default_application` (Trailhead) if the SPA redirect wins the race.
-
-**Path A — JS redirect wins (primary):**
-```
-Logout → cookie cleared → OIDC end-session → invalidation flow
-  → User Logout Stage kills session → 52MQAQ3X.js connectedCallback()
-  → window.location.replace("http://home.1701.me/logged-out")
-  → static "You've been logged out" page (5s countdown)
-  → auto-redirect to home.1701.me → outpost OAuth → login → Trailhead
-```
-
-**Path B — SPA session-loss redirect wins (safety net):**
-```
-Logout → session killed → SPA detects session loss
-  → redirects to auth flow with next=/ → user logs in
-  → next=/ → RootRedirectView → external user type
-  → redirect to default_application launch_url → home.1701.me → Trailhead
-```
-
-Both paths end at Trailhead.
-
-#### Logged-Out Page
-
-A static NPS-styled page served without auth at `/logged-out`:
-
-```nginx
-location = /logged-out {
-    add_header X-Content-Type-Options "nosniff" always;
-    alias /error-pages/logged-out.html;
-}
-```
-
-The page shows "You've Been Logged Out" with a 5-second countdown timer and auto-redirect to `http://home.1701.me/`. A "Log Back In Now" button is available as an immediate fallback. The file is mounted into the container via `compose.yaml`:
-
-```yaml
-- /mnt/docker/trailhead/logged-out.html:/error-pages/logged-out.html:ro
-```
-
-**Why not other approaches**:
-- `post_logout_redirect_uri` is lost when the User Logout Stage destroys the session (known Authentik bug)
-- `?next=` on invalidation flows rejects external URLs ("Invalid next URL")
-- The outpost `/sign_out` endpoint doesn't work for forward-auth mode (designed for proxy mode only)
-- Brand CSS can't style the `ak-stage-session-end` component (shadow DOM doesn't adopt brand stylesheets)
-
-#### Other Critical nginx Settings
-
-- **`absolute_redirect off`** — Required because nginx inside Docker listens on :80 but is exposed as :8076.
-- **`Host home.1701.me`** (hardcoded in outpost location) — The Authentik outpost routes by host matching. Internal DNS rewrite in AdGuard resolves `*.1701.me` → `192.168.0.30` (reverse proxy).
-- **Cookie passthrough** — `auth_request_set $auth_cookie` + `add_header Set-Cookie $auth_cookie` on every auth-protected location.
-- **`$authentik_username` from `$upstream_http_x_authentik_username`** — Reads from outpost response headers, NOT client request headers. Cannot be spoofed.
-
-### Client-Side Filtering (JS)
-
-```javascript
-var TRAILHEAD_USER_GROUPS = {"alec": ["admin","media","family"], ...};  // embedded at generation (lowercase keys)
-var TRAILHEAD_USERNAME = '<!--AUTHENTIK_USERNAME-->';  // replaced by nginx sub_filter
-
-// On page load:
-// 1. Look up user's groups using TRAILHEAD_USERNAME.toLowerCase() (case-insensitive)
-// 2. Hide cards where data-access doesn't include any of user's groups
-// 3. Hide empty group labels
-// 4. Hide empty sidebar tabs
-```
-
-#### Network Badge
-
-The template displays a "Local" or "Remote" badge in the header based on the `$network_type` variable injected by nginx. The badge is styled with green (Local) or orange (Remote) colors. This is purely informational — access control is not affected by network location.
-
-### User Menu
-
-A user icon in the black band header opens a dropdown with:
-
-- **Username display** — injected at serve time by nginx `sub_filter`
-- **Change Password** — links to Authentik user settings (`http://192.168.0.179:9000/if/user/`)
-- **Log Out** — hits `/logout` which clears proxy cookie and redirects to Authentik invalidation flow
-
-### Access Control Security Notes
-
-- **Header spoofing safe**: `$authentik_username` comes from `$upstream_http_` (outpost response only)
-- **Cards in source**: All cards are in the HTML source. Any authenticated user could view-source and see all URLs. This is fine because each service has its own auth — the access control here is UI cleanliness, not a security boundary.
-- **Static assets protected**: Camera snapshot (`driveway.jpg`) requires auth
-- **Logged-out page open**: `/logged-out` has no auth (static page shown after session destruction)
-- **Health check open**: `/health` has no auth (required for Docker healthcheck)
-- **Domain enforcement**: Auth redirect hardcodes `home.1701.me` to prevent OAuth callback failures when accessed via IP:port
-
-### Access Control Troubleshooting
-
-#### User sees wrong bookmarks
-Check `access_groups` in `trailhead.yaml`. The user must be listed in a group that matches the card's `access` field. Usernames are matched case-insensitively. After changes, rebuild the generator.
-
-#### Infinite login loop
-Cookie passthrough is missing or broken. Ensure `auth_request_set $auth_cookie $upstream_http_set_cookie` and `add_header Set-Cookie $auth_cookie` are present on every auth-protected location block.
-
-#### Post-login redirects to Authentik dashboard (not Trailhead)
-**After normal login**: The user likely accessed via IP:port (`192.168.0.179:8076`) instead of `home.1701.me`. The OAuth callback fails because the redirect URI doesn't match `external_host`. Check:
-1. `@goauthentik_proxy_signin` has hardcoded `home.1701.me` (not `$http_host`)
-2. Authentik application `launch_url` is `http://home.1701.me` (not the IP:port)
-3. User bookmarks point to `http://home.1701.me` (not the IP)
-
-**After logout + re-login**: This is a known Authentik limitation (GitHub #10430, #4248). The User Logout Stage destroys the Django session including the flow plan, so `post_logout_redirect_uri` is lost. The SPA redirects to the auth flow with `next=/`, and after login `RootRedirectView` sends the user to the dashboard. The workaround has two parts:
-1. `52MQAQ3X.js` redirects to `/logged-out` before the SPA can detect the session loss (primary path)
-2. User `alec` is set to `external` type so `RootRedirectView` redirects to `default_application` (Trailhead) when `next=/` is hit (safety net)
-
-If this stops working, check:
-- `52MQAQ3X.js` is deployed in the Authentik container (may need re-copying after update)
-- User `alec` is still `external` type with `is_superuser: true`
-- Brand `default_application` is set to Trailhead (pk `4c8c0fb6-c9ab-4ca2-aa19-4a17e4a21087`)
-
-#### Logout 502 error
-The outpost `/sign_out` endpoint has a known bug (v2025.12.1) where it returns 502 when the browser has a valid proxy session cookie. The current workaround redirects to the invalidation flow directly instead. Do NOT attempt to proxy to `/outpost.goauthentik.io/sign_out` — it won't work.
-
-#### 502 or 500 errors (general)
-Authentik may be down or the outpost may not have the provider assigned. Check:
-```bash
-docker logs authentik-server --tail 20
-curl -s -o /dev/null -w '%{http_code}' -H 'Host: home.1701.me' http://192.168.0.179:9000/outpost.goauthentik.io/auth/nginx
-```
+### Managing Users
+
+Users live in `/mnt/docker/tinyauth/.env` (`TINYAUTH_AUTH_USERS=user:bcrypt`). To add/change one:
+generate a bcrypt hash, edit `.env` (escape every `$` as `$$`), and
+`cd /etc/komodo/stacks/tinyauth && docker compose up -d --force-recreate`. See
+[tinyauth.md](tinyauth.md) for details. Login page styling is tinyauth's own UI — the previous
+Authentik brand/CSS/flow customizations no longer apply.
+
+### Reverting to Authentik
+
+The pre-migration nginx config is backed up at `/mnt/docker/trailhead/nginx.conf.bak-authentik-*` on
+CT 128. Restore it and reload `trailhead-web` to put Trailhead back on the Authentik outpost
+(Authentik is still running for `trips.1701.me`).
 
 ## Today's Dispatch (The Curious magazine card)
 

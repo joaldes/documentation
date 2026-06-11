@@ -36,7 +36,8 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [rtl433-honeywell-setup.md](services/rtl433-honeywell-setup.md) | RTL-433 SDR + Honeywell 5800 sensor integration |
 | [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
-| [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + Authentik SSO + NPS design) |
+| [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + tinyauth SSO + NPS design) |
+| [tinyauth.md](services/tinyauth.md) | tinyauth — Lightweight forward-auth/SSO (CT 128, login UI homepage.1701.me, .1701.me cookie SSO; replaced Authentik for Trailhead) |
 | [tplan.md](services/tplan.md) | tPlan — Self-hosted road-trip planner (FastAPI + SQLite, live + staging stacks, modular CSS, Tabulator/Leaflet) |
 | [photon.md](services/photon.md) | Photon — Self-hosted geocoder (CT 128, planet OSM index, used by tPlan for search/reverse-geocode) |
 | [overpass.md](services/overpass.md) | Overpass-NA — Self-hosted OSM query API (CT 128, NA extract + Caddy CORS sidecar, for tPlan POI overlay) |

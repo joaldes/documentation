@@ -29,7 +29,7 @@ All containers run on the external Docker network `cartography_net` (created wit
 | `map-photon` | rtuszik/photon-docker:latest | `2322` | `/mnt/docker/map/photon/data` (~88 GB Lucene index) |
 | `map-overpass` | wiktorn/overpass-api:v0.7.62.9 | (internal `80`) | `/mnt/docker/map/overpass/db` (~35 GB) |
 | `map-overpass-caddy` | caddy:2-alpine | `12345` (CORS reverse-proxy in front of overpass) | `/mnt/docker/map/overpass/caddy/Caddyfile` |
-| `map-valhalla` | ghcr.io/nilsnolde/docker-valhalla/valhalla:latest | `8002` | `/mnt/docker/map/valhalla` (~4 GB; **US-West states only**) |
+| `map-valhalla` | ghcr.io/nilsnolde/docker-valhalla/valhalla:latest | `8002` | `/mnt/docker/map/valhalla` (~19 GB tar + tiles; **full USA incl. AK/HI**, live 2026-06-11) |
 
 Used by tplan (CT 128). DNS hostname: `gis.home` (legacy from pre-rename) covers all of these.
 
@@ -89,7 +89,7 @@ docker compose -f /mnt/docker/gis-tools/compose.yaml run --rm pdal <command>
 │   ├── photon/data/                (88 GB Lucene index, UID 9011)
 │   ├── overpass/db/                (35 GB Overpass DB)
 │   ├── overpass/caddy/Caddyfile
-│   ├── valhalla/                   (~4 GB tiles + admin/timezone data)
+│   ├── valhalla/                   (full-USA: 19 GB tar + 19 GB tiles + 12 GB us-latest.osm.pbf rebuild source; valhalla-old/ = pre-swap US-West rollback)
 │   └── tiles/                      (~8 GB PMTiles vector basemap)
 ├── gis/                            (~16 GB — photogrammetry)
 │   ├── compose.yaml

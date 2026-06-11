@@ -66,9 +66,24 @@ authorizes every `*.1701.me` app behind tinyauth. Verified: login on `homepage.1
 `home.1701.me` and `trailhead.1701.me`. To extend SSO to `trips.1701.me`, repoint its nginx
 forward-auth from the Authentik outpost to tinyauth (same pattern as above).
 
-### OIDC provider
-tinyauth v5 also exposes an OIDC provider (`/api/oidc/*`) — usable as a real IdP for apps with native
-"Login with OIDC" if needed later.
+### OIDC provider (enabled 2026-06-11)
+tinyauth v5 also acts as a full OIDC identity provider. **Gotcha: the OIDC service silently skips
+initialization unless ≥1 client is registered** — with zero clients the well-known endpoints return
+an empty issuer and the JWKS handler nil-pointer panics. Setup:
+
+1. Env (in `.env`): `TINYAUTH_DATABASE_PATH=/data/tinyauth.db`,
+   `TINYAUTH_OIDC_PRIVATEKEYPATH=/data/tinyauth_oidc_key`,
+   `TINYAUTH_OIDC_PUBLICKEYPATH=/data/tinyauth_oidc_key.pub`.
+   Don't pre-generate keys — tinyauth creates its own (PKCS#1 `BEGIN RSA PRIVATE KEY`; a hand-made
+   PKCS#8 key fails to parse).
+2. Register a client: `docker run --rm ghcr.io/steveiliop56/tinyauth:v5 oidc create <name>` →
+   prints client ID + secret (not recoverable later).
+3. Add to `.env`: `TINYAUTH_OIDC_CLIENTS_<NAME>_CLIENTID/CLIENTSECRET/NAME`, plus
+   `TINYAUTH_OIDC_CLIENTS_<NAME>_TRUSTEDREDIRECTURIS=<app callback URL>` per connected app.
+4. `docker compose up -d --force-recreate`.
+
+Live config: client `homelab` (ID `c429c456-3802-4540-bb14-fcf3e2eb501b`, secret in `.env`).
+App-facing discovery URL: `https://homepage.1701.me/.well-known/openid-configuration` (RS256).
 
 ## User Management
 - **Login API**: `POST /api/user/login` `{ "username": "...", "password": "..." }`.

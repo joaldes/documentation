@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-11 05:00 UTC*
+*Last updated: 2026-06-11 23:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 8.95, 7.91, 7.43 | RAM: 37/62 GB | Uptime: 8 days
+**Shipyard** (192.168.0.151) | CPU: 2.48, 1.81, 2.34 | RAM: 35/62 GB | Uptime: 8 days
 
-**51 services** — 25 LXC containers, 26 Docker stacks, 3 VMs, 11 storage pools
+**52 services** — 25 LXC containers, 27 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (51)
+## All Services (52)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -31,6 +31,7 @@
 | karakeep | docker | 192.168.0.179 | 8055 | http://192.168.0.179:8055 | running |
 | komodo | lxc | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | komodo | docker | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
+| lldap | docker | 192.168.0.179 | 3890 | http://192.168.0.179:3890 | running |
 | lubelogger | docker | 192.168.0.179 | 8071 | http://192.168.0.179:8071 | running |
 | magazine | docker | 192.168.0.179 | 8089 | http://192.168.0.179:8089 | running |
 | manyfold | docker | 192.168.0.179 | 3214 | http://192.168.0.179:3214 | running |
@@ -89,7 +90,7 @@
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
 
-## Docker Stacks (26) — 192.168.0.179
+## Docker Stacks (27) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -104,6 +105,7 @@
 | jobsd | 8077 | 1/1 | 0 | running | http://192.168.0.179:8077 |
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
 | komodo | 9120 | 7/7 | 2 | running | http://192.168.0.179:9120 |
+| lldap | 3890 | 1/1 | 1 | running | http://192.168.0.179:3890 |
 | lubelogger | 8071 | 1/1 | 0 | running | http://192.168.0.179:8071 |
 | magazine | 8089 | 1/1 | 0 | running | http://192.168.0.179:8089 |
 | manyfold | 3214 | 1/1 | 1 | running | http://192.168.0.179:3214 |
@@ -129,14 +131,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 7001/10158 | 68% |
+| backups | dir | 7066/10158 | 69% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 893/1006 | 88% |
-| docker-data | dir | 378/2014 | 18% |
-| littlestorage | lvmthin | 193/1830 | 10% |
+| container-backups | dir | 896/1006 | 89% |
+| docker-data | dir | 349/2014 | 17% |
+| littlestorage | lvmthin | 194/1830 | 10% |
 | local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 311/348 | 89% |
 | smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 588/1006 | 58% |
-| smb-hometheater | dir | 16937/29679 | 57% |
+| smb-frigate | dir | 593/1006 | 58% |
+| smb-hometheater | dir | 16952/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |

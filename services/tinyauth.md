@@ -1,7 +1,7 @@
-# tinyauth — Lightweight Forward-Auth / SSO
+# tinyauth + lldap — Lightweight Forward-Auth / SSO / User Management
 
 **Last Updated**: 2026-06-11
-**Related Systems**: CT 128 (Komodo/Docker), NPM (CT 112), Trailhead (`home.1701.me`)
+**Related Systems**: CT 128 (Komodo/Docker), NPM (CT 112), Trailhead (`home.1701.me`), lldap (`users.1701.me`)
 
 ## Summary
 tinyauth is a single ~20 MB forward-auth container that gates self-hosted apps with a login page,
@@ -85,12 +85,33 @@ an empty issuer and the JWKS handler nil-pointer panics. Setup:
 Live config: client `homelab` (ID `c429c456-3802-4540-bb14-fcf3e2eb501b`, secret in `.env`).
 App-facing discovery URL: `https://homepage.1701.me/.well-known/openid-configuration` (RS256).
 
-## User Management
-- **Login API**: `POST /api/user/login` `{ "username": "...", "password": "..." }`.
-- **Add / change a user**: generate a bcrypt hash
-  (`docker run --rm httpd:2-alpine htpasswd -nbB <user> '<pass>'`), edit `TINYAUTH_AUTH_USERS` in
-  `/mnt/docker/tinyauth/.env` (remember `$$` escaping), then
-  `cd /etc/komodo/stacks/tinyauth && docker compose up -d --force-recreate`.
+## User Management — lldap (added 2026-06-11)
+Users live in **lldap** (Rust LDAP server, <10 MB RAM, SQLite) with a web UI — no more env-var editing.
+
+- **Web UI**: `https://users.1701.me` (NPM host 210, LE cert npm-87) / `http://users.home` (NPM host 211).
+  Admin login: user `admin` (password in `/mnt/docker/lldap/.env`, `LLDAP_LDAP_USER_PASS`).
+  alec is in `lldap_admin` so his own login can manage users too.
+- **Stack**: `/etc/komodo/stacks/lldap/compose.yaml`, data/env `/mnt/docker/lldap/` (`.env` chmod 600,
+  `data/users.db`). Ports 3890 (LDAP, LAN-only) + 17170 (UI). Image `lldap/lldap:stable`.
+- **Add a user**: lldap UI → Create user (+ add to groups) → done. tinyauth picks it up instantly,
+  no restart. Deleting works the same way (login 401 immediately).
+- **Directory**: base DN `dc=1701,dc=me`. Users: `alec` (groups: `admin`, `lldap_admin`),
+  `tinyauth-observer` (read-only bind account, member of `lldap_strict_readonly`).
+- **tinyauth wiring** (in `/mnt/docker/tinyauth/.env`): `TINYAUTH_LDAP_ADDRESS=ldap://192.168.0.179:3890`,
+  `TINYAUTH_LDAP_BINDDN=uid=tinyauth-observer,ou=people,dc=1701,dc=me`, `TINYAUTH_LDAP_BINDPASSWORD`,
+  `TINYAUTH_LDAP_BASEDN=dc=1701,dc=me`, `TINYAUTH_LDAP_SEARCHFILTER=(uid=%s)`, `TINYAUTH_LDAP_INSECURE=true`.
+- **Break-glass**: `TINYAUTH_AUTH_USERS=breakglass:<bcrypt>` remains — a *local* tinyauth user that works
+  even when lldap is down. ⚠️ The local username must NOT collide with an LDAP username: tinyauth
+  matches local users first, and local logins get **no groups header** (this bit alec until he was
+  renamed out of the env var).
+- **Groups → apps**: LDAP logins return `Remote-Groups` (comma-joined, e.g. `admin,lldap_admin`).
+  Trailhead consumes it via `auth_request_set $tinyauth_groups $upstream_http_remote_groups` +
+  `sub_filter '<!--AUTHENTIK_GROUPS-->' $tinyauth_groups;` (template.html group split accepts `|` and `,`).
+- **Login API**: `POST /api/user/login` `{ "username": "...", "password": "..." }`. Repeated failures
+  rate-limit to 429 for a few minutes.
+- ⚠️ **Single-file bind-mount trap**: `nginx.conf`, `template.html`, `trailhead.yaml` are file mounts —
+  `sed -i`/`mv` replaces the inode and the container keeps the OLD file. Restart the container after
+  editing, then regen (`docker exec trailhead-generator touch /tmp/regen`).
 
 ## Verification
 ```bash

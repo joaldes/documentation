@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-10 10:00 UTC*
+*Last updated: 2026-06-11 05:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 22.89, 16.81, 16.88 | RAM: 33/62 GB | Uptime: 7 days
+**Shipyard** (192.168.0.151) | CPU: 8.95, 7.91, 7.43 | RAM: 37/62 GB | Uptime: 8 days
 
-**50 services** — 25 LXC containers, 25 Docker stacks, 3 VMs, 11 storage pools
+**51 services** — 25 LXC containers, 26 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (50)
+## All Services (51)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -49,6 +49,7 @@
 | sonarr | lxc | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
 | syncthing | lxc | 192.168.0.45 | 8384 | http://192.168.0.45:8384 | running |
 | tandoor | docker | 192.168.0.179 | 8090 | http://192.168.0.179:8090 | running |
+| tinyauth | docker | 192.168.0.179 | 3005 | http://192.168.0.179:3005 | running |
 | tplan | docker | 192.168.0.179 | 8084 | http://192.168.0.179:8084 | running |
 | tracearr | lxc | 192.168.0.211 | 3000 | http://192.168.0.211:3000 | running |
 | trailhead | docker | 192.168.0.179 | 8076 | http://192.168.0.179:8076 | running |
@@ -88,7 +89,7 @@
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
 
-## Docker Stacks (25) — 192.168.0.179
+## Docker Stacks (26) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -114,6 +115,7 @@
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | shoplist | 8086 | 1/1 | 0 | running | http://192.168.0.179:8086 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
+| tinyauth | 3005 | 1/1 | 1 | running | http://192.168.0.179:3005 |
 | tplan | 8084 | 2/2 | 0 | running | http://192.168.0.179:8084 |
 | trailhead | 8076 | 2/2 | 2 | running | http://192.168.0.179:8076 |
 
@@ -127,14 +129,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6908/10158 | 68% |
+| backups | dir | 7001/10158 | 68% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 879/1006 | 87% |
-| docker-data | dir | 345/2014 | 17% |
-| littlestorage | lvmthin | 174/1830 | 9% |
-| local | dir | 50/93 | 54% |
+| container-backups | dir | 893/1006 | 88% |
+| docker-data | dir | 378/2014 | 18% |
+| littlestorage | lvmthin | 193/1830 | 10% |
+| local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 311/348 | 89% |
 | smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 587/1006 | 58% |
-| smb-hometheater | dir | 16931/29679 | 57% |
+| smb-frigate | dir | 588/1006 | 58% |
+| smb-hometheater | dir | 16937/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |

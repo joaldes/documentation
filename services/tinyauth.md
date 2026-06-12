@@ -1,7 +1,11 @@
 # tinyauth + lldap — Lightweight Forward-Auth / SSO / User Management
 
 **Last Updated**: 2026-06-11
-**Related Systems**: CT 128 (Komodo/Docker), NPM (CT 112), Trailhead (`home.1701.me`), lldap (`users.1701.me`)
+**Related Systems**: CT 128 (Komodo/Docker), NPM (CT 112), Trailhead (`home.1701.me`), lldap (`users.home`)
+
+> **User guide** (non-ops, with screenshots): `documents samba > personal/alec/claudeai/auth-user-guide/auth-user-guide.md`
+> **Note**: `homepage.1701.me` deliberately has no `homepage.home` alias — the login redirect and
+> `.1701.me` SSO cookie require the canonical public name.
 
 ## Summary
 tinyauth is a single ~20 MB forward-auth container that gates self-hosted apps with a login page,
@@ -23,13 +27,20 @@ left running for `trips.1701.me` (not migrated).
 ## Implementation Details
 
 ### Stack (CT 128)
-- **Image**: `ghcr.io/steveiliop56/tinyauth:v5`
+- **Image**: `ghcr.io/steveiliop56/tinyauth:v5` — ⚠️ v5.0.7 is the LAST release on this path;
+  the project moved to `ghcr.io/tinyauthapp/tinyauth` and all future releases (incl. security
+  fixes) publish only there. Swap the image path at the next upgrade.
 - **Compose**: `/etc/komodo/stacks/tinyauth/compose.yaml` — published host port **3005**→3000,
-  data volume `/mnt/docker/tinyauth/data:/data`, `env_file: /mnt/docker/tinyauth/.env`.
-- **Env** (`/mnt/docker/tinyauth/.env`):
+  data volume `/mnt/docker/tinyauth/data:/data`, `env_file: /mnt/docker/tinyauth/.env`, joined to
+  the external `auth_net` docker network (created with explicit subnet `172.99.0.0/24` because the
+  default address pools on CT 128 are exhausted) to reach lldap privately.
+- **Env** (`/mnt/docker/tinyauth/.env`, **chmod 600** — it holds every auth-stack secret):
   - `TINYAUTH_APPURL=https://homepage.1701.me`
-  - `TINYAUTH_AUTH_USERS=alec:<bcrypt>` — user list, format `user:bcrypt[:totp]`
+  - `TINYAUTH_AUTH_USERS=breakglass:<bcrypt cost 10>` — local break-glass user only; real users
+    live in lldap. Format `user:bcrypt[:totp]`.
   - `TINYAUTH_SECRET=<32-char>` — cookie/session signing
+  - `TINYAUTH_AUTH_SECURECOOKIE=true` — adds the `Secure` attribute to the domain-wide SSO cookie
+    (NOT `TINYAUTH_SECURE_COOKIE`; the var nests under AuthConfig like AUTH_USERS)
   - ⚠️ **Trap**: bcrypt hashes contain `$`; in a Compose `env_file` you must write each `$` as `$$`
     or `docker compose` interpolates it and silently corrupts the hash (login then fails with no
     clear error). Symptom in `docker compose up`: `The "..." variable is not set`.
@@ -88,16 +99,21 @@ App-facing discovery URL: `https://homepage.1701.me/.well-known/openid-configura
 ## User Management — lldap (added 2026-06-11)
 Users live in **lldap** (Rust LDAP server, <10 MB RAM, SQLite) with a web UI — no more env-var editing.
 
-- **Web UI**: `https://users.1701.me` (NPM host 210, LE cert npm-87) / `http://users.home` (NPM host 211).
+- **Web UI**: `https://users.home` (NPM host 211, mkcert wildcard cert 27) — **LAN/VPN only,
+  deliberately NOT internet-facing** (it's the root of trust for all SSO; security review
+  2026-06-11). The earlier public `users.1701.me` (NPM host 210 + LE cert npm-87) was removed the
+  same day — soft-deleted in the NPM DB and `certbot delete`d on CT 112.
   Admin login: user `admin` (password in `/mnt/docker/lldap/.env`, `LLDAP_LDAP_USER_PASS`).
   alec is in `lldap_admin` so his own login can manage users too.
 - **Stack**: `/etc/komodo/stacks/lldap/compose.yaml`, data/env `/mnt/docker/lldap/` (`.env` chmod 600,
-  `data/users.db`). Ports 3890 (LDAP, LAN-only) + 17170 (UI). Image `lldap/lldap:stable`.
+  `data/users.db` chmod 600). Image `lldap/lldap:stable`. Port 17170 (UI) published; LDAP **3890 is
+  NOT published** — tinyauth reaches it as `ldap://lldap:3890` over the shared external `auth_net`
+  docker network, so nothing on the LAN can touch the directory protocol.
 - **Add a user**: lldap UI → Create user (+ add to groups) → done. tinyauth picks it up instantly,
   no restart. Deleting works the same way (login 401 immediately).
 - **Directory**: base DN `dc=1701,dc=me`. Users: `alec` (groups: `admin`, `lldap_admin`),
   `tinyauth-observer` (read-only bind account, member of `lldap_strict_readonly`).
-- **tinyauth wiring** (in `/mnt/docker/tinyauth/.env`): `TINYAUTH_LDAP_ADDRESS=ldap://192.168.0.179:3890`,
+- **tinyauth wiring** (in `/mnt/docker/tinyauth/.env`): `TINYAUTH_LDAP_ADDRESS=ldap://lldap:3890` (via `auth_net`),
   `TINYAUTH_LDAP_BINDDN=uid=tinyauth-observer,ou=people,dc=1701,dc=me`, `TINYAUTH_LDAP_BINDPASSWORD`,
   `TINYAUTH_LDAP_BASEDN=dc=1701,dc=me`, `TINYAUTH_LDAP_SEARCHFILTER=(uid=%s)`, `TINYAUTH_LDAP_INSECURE=true`.
 - **Break-glass**: `TINYAUTH_AUTH_USERS=breakglass:<bcrypt>` remains — a *local* tinyauth user that works

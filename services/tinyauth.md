@@ -27,9 +27,9 @@ left running for `trips.1701.me` (not migrated).
 ## Implementation Details
 
 ### Stack (CT 128)
-- **Image**: `ghcr.io/steveiliop56/tinyauth:v5` — ⚠️ v5.0.7 is the LAST release on this path;
-  the project moved to `ghcr.io/tinyauthapp/tinyauth` and all future releases (incl. security
-  fixes) publish only there. Swap the image path at the next upgrade.
+- **Image**: `ghcr.io/tinyauthapp/tinyauth:v5` (migrated from the deprecated
+  `ghcr.io/steveiliop56/tinyauth` path 2026-06-12 — old path stopped at v5.0.7; all future
+  releases incl. security fixes publish only under the new org).
 - **Compose**: `/etc/komodo/stacks/tinyauth/compose.yaml` — published host port **3005**→3000,
   data volume `/mnt/docker/tinyauth/data:/data`, `env_file: /mnt/docker/tinyauth/.env`, joined to
   the external `auth_net` docker network (created with explicit subnet `172.99.0.0/24` because the
@@ -98,8 +98,8 @@ an empty issuer and the JWKS handler nil-pointer panics. Setup:
    - From Windows: double-click `add-oidc-app.bat` on the documents samba
      (`personal/alec/claudeai/`) — menu-driven (Add/List/Remove), SSHes to CT 128 as root
      (standard container password), shows the paste-block, pauses.
-   - ⚠️ Helper's `docker run` uses the image path in its `TINYAUTH_IMAGE` variable — update it
-     together with the compose file when migrating to `ghcr.io/tinyauthapp/tinyauth`.
+   - Helper's `docker run` uses the image path in its `TINYAUTH_IMAGE` variable — keep it in
+     sync with the compose file (both on `ghcr.io/tinyauthapp/tinyauth:v5` since 2026-06-12).
    - (Manual fallback: `docker run --rm <image> oidc create <name>` then add
      `TINYAUTH_OIDC_CLIENTS_<NAME>_CLIENTID/CLIENTSECRET/TRUSTEDREDIRECTURIS/NAME` to `.env`
      and recreate.)

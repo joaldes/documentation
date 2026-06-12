@@ -73,9 +73,20 @@ The authenticated username comes back in the `Remote-User` header.
 
 ### SSO
 The session cookie is set on the parent domain `.1701.me`, so logging in once at `homepage.1701.me`
-authorizes every `*.1701.me` app behind tinyauth. Verified: login on `homepage.1701.me` authorizes
-`home.1701.me` and `trailhead.1701.me`. To extend SSO to `trips.1701.me`, repoint its nginx
-forward-auth from the Authentik outpost to tinyauth (same pattern as above).
+authorizes every `*.1701.me` app behind tinyauth. Live behind tinyauth: `home.1701.me`,
+`trailhead.1701.me`, and (since 2026-06-12) **`trips.1701.me`** (tPlan).
+
+**trips.1701.me migration notes** (NPM host 178, CT 112): the Authentik outpost/forward-auth blocks
+were replaced with the tinyauth pattern, but the **request header names stay authentik-flavored**
+(`X-authentik-username/groups/email`, filled from tinyauth's `Remote-User/Groups/Email`) because
+tPlan's `share_mode_guard` middleware keys its anonymous-lockdown on the presence of
+`X-authentik-username` — zero app changes needed. The public share locations (`/s/…` + pretty-slug
+regex) remain unauthenticated; `/api/` still returns a bare 401 (SPA contract) while browser routes
+302 to the login. Backups: `database.sqlite.bak-pre-trips-tinyauth` + `178.conf.bak-authentik-*`.
+
+**Authentik is now fully unused** — left installed and running on CT 128 by deliberate choice
+(instant rollback), but nothing routes auth through it. `auth.1701.me` (NPM host 19) still points
+at it.
 
 ### OIDC provider (enabled 2026-06-11)
 tinyauth v5 also acts as a full OIDC identity provider. **Gotcha: the OIDC service silently skips

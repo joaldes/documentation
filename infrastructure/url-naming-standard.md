@@ -228,9 +228,10 @@ don't add TLS to `.home` hosts.
 The 2026-06-05 "Plan H" mkcert local-CA setup for HTTPS-on-`.home` was removed: cert id=27
 soft-deleted in the NPM DB, 443 listeners stripped from the last three bound hosts
 (3d.home, uptime.home, users.home), cert files archived at
-`/data/backup-mkcert-removed-20260612/` on CT 112. The mkcert root CA still exists at
-`/root/.local/share/mkcert/` on CT 112 and `rootCA-home.pem` may remain installed on devices —
-both harmless, nothing uses them. If a `.home` name ever truly needs TLS again, prefer giving the
+`/data/backup-mkcert-removed-20260612/` on CT 112. All mkcert material was then fully deleted from
+CT 112 (CA + private key, binary, archives, the old self-signed `npm_cert.pem`, and the
+samba-distributed `rootCA-home.pem`). The root CA may still be installed on some devices — a
+harmless trust anchor with no key behind it; remove from devices at leisure. If a `.home` name ever truly needs TLS again, prefer giving the
 service a `.1701.me` name instead.
 
 ### Bad patterns to avoid

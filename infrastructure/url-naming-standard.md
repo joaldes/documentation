@@ -215,47 +215,23 @@ Prefer per-service config — explicit and reviewable per stack.
 
 ## HTTPS / TLS strategy
 
-| Hostname | Cert source | Notes |
+**Standard (since 2026-06-12): `.home` = plain HTTP, `.1701.me` = HTTPS.** Keep it uniform —
+don't add TLS to `.home` hosts.
+
+| Hostname | Transport | Notes |
 |---|---|---|
-| `<svc>.1701.me` | Let's Encrypt via NPM | Either per-service HTTP-01 challenge or one wildcard `*.1701.me` DNS-01 challenge (preferred). Real browser-trusted cert. |
-| `<svc>.home` | **mkcert local CA** (live as of 2026-06-05) | Local CA on CT 112 issues an explicit-SAN cert covering every `<svc>.home` name in NPM. Browser-trusted on any device with the root CA installed. |
+| `<svc>.1701.me` | HTTPS (Let's Encrypt via NPM) | Per-service HTTP-01 challenge or wildcard DNS-01. Real browser-trusted cert. |
+| `<svc>.home` | HTTP only | LAN-only convenience alias. No certs, no warnings, nothing to maintain. |
 
-### mkcert setup (live state)
+### mkcert (RETIRED 2026-06-12)
 
-- Root CA on CT 112 at `/root/.local/share/mkcert/rootCA.pem`
-- Cert covers explicit SAN list of every `<svc>.home` in NPM (re-issued whenever the list changes)
-- Bound in NPM as cert id=27 to ~45 proxy_host entries that didn't already have an LE cert
-- Root CA distributed via Samba: `\\<server>\documents\personal\alec\claudeai\rootCA-home.pem`
-
-**Why explicit SANs instead of `*.home` wildcard**: OpenSSL and modern browsers reject `*.home` as too-broad because `home` isn't a registrable public suffix. Wildcards only work one level deep within a registrable domain.
-
-### Adding a new `.home` service to the mkcert cert
-
-```bash
-# On CT 112
-ssh claude@192.168.0.151 'sudo pct exec 112 -- bash -c "
-export PATH=/usr/local/bin:\$PATH
-cd /data/custom_ssl/mkcert
-# Re-issue cert with all current .home names from NPM + the new one
-NAMES=\$(sqlite3 /data/database.sqlite ... | python3 ...)   # collect from NPM
-mkcert -cert-file home.crt -key-file home.key \$NAMES
-cp home.crt /data/custom_ssl/npm-27/fullchain.pem
-cp home.crt /data/custom_ssl/npm-27/chain.pem
-cp home.key /data/custom_ssl/npm-27/privkey.pem
-chmod 600 /data/custom_ssl/npm-27/privkey.pem
-nginx -s reload
-"'
-```
-
-### Installing the root CA on a device
-
-| Platform | Steps |
-|---|---|
-| **Windows** | Double-click `rootCA-home.pem` → Install Certificate → Local Machine → "Trusted Root Certification Authorities" → restart browsers |
-| **macOS** | Double-click → Keychain Access → drag to "System" keychain → expand cert → Trust → "Always Trust" → restart browsers |
-| **Linux** | `sudo cp rootCA-home.pem /usr/local/share/ca-certificates/mkcert-rootCA.crt && sudo update-ca-certificates`. For Firefox: about:preferences → Privacy → Certificates → Authorities → Import |
-| **iOS** | AirDrop to phone → install profile in Settings → Settings → General → About → Certificate Trust Settings → enable trust for mkcert |
-| **Android** | Copy to phone storage → Settings → Security → Encryption & credentials → Install certificate → CA certificate |
+The 2026-06-05 "Plan H" mkcert local-CA setup for HTTPS-on-`.home` was removed: cert id=27
+soft-deleted in the NPM DB, 443 listeners stripped from the last three bound hosts
+(3d.home, uptime.home, users.home), cert files archived at
+`/data/backup-mkcert-removed-20260612/` on CT 112. The mkcert root CA still exists at
+`/root/.local/share/mkcert/` on CT 112 and `rootCA-home.pem` may remain installed on devices —
+both harmless, nothing uses them. If a `.home` name ever truly needs TLS again, prefer giving the
+service a `.1701.me` name instead.
 
 ### Bad patterns to avoid
 

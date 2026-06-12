@@ -87,11 +87,22 @@ an empty issuer and the JWKS handler nil-pointer panics. Setup:
    `TINYAUTH_OIDC_PUBLICKEYPATH=/data/tinyauth_oidc_key.pub`.
    Don't pre-generate keys — tinyauth creates its own (PKCS#1 `BEGIN RSA PRIVATE KEY`; a hand-made
    PKCS#8 key fails to parse).
-2. Register a client: `docker run --rm ghcr.io/steveiliop56/tinyauth:v5 oidc create <name>` →
-   prints client ID + secret (not recoverable later).
-3. Add to `.env`: `TINYAUTH_OIDC_CLIENTS_<NAME>_CLIENTID/CLIENTSECRET/NAME`, plus
-   `TINYAUTH_OIDC_CLIENTS_<NAME>_TRUSTEDREDIRECTURIS=<app callback URL>` per connected app.
-4. `docker compose up -d --force-recreate`.
+2. **Register apps with the `add-oidc-app` helper** (multi-agent built + live-tested 2026-06-12) —
+   replaces the manual register/env-edit/restart dance:
+   - On CT 128: `/usr/local/bin/add-oidc-app add <name> <callback-url> [more-urls...]` /
+     `list` / `remove <name>`. Validates input, backs up the env (`.env.bak-oidc-helper`),
+     registers the client, appends the env block, recreates the stack, verifies the
+     "Registered OIDC client" log line (ANSI-stripped) + discovery 200, **auto-restores the env
+     backup on any failure**, and prints a paste-block (client ID/secret, discovery URL, endpoints,
+     scopes) for the app's settings page.
+   - From Windows: double-click `add-oidc-app.bat` on the documents samba
+     (`personal/alec/claudeai/`) — menu-driven (Add/List/Remove), SSHes to CT 128 as root
+     (standard container password), shows the paste-block, pauses.
+   - ⚠️ Helper's `docker run` uses the image path in its `TINYAUTH_IMAGE` variable — update it
+     together with the compose file when migrating to `ghcr.io/tinyauthapp/tinyauth`.
+   - (Manual fallback: `docker run --rm <image> oidc create <name>` then add
+     `TINYAUTH_OIDC_CLIENTS_<NAME>_CLIENTID/CLIENTSECRET/TRUSTEDREDIRECTURIS/NAME` to `.env`
+     and recreate.)
 
 Live config: client `homelab` (ID `c429c456-3802-4540-bb14-fcf3e2eb501b`, secret in `.env`).
 App-facing discovery URL: `https://homepage.1701.me/.well-known/openid-configuration` (RS256).

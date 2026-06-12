@@ -1,16 +1,16 @@
 # tinyauth + lldap — Lightweight Forward-Auth / SSO / User Management
 
 **Last Updated**: 2026-06-11
-**Related Systems**: CT 128 (Komodo/Docker), NPM (CT 112), Trailhead (`home.1701.me`), lldap (`users.home`)
+**Related Systems**: CT 128 (Komodo/Docker), NPM (CT 112), Trailhead (`home.1701.me`), lldap (`lldap.home`)
 
 > **User guide** (non-ops, with screenshots): `documents samba > personal/alec/claudeai/auth-user-guide/auth-user-guide.md`
-> **Note**: `homepage.1701.me` deliberately has no `homepage.home` alias — the login redirect and
+> **Note**: the login UI lives on `.1701.me` names only — the login redirect and
 > `.1701.me` SSO cookie require the canonical public name.
 
 ## Summary
 tinyauth is a single ~20 MB forward-auth container that gates self-hosted apps with a login page,
 replacing Authentik for Trailhead. It uses the same nginx `auth_request` pattern Authentik did, but
-is one container with env-var config (no postgres/redis/worker). Login UI at `homepage.1701.me`;
+is one container with env-var config (no postgres/redis/worker). Login UI at `auth.1701.me`;
 session cookie is scoped to `.1701.me` so one login is SSO across all `*.1701.me` apps placed behind
 it. Deployed 2026-06-11 because Authentik's 4-container stack was overkill for a personal dashboard.
 
@@ -20,7 +20,7 @@ Goal: keep `home.1701.me` / `trailhead.1701.me` behind a login, reachable public
 run and maintain — while preserving the dashboard's username display and (optional) group filtering.
 
 ## Solution
-Deploy tinyauth v5 on CT 128, expose its login UI at `homepage.1701.me` via NPM, and point
+Deploy tinyauth v5 on CT 128, expose its login UI at `auth.1701.me` via NPM, and point
 `trailhead-web`'s nginx `auth_request` at tinyauth instead of the Authentik outpost. Authentik is
 left running for `trips.1701.me` (not migrated).
 
@@ -35,7 +35,7 @@ left running for `trips.1701.me` (not migrated).
   the external `auth_net` docker network (created with explicit subnet `172.99.0.0/24` because the
   default address pools on CT 128 are exhausted) to reach lldap privately.
 - **Env** (`/mnt/docker/tinyauth/.env`, **chmod 600** — it holds every auth-stack secret):
-  - `TINYAUTH_APPURL=https://homepage.1701.me`
+  - `TINYAUTH_APPURL=https://auth.1701.me`
   - `TINYAUTH_AUTH_USERS=breakglass:<bcrypt cost 10>` — local break-glass user only; real users
     live in lldap. Format `user:bcrypt[:totp]`.
   - `TINYAUTH_SECRET=<32-char>` — cookie/session signing
@@ -46,8 +46,12 @@ left running for `trips.1701.me` (not migrated).
     clear error). Symptom in `docker compose up`: `The "..." variable is not set`.
 
 ### NPM (CT 112)
-- Proxy host **id 209**: `homepage.1701.me` → `http://192.168.0.179:3005`, SSL cert **83**
-  (cert 83 already covered `homepage.1701.me`, so no new cert was issued).
+- Proxy host **id 209**: `auth.1701.me` + `tinyauth.1701.me` (both serve the login UI; canonical
+  APPURL is `auth.1701.me`) → `http://192.168.0.179:3005`, LE cert **88** (SANs: auth, tinyauth,
+  homepage — issued 2026-06-12 via certbot webroot as `npm-88`). `homepage.1701.me` (the original
+  login URL) and `auth.home`/`tinyauth.home` all 302 to `https://auth.1701.me`. Renamed from
+  `homepage.1701.me` 2026-06-12 on user request; Authentik's old hosts were renamed to free the
+  names: host 94 → `authentik.1701.me`, host 95 → `authentik.home` (still reachable for rollback).
 
 ### nginx integration (in the protected app)
 In `trailhead-web` (`/mnt/docker/trailhead/nginx.conf`):
@@ -72,7 +76,7 @@ the old Authentik config had (a hardcoded `rd=http://…` that tripped NPM's blo
 The authenticated username comes back in the `Remote-User` header.
 
 ### SSO
-The session cookie is set on the parent domain `.1701.me`, so logging in once at `homepage.1701.me`
+The session cookie is set on the parent domain `.1701.me`, so logging in once at `auth.1701.me`
 authorizes every `*.1701.me` app behind tinyauth. Live behind tinyauth: `home.1701.me`,
 `trailhead.1701.me`, and (since 2026-06-12) **`trips.1701.me`** (tPlan).
 
@@ -100,8 +104,8 @@ regex) remain unauthenticated; `/api/` still returns a bare 401 (SPA contract) w
 302 to the login. Backups: `database.sqlite.bak-pre-trips-tinyauth` + `178.conf.bak-authentik-*`.
 
 **Authentik is now fully unused** — left installed and running on CT 128 by deliberate choice
-(instant rollback), but nothing routes auth through it. `auth.1701.me` (NPM host 19) still points
-at it.
+(instant rollback), but nothing routes auth through it. It is reachable at `authentik.1701.me` /
+`authentik.home` (NPM hosts 94/95, renamed 2026-06-12 when `auth.*` was given to tinyauth).
 
 ### OIDC provider (enabled 2026-06-11)
 tinyauth v5 also acts as a full OIDC identity provider. **Gotcha: the OIDC service silently skips
@@ -131,12 +135,13 @@ an empty issuer and the JWKS handler nil-pointer panics. Setup:
      and recreate.)
 
 Live config: client `homelab` (ID `c429c456-3802-4540-bb14-fcf3e2eb501b`, secret in `.env`).
-App-facing discovery URL: `https://homepage.1701.me/.well-known/openid-configuration` (RS256).
+App-facing discovery URL: `https://auth.1701.me/.well-known/openid-configuration` (RS256).
 
 ## User Management — lldap (added 2026-06-11)
 Users live in **lldap** (Rust LDAP server, <10 MB RAM, SQLite) with a web UI — no more env-var editing.
 
-- **Web UI**: `http://users.home` (NPM host 211, HTTP-only per the `.home`=http / `.1701.me`=https
+- **Web UI**: `http://lldap.home` (aliases: `ldap.home`, `users.home` — NPM host 211, renamed
+  2026-06-12 on user request; HTTP-only per the `.home`=http / `.1701.me`=https
   convention; the mkcert `*.home` cert was removed from NPM entirely 2026-06-12) — **LAN/VPN only,
   deliberately NOT internet-facing** (it's the root of trust for all SSO; security review
   2026-06-11). The earlier public `users.1701.me` (NPM host 210 + LE cert npm-87) was removed the
@@ -173,9 +178,9 @@ Users live in **lldap** (Rust LDAP server, <10 MB RAM, SQLite) with a web UI —
 curl -sk -o /dev/null -w "%{http_code} %{redirect_url}\n" https://home.1701.me/ \
   --resolve home.1701.me:443:192.168.0.30
 # login, then the cookie authorizes a different subdomain (proves .1701.me SSO)
-curl -sk -c j.txt -X POST https://homepage.1701.me/api/user/login \
+curl -sk -c j.txt -X POST https://auth.1701.me/api/user/login \
   -H 'Content-Type: application/json' -d '{"username":"alec","password":"..."}' \
-  --resolve homepage.1701.me:443:192.168.0.30
+  --resolve auth.1701.me:443:192.168.0.30
 curl -sk -b j.txt https://home.1701.me/ --resolve home.1701.me:443:192.168.0.30 | grep user-dropdown-name
 ```
 
@@ -188,5 +193,5 @@ curl -sk -b j.txt https://home.1701.me/ --resolve home.1701.me:443:192.168.0.30 
 
 ## Notes / Follow-ups
 - Stack was deployed via `docker compose` directly; **not yet adopted in the Komodo UI**.
-- Renaming the login URL `homepage.1701.me` → `login.1701.me` needs a new NPM host + cert, then
+- Renaming the login URL again needs the cert + APPURL + helper dance done 2026-06-12, then
   update `TINYAUTH_APPURL`.

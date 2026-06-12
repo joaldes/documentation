@@ -36,6 +36,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [rtl433-honeywell-setup.md](services/rtl433-honeywell-setup.md) | RTL-433 SDR + Honeywell 5800 sensor integration |
 | [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |
 | [reyday-file-server.md](services/reyday-file-server.md) | Reyday media file server with upload (nginx + WebDAV) |
+| [screener.md](services/screener.md) | Stock Screener — Nightly swing-trade candidate screener + backtester (CT 128:8087, yfinance+Alpaca, evidence-based signal spec) |
 | [trailhead.md](services/trailhead.md) | Trailhead — Weather & Wildlife dashboard (Ecowitt + BirdNET + tinyauth SSO + NPS design) |
 | [tinyauth.md](services/tinyauth.md) | tinyauth + lldap — Lightweight forward-auth/SSO/OIDC + user-management UI (CT 128, login homepage.1701.me, users users.home LAN-only, .1701.me cookie SSO; replaced Authentik for Trailhead) |
 | [tplan.md](services/tplan.md) | tPlan — Self-hosted road-trip planner (FastAPI + SQLite, live + staging stacks, modular CSS, Tabulator/Leaflet) |

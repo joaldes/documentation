@@ -121,7 +121,7 @@ App-facing discovery URL: `https://homepage.1701.me/.well-known/openid-configura
 ## User Management — lldap (added 2026-06-11)
 Users live in **lldap** (Rust LDAP server, <10 MB RAM, SQLite) with a web UI — no more env-var editing.
 
-- **Web UI**: `https://users.home` (NPM host 211, mkcert wildcard cert 27) — **LAN/VPN only,
+- **Web UI**: `http://users.home` (NPM host 211, mkcert wildcard cert 27) — **LAN/VPN only,
   deliberately NOT internet-facing** (it's the root of trust for all SSO; security review
   2026-06-11). The earlier public `users.1701.me` (NPM host 210 + LE cert npm-87) was removed the
   same day — soft-deleted in the NPM DB and `certbot delete`d on CT 112.

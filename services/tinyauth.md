@@ -76,6 +76,21 @@ The session cookie is set on the parent domain `.1701.me`, so logging in once at
 authorizes every `*.1701.me` app behind tinyauth. Live behind tinyauth: `home.1701.me`,
 `trailhead.1701.me`, and (since 2026-06-12) **`trips.1701.me`** (tPlan).
 
+**Protected apps are `.1701.me`-only.** Because the cookie is domain-scoped, a `.home` hostname can
+never carry the session — visiting e.g. `home.home` made tinyauth show an "Untrusted redirect"
+warning, and even continuing would loop forever. Fix (2026-06-12): the `.home` NPM hosts for
+protected apps (**179** trips.home, **197** home.home/trailhead.home) carry one line of
+`advanced_config`:
+
+```nginx
+if ($host ~* ^(.+)\.home$) { return 302 https://$1.1701.me$request_uri; }
+```
+
+so `.home` stays a typing shortcut that lands you on the canonical URL. This also closed a LAN
+header-spoof hole (trips.home previously forwarded a client-supplied `X-authentik-username`
+unfiltered). Apply the same snippet to the `.home` twin of any future tinyauth-protected host.
+Backups: `database.sqlite.bak-pre-home-redirect`, `179.conf/197.conf .bak-pre-home-redirect`.
+
 **trips.1701.me migration notes** (NPM host 178, CT 112): the Authentik outpost/forward-auth blocks
 were replaced with the tinyauth pattern, but the **request header names stay authentik-flavored**
 (`X-authentik-username/groups/email`, filled from tinyauth's `Remote-User/Groups/Email`) because

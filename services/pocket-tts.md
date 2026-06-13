@@ -1,7 +1,7 @@
 # Pocket TTS — Voice Cloning on foundry (+ Athena Computer Voice Pipeline)
 
 **Last Updated**: 2026-06-13
-**Related Systems**: CT 130 "foundry" (192.168.0.130), CT 124 (Voice Studio web UI), Trailhead (AI - Foundry group), documents samba (athena-voice)
+**Related Systems**: CT 130 "foundry" (192.168.0.130) — TTS + folded-in Voice Studio, Trailhead (AI - Foundry group), documents samba (athena-voice)
 
 ## Summary
 Kyutai Pocket TTS (100M-param CALM model, MIT) runs CPU-only on foundry and provides
@@ -48,22 +48,25 @@ Form fields and mutate the **already-loaded** global model per-request (under a 
   `docker compose up -d --force-recreate` (one warm load) applies it. Backups:
   `main.py.bak-prestudio`, `compose.yaml.bak-prestudio`.
 
-## Voice Studio (web UI — CT 124)
-`http://192.168.0.180:8088/` — a tiny Flask front-end (NOT on foundry; see note) to pick a voice,
-dial temperature/decode-steps/EOS, type text, generate, and play in-browser. Every clip is saved
-to `athena-voice/studio/` with a succinct spec name `{voice}_t{temp}_s{steps}_{texthash}.wav`
-(e.g. `athenaCalm_t0.9_s1_115c.wav`); a panel lists saved clips with inline players + delete.
+## Voice Studio (web UI — folded into Pocket TTS)
+`http://192.168.0.130:8001/` — pocket-tts's own root page **is** the studio: pick a voice, dial
+temperature/decode-steps/EOS, type text, generate, play in-browser. Every clip saves to
+`athena-voice/studio/` with a spec name `{voice}_t{temp}_s{steps}.wav` (e.g.
+`athenaCalm_t0.9_s1.wav`); on a name collision a counter is appended (`…_s1_2.wav`, `…_s1_3.wav`).
+A panel lists saved clips with inline players + delete.
 - Voice picker = the custom references in `athena-voice/reference/` **+** the 26 built-in Kyutai
   voices (alba, estelle, …, passed through as `voice_url`).
-- Source: `/home/claudeai/voice-studio/` (`app.py` + `index.html`), venv
-  `/home/claudeai/.venvs/voice-studio/`, systemd unit `voice-studio.service` (port 8088), pattern
-  mirrors `claude-ui`/`claude-dev`. It proxies to pocket-tts `/tts` and reads/writes the samba
-  athena folder directly.
-- **Why CT 124, not foundry:** the studio needs the documents samba (to save into the athena
-  folder), but `/mnt/documents` is **not mounted on CT 130** — only on CT 124/104/128/102. Folding
-  the UI into pocket-tts would have required adding the mount to CT 130 (an LXC reboot bouncing
-  ollama/open-webui/searxng), so the UI lives on CT 124 where the share already exists and reaches
-  pocket-tts over HTTP. The `/tts` param patch is the only foundry-side change.
+- Implemented as extra FastAPI routes in pocket-tts `main.py` (`GET /`, `/voices`, `/clips`,
+  `/clips/{name}` GET+DELETE, `POST /generate`). The page is bind-mounted
+  (`studio/index.html` → `/app/pocket_tts/static/studio.html`); generation reuses the loaded model
+  under the same `_gen_lock`, saving via `stream_audio_chunks` to `/out`.
+- **CT 130 now mounts the documents samba** (added 2026-06-13): `mp5: /mnt/documents,mp=/mnt/documents`
+  in `/etc/pve/lxc/130.conf`. This was required for the fold-in (so foundry can read
+  `reference/` and write `studio/`) and needed a one-time CT 130 reboot to apply (mp hotplug
+  doesn't take; the reboot bounces ollama/open-webui/searxng/kokoro — they auto-recover). compose
+  binds: `…/reference:/refs:ro` and `…/studio:/out`.
+- An earlier interim build hosted the same UI as a standalone Flask app on CT 124 (port 8088); that
+  was retired once the fold-in was verified (the documents-mount approach was chosen instead).
 
 ### Gated cloning weights (one-time setup, done 2026-06-10)
 Kyutai license-gates the cloning-capable weights. Without auth, only the ~26 preset voices

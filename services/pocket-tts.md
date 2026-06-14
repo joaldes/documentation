@@ -92,6 +92,20 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
   it's the "design a voice you like" engine; Pocket remains the fast path. Backups from this change:
   `main.py.bak-preblend`, `studio/index.html.bak-preblend`.
 
+### Cloning controls in the studio (2026-06-14)
+The Pocket tab now exposes Pocket's zero-shot cloning two ways, beyond the prebuilt `/refs` voices:
+- **Upload a clip to clone (on the fly):** a file input on the Pocket tab. `POST /generate` now accepts
+  an optional `voice_wav` UploadFile (priority: upload > selected `/refs`/built-in voice); it clones the
+  uploaded audio via `get_state_for_audio_prompt(..., truncate=True)` and saves the result named off the
+  upload's filename stem. Good for one-off clones; longer/cleaner reference (~10–30s) clones better.
+- **Save as Pocket voice (promote a clip → reference):** every saved clip has a **➜ voice** button →
+  `POST /clips/{name}/promote` (Form `refname`) copies the clip from `/out` into `/refs` as a permanent,
+  cloneable Pocket voice (sanitized `{name}.wav`), then it appears in the Pocket voice dropdown. This is
+  the **blend/design → clone-for-speed loop**: build a voice in the Kokoro tab (or upload one), generate
+  a decent-length take, promote it, then synthesize fast with Pocket. **Requires `/refs` mounted
+  writable** — the compose bind was changed `…/reference:/refs:ro` → `…/reference:/refs` (recreate
+  applied). Promoted voices land in the same `athena-voice/reference/` folder as the curated refs.
+
 ### Gated cloning weights (one-time setup, done 2026-06-10)
 Kyutai license-gates the cloning-capable weights. Without auth, only the ~26 preset voices
 work and `/tts` with a voice_wav returns 500. Fix (already applied):

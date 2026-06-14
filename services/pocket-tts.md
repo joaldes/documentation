@@ -1,7 +1,7 @@
 # Pocket TTS — Voice Cloning on foundry (+ Athena Computer Voice Pipeline)
 
-**Last Updated**: 2026-06-13
-**Related Systems**: CT 130 "foundry" (192.168.0.130) — TTS + folded-in Voice Studio, Trailhead (AI - Foundry group), documents samba (athena-voice)
+**Last Updated**: 2026-06-14
+**Related Systems**: CT 130 "foundry" (192.168.0.130) — Pocket TTS + Kokoro (dual-engine Voice Studio), Trailhead (AI - Foundry group), documents samba (athena-voice)
 
 ## Summary
 Kyutai Pocket TTS (100M-param CALM model, MIT) runs CPU-only on foundry and provides
@@ -67,6 +67,30 @@ A panel lists saved clips with inline players + delete.
   binds: `…/reference:/refs:ro` and `…/studio:/out`.
 - An earlier interim build hosted the same UI as a standalone Flask app on CT 124 (port 8088); that
   was retired once the fold-in was verified (the documents-mount approach was chosen instead).
+
+### Kokoro blend — second engine in the studio (2026-06-14)
+The studio is now **dual-engine**: an engine switch (`Pocket TTS` | `Kokoro Blend`) above the shared
+text box / result player / clips panel. The Kokoro tab is a **voice-blend builder** — add any of the
+67 Kokoro voices, give each a `+`/`−` sign and a relative weight, set speed, generate. It leverages
+Kokoro's own blend config: the `voice` string `af_jadzia(2)+af_sarah(1)-am_adam(0.5)` (additive `+`,
+subtractive `−`, parenthesized weights **auto-normalized to sum 1** by kokoro-fastapi). The UI shows a
+live "effective mix %" and the literal blend string. Scope is **audition + save only** — no
+promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is deferred).
+- **Cross-network reach:** kokoro runs on its own docker network (`kokoro_default`), separate from
+  `pocket-tts_default`, so pocket-tts calls it via the **host IP** `http://192.168.0.130:8880`
+  server-side (stdlib `urllib`, no `requests` dep). The browser stays same-origin (no CORS) because
+  the studio proxies through pocket-tts.
+- **New routes in `main.py`:** `GET /kokoro/voices` (cached proxy to kokoro's voice list) and
+  `POST /generate_kokoro` (Form `text`/`voice`/`speed` → kokoro `/v1/audio/speech` wav → save to the
+  shared `/out`). `_gen_lock` is taken only around the name-collision check + write (kokoro does the
+  heavy work in its own process). No compose change — both files were already bind-mounted.
+- **Clip naming:** `_kspec_name` → succinct `kok_<voices>.wav`, prefixes stripped, weight kept when
+  ≠1, subtraction as `~`, `_spd{n}` when speed ≠1 (e.g. `af_jadzia(2)+af_sarah(1)` →
+  `kok_jadzia2-sarah.wav`); counter `_2/_3` on collision. Lands in the same `athena-voice/studio/`
+  folder + clips panel as Pocket clips.
+- Note: Kokoro is ~1.8× slower than Pocket and pegs 3 cores (per the Harvard+Rainbow benchmark), so
+  it's the "design a voice you like" engine; Pocket remains the fast path. Backups from this change:
+  `main.py.bak-preblend`, `studio/index.html.bak-preblend`.
 
 ### Gated cloning weights (one-time setup, done 2026-06-10)
 Kyutai license-gates the cloning-capable weights. Without auth, only the ~26 preset voices

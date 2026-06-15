@@ -1,28 +1,48 @@
 # TTS on foundry — Pocket TTS · Kokoro · XTTS-v2 · Voice Studio (+ Athena/Majel pipeline)
 
 **Last Updated**: 2026-06-15
-**Related Systems**: CT 130 "foundry" (192.168.0.130) — three CPU TTS engines behind one Voice Studio,
+**Related Systems**: CT 130 "foundry" (192.168.0.130) — three standalone CPU TTS engines fronted by a standalone Voice Studio gateway (:8010),
 Komodo-managed, Trailhead (AI - Foundry group), documents samba (tts)
 
 ## Engines at a glance
 | Engine | Port | Role | Cloning | Speed (CPU) |
 |---|---|---|---|---|
-| **Pocket TTS** (Kyutai, 100M) | 8001 | fast zero-shot cloning; hosts the Voice Studio UI | yes (zero-shot) | ~3× realtime (fastest) |
+| **Pocket TTS** (Kyutai, 100M) | 8001 | fast zero-shot cloning; standalone engine + native UI | yes (zero-shot) | ~3× realtime (fastest) |
 | **Kokoro** (82M, remsky) | 8880 | 67 preset voices + blend builder | no (blend only) | ~1.7× realtime |
 | **XTTS-v2** (Coqui/idiap) | 8002 | most natural + multilingual cloning | yes (zero-shot, 17 langs) | ~0.35× realtime (slowest, heaviest) |
 
-The **Voice Studio** (`http://192.168.0.130:8001/`) is the single UI over all three — tabs *Pocket TTS*
-/ *Kokoro Blend* / *XTTS Clone*, sharing one text box, player, and clips panel.
+The **Voice Studio** is a **standalone gateway** — its own container/stack on **:8010** (no model loaded) —
+that serves the single UI over all three engines (tabs *Pocket TTS* / *Kokoro Blend* / *XTTS Clone*, one
+text box / player / clips panel) and **proxies each tab's API calls to the engine containers by name** over
+the shared `tts` docker network. URLs: `http://192.168.0.130:8010/` · `voice-studio.home` ·
+`https://voice-studio.1701.me`.
+
+Each engine also stands alone on its own port with its **native** dashboard: Pocket `:8001/`,
+XTTS `:8002/`, Kokoro `:8880/web/`. **(Split from the fused pocket-tts container on 2026-06-15 — see History.)**
 
 ## Deployment / source of truth
 - All three stacks are **Komodo-managed, "Files on Host"** at `/mnt/docker/<name>/` (registered 2026-06-15
   on the foundry server) — same as every other homelab stack; manage via the Komodo UI. **No git** (no
   homelab stack uses it; durability rides on system backups — note `/mnt/docker` backup coverage is a
   known homelab-wide gap, tracked separately).
-- The only hand-authored code is Pocket TTS's overlay: `/mnt/docker/pocket-tts/app/main.py` (de-conflated
-  out of the vendored Kyutai clone 2026-06-15) + `/mnt/docker/pocket-tts/studio/index.html`, both
-  bind-mounted into the container; one `.bak` kept per file. The vendored clone is now only the build
-  context. **Edit → `docker compose up -d --force-recreate`** (or redeploy in Komodo).
+- **One image, two containers via a `ROLE` env (split 2026-06-15).** The single image
+  `pocket-tts-pocket-tts:latest` runs as **`pocket-engine`** (`ROLE=engine`, `/mnt/docker/pocket-tts/`,
+  :8001 — loads the model, serves the native Pocket UI + `/generate` + `/tts`) and **`voice-studio`**
+  (`ROLE=gateway`, `/mnt/docker/voice-studio/`, :8010 — no model; serves the studio UI and proxies
+  `/generate`→`pocket-engine`, `/generate_kokoro`→`kokoro`, `/generate_xtts`→`xtts`). No rebuild — both
+  reference the existing image tag.
+- The only hand-authored code is `/mnt/docker/pocket-tts/app/main.py` + `/mnt/docker/pocket-tts/studio/index.html`,
+  bind-mounted into **both** containers (engine mounts only `main.py` → native UI; gateway also mounts
+  `studio/index.html` → studio). One `.bak` per file; a full pre-split backup is at
+  `…/claudeai/tts/_pre-split-backup-2026-06-15/`. The vendored clone is only the build context.
+- **HTML edits are rebuild-free** — `studio/index.html` is read per request, so editing it needs no
+  recreate. Only `main.py` edits need **`docker compose up -d --force-recreate`** (engine and/or gateway).
+- Engines talk over the **external `tts` docker network**, reached by container name:
+  `KOKORO_BASE=http://kokoro:8880`, `XTTS_BASE=http://xtts:5002` (xtts's *internal* port is 5002),
+  `POCKET_BASE=http://pocket-engine:8000`. Create once with `docker network create tts`; all four
+  composes reference it `external: true`. A oneshot **`tts-network.service`** on CT 130 (enabled, `After=docker.service`) recreates the network at boot so it survives a reboot / `docker prune`.
+- **NPM:** `voice-studio.home` (HTTP) + `voice-studio.1701.me` (LE cert) → `192.168.0.130:8010`.
+  **Trailhead** (AI - Foundry): *Voice Studio* → :8010; *Pocket/XTTS/Kokoro (engine)* cards → native ports.
 - **Shared assets** live in the documents samba at `…/claudeai/tts/` (renamed from `athena-voice/`
   2026-06-15), organized **fully per voice** — the folder tree is the source of truth and the app
   conforms to it (2026-06-15):
@@ -288,6 +308,13 @@ Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
 standalone container; the studio just calls its `/api/tts`.
 
 ## History
+
+- **2026-06-15 — Split: standalone Voice Studio gateway (:8010) + standalone engines.** The fused
+  `pocket-tts` container (which did model + studio UI + proxy at :8001) was split via a `ROLE` env flag
+  into `pocket-engine` (:8001, model + native UI) and `voice-studio` (:8010, studio UI + proxy), sharing
+  one image and the shared `tts` network. Each engine now exposes its native dashboard on its own port.
+  Verified end-to-end (all three tabs generate through the gateway). Pre-split backup kept at
+  `…/tts/_pre-split-backup-2026-06-15/`.
 - 2026-06-10: Deployed; bake-off vs NeuTTS Air (q4-GGUF fork) — Pocket TTS won on voice
   quality (user ear test) and operational simplicity. NeuTTS stack/image/folder removed
   (22GB reclaimed). Athena references built same day.

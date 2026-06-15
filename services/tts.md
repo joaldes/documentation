@@ -24,9 +24,15 @@ The **Voice Studio** (`http://192.168.0.130:8001/`) is the single UI over all th
   bind-mounted into the container; one `.bak` kept per file. The vendored clone is now only the build
   context. **Edit → `docker compose up -d --force-recreate`** (or redeploy in Komodo).
 - **Shared assets** live in the documents samba at `…/claudeai/tts/` (renamed from `athena-voice/`
-  2026-06-15 to match the project): `reference/` = cloneable voices (bind-mounted `/refs`), `studio/`
-  = generated clips (bind-mounted `/out`, sorted `<engine>/<voice>/`), `tts-bench/` = benchmarks +
-  `results.md`, `extraction/` = the Athena/Majel cue-rip corpora + scripts (kept, not load-bearing).
+  2026-06-15 to match the project), organized **per voice** (2026-06-15):
+  - `reference/` = cloneable voices, **bind-mounted `/refs`, kept FLAT** (the studio globs it
+    non-recursively + clones via `/refs/<name>`, so this stays a flat dir — do not nest it).
+  - `studio/` = generated clips, bind-mounted `/out`, sorted `<engine>/<voice>/`.
+  - `voices/<persona>/` = each voice's **source material + metadata**: `voices/athena/` and
+    `voices/majel/` hold `source-clips/` (the SDH cue-rips), `<persona>_cues.csv`, plus Majel's
+    `majel_scores.csv` and Athena's `expressiveness-samples/`. Not load-bearing.
+  - `tools/` = the extraction/bakeoff scripts + the `af_bella.pt` Kokoro voicepack (non-persona).
+  - `tts-bench/` = cross-engine benchmarks + `results.md`.
   Both bind-mounted stacks (pocket-tts, xtts) point at `…/tts/reference` + `…/tts/studio`.
 
 ## Summary
@@ -173,10 +179,11 @@ Pass any of them as `voice_wav`. The `.txt` transcripts exist for engines that n
 reference text (Pocket TTS does not).
 
 ### How they were built (pipeline — reproducible)
-Script: `/mnt/documents/personal/alec/claudeai/tts/extraction/extract_athena.py`
-(modes: `parse` / `extract` / `stitch`). Companion: `extraction/bakeoff.py` (blind A/B harness).
-The extraction corpora + cue CSVs + voicepack scratch all live under `tts/extraction/` (kept, not
-load-bearing); the live bind-mounted dirs are only `reference/` and `studio/`.
+Script: `/mnt/documents/personal/alec/claudeai/tts/tools/extract_athena.py`
+(modes: `parse` / `extract` / `stitch`; `SHOW=athena|majel`). Companion: `tools/bakeoff.py` (blind
+A/B harness). Each persona's cue-rips + CSV live under `tts/voices/<persona>/` (`source-clips/`,
+`<persona>_cues.csv`); the stitch step still writes the finished refs into the flat `reference/`
+(`/refs`). The live bind-mounted dirs are only `reference/` and `studio/`.
 
 1. **SDH subtitle mining** (`parse`): SDH subs label speakers explicitly
    (`ATHENA COMPUTER:`). Parser handles `<i>` tags, dash-dialogue, parentheticals,

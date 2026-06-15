@@ -35,6 +35,29 @@ Real train legs mixed with car/POI stops: a leg whose **both endpoints have the 
 - **v3.7-linkfix (2026-06-11, sw `v3.7-linkfix`)**: follow-up from a multi-agent review of v3.6. Edit-location Save now distinguishes moves from rename-only edits (rename keeps the mirror link + `amtrakStopId`; a coord-less stop gaining its first pin counts as moved); any change to a day's tail (pin drag, icon, edit-location) now re-routes a linked next day via shared `_recalcLinkedNextDayIfTail`; localStorage draft conflict handling hardened (`_writeDraft` preserves the draft's base `serverUpdatedAt` so stale drafts can't silently overwrite another device's save; overwrite-resolution clears the draft; older-than-server drafts are pruned on load); mirror migration on load now runs after draft-restore and id-seeding (fixes a latent id-collision); bulk delete/move and table row-drags get the same unlink-don't-morph treatment as single deletes. Backups `*.bak-pre-v37-20260611`.
 - **Limitations (v1)**: single-route legs only — transfers are modeled as explicit same-station stop pairs; schedule indicative as-of-feed-date.
 - **Promoted 2026-06-10**: `static-dev/{planner.html,sw.js}`, `js/{time,search,overpass,undo,edit-location}.js`, `css/{map,components}.css`, `vendor/tplan/import.js` → `static-live/` (backups `*.bak-pre-amtrak-promote-20260610` in place); `data-dev/amtrak.db` → `data/`. No restart needed (shared app.py already current; amtrak.db guard is per-request). Verified: live `/api/trips` intact, DEN→CHI dep 18:59 MT / arr 14:39 CT `+1d`, CHI→CHI `transfer:true`, sw `v3.4-transfer`, stations chip live. **GTFS refresh on live**: `docker exec tplan-live python3 /app/build_amtrak.py --out /data/amtrak.db`.
+- **Promoted 2026-06-15 (mobile rework + flight fix + share read-only)**: full `static-dev`→`static-live` bundle on explicit user call. Mobile streamlining (table-on-bottom sizeable split, read-only long-press-edit table, collapsed day legend + square search box, hidden POI legend, narrower row-edit modal); the **flight-line regression fix** (`_paintDayPolylines` drew a straight chord *into* flight stops — a regression from the Phase-3 dashed rewrite, which replaced the old segment-concatenating renderer that silently skipped empty legs; guard `if (isFlightStop(b)) { legSpecs.push(null); continue; }`); and **share views fully read-only** (sw `v3.16-share-readonly`). Files: planner.html, sw.js, css/mobile.css (new), css/tabulator-overrides.css, js/{search,overpass}.js. Backups `*.bak-pre-mobilepromote-20260615` + `*.bak-pre-sharereadonly-20260615`.
+
+---
+
+## Sharing — public read-only links (`trips.1701.me`)
+
+Read-only capability-URL shares: `POST /api/trips/<id>/shares` mints a slug; the public link is `https://trips.1701.me/<slug>` (pretty URL → NPM rewrites to backend `/s/<slug>`). `SHARE_HOST` (= `trips.1701.me`) is BOTH the public viewer and the authenticated editor host; the `share_mode_guard` middleware tells them apart via the `X-authentik-username` header NPM injects after a successful auth (tinyauth still emits authentik-named headers).
+
+**Create shares from the LIVE app, not dev.** dev (`data-dev/trips.db`) and live (`data/trips.db`) are SEPARATE databases and `SHARE_HOST` is hardwired to the live host for both — a share minted on tplan-dev (:8085) lands only in the dev DB and 404s ("expired/invalid") on `trips.1701.me` (served by tplan-live).
+
+### NPM must un-gate the anonymous share surface (⚠️ re-check after ANY auth change)
+
+`trips.1701.me` is fronted by NPM (CT 112, proxy host `178.conf`) with tinyauth forward-auth on `/api/` and `/`. An anonymous viewer needs a specific path set un-gated — the same set `share_mode_guard` whitelists for an unauthenticated request on `SHARE_HOST` (it blocks everything else + all non-GET as defense-in-depth):
+
+- `/s/...` (share page + `/data` + `/meta`) and the pretty-slug rewrite
+- `/css/`, `/js/`, `/vendor/` (frontend assets)
+- `/api/config` (returns only the referrer-restricted Google Maps browser key — no secrets)
+
+**2026-06-15 fix** — anonymous shares had NEVER worked: NPM only bypassed `/s/`, so `/api/config` returned `401` and `/css`·`/js`·`/vendor` `302`'d to login. Symptom: the share rendered only inline HTML ("only icons"), console `401` + `Unexpected token '<'` (JSON.parse of the HTML login page) + `TPLAN_CFG is not defined`. Both the Authentik and tinyauth configs had the gap; prior view-counts were the owner while logged in. Fixed by adding anonymous-bypass `location` blocks to `178.conf` ahead of the auth blocks — `location = /api/config` (exact match beats the `/api/` prefix) and `^~ /css/`, `^~ /js/`, `^~ /vendor/` (beat the regex/`/` blocks), each a plain `proxy_pass` with no `auth_request`. Backup `178.conf.bak-pre-sharefix-20260615`. Other `/api/*` (route/photon/places/amtrak) stay gated — the app 404s them for anon anyway; if a share view ever needs one, whitelist it the same way.
+
+### Read-only enforcement (frontend, sw `v3.16-share-readonly`)
+
+With `window.TPLAN_SHARE` set (injected into planner.html by `/s/<slug>`), the view is fully read-only on every device: cell editing off (`mobileLocked` true in share mode), map pins non-draggable, mobile long-press-edit disabled, plus the pre-existing gates (row-drag, column move/resize, saves, context menus, search-add, via-inserts). The backend also returns `405` on any non-GET to the share host.
 
 ---
 

@@ -172,6 +172,36 @@ Script: `/mnt/documents/personal/alec/claudeai/athena-voice/extract_athena.py`
 - **Container name conflicts after killed `compose up`** → dockerd phantom name reservation; use a different container_name or restart dockerd. PREVENT: run long creates detached (`setsid nohup docker compose up -d`) — on foundry's disk, creates from multi-GB images take minutes. (Bit us 3× during the NeuTTS saga.)
 - **Voice sounds wrong/muddy** → reference is everything: shorter + cleaner beats longer + contaminated; check the reference for music/SFX under the voice.
 
+## XTTS-v2 — third CPU TTS engine (2026-06-14)
+A standalone XTTS-v2 (Coqui, idiap fork) stack on foundry for a quality comparison vs Pocket/Kokoro —
+the "best naturalness we can run CPU-only" experiment (GPU not possible).
+
+| | |
+|---|---|
+| Endpoint | `http://192.168.0.130:8002` — stock Coqui `tts-server` web UI; cloning over `GET /api/tts` |
+| Stack | `/mnt/docker/xtts/compose.yaml` (own project, **builds from a local Dockerfile** — see below) |
+| Container | `xtts`, 3 CPU / 4g, CPU-only; model cache `/mnt/docker/xtts/models` (1.8 GB, bind-mounted) |
+| Refs | `…/athena-voice/reference:/refs` + `…/studio:/out` (same as pocket-tts) |
+| Trailhead | "XTTS-v2" card in AI - Foundry |
+
+**Cloning API:** `GET /api/tts?text=…&speaker_wav=/refs/<ref>.wav&language_idx=en` → 24 kHz WAV.
+Plain/native voices use XTTS's built-in studio speakers (`speaker_idx`).
+
+**Why a custom build (not a prebuilt image):** `ghcr.io/idiap/coqui-tts-cpu:latest` ships **no torch** —
+unusable. So we build from `python:3.11-slim`: install **CPU torch first** from the pytorch CPU index
+(so `coqui-tts` doesn't pull CUDA), then `coqui-tts`. **Dependency pins that matter** (the saga):
+coqui-tts 0.27.x requires `transformers>=4.57`, but transformers 5.x **dropped `isin_mps_friendly`**
+(which coqui's tortoise layer imports) → must pin **`transformers==4.57.1`** (has both that symbol and
+`is_torchcodec_available`). transformers 4.57 also needs **`torchcodec`** (CPU, uses the apt `ffmpeg`
+libs) for its audio path, and the stock server needs **`flask`** (the `[server]` extra; installed
+directly so it doesn't re-resolve transformers back to 5.x). All CPU: torch 2.12.0+cpu, torchcodec
+0.14.0+cpu.
+
+**Verdict (A/B in `athena-voice/tts-bench/results.md`):** XTTS is the **slowest** by far — 0.35–0.38×
+realtime (46 s for 18 s of audio), heaviest (~2.8 GiB RAM, ~2.7 cores). Pocket's native voice is ~3.3×,
+Kokoro ~1.7×, Pocket's clone path ~8 s/short line (re-encodes the ref each call) but amortizes on long
+text. Quality is ear-judged — kept for now as the "design a voice" option; Pocket remains the fast path.
+
 ## History
 - 2026-06-10: Deployed; bake-off vs NeuTTS Air (q4-GGUF fork) — Pocket TTS won on voice
   quality (user ear test) and operational simplicity. NeuTTS stack/image/folder removed

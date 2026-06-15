@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-06-15
 **Related Systems**: CT 130 "foundry" (192.168.0.130) — three CPU TTS engines behind one Voice Studio,
-Komodo-managed, Trailhead (AI - Foundry group), documents samba (athena-voice)
+Komodo-managed, Trailhead (AI - Foundry group), documents samba (tts)
 
 ## Engines at a glance
 | Engine | Port | Role | Cloning | Speed (CPU) |
@@ -23,6 +23,11 @@ The **Voice Studio** (`http://192.168.0.130:8001/`) is the single UI over all th
   out of the vendored Kyutai clone 2026-06-15) + `/mnt/docker/pocket-tts/studio/index.html`, both
   bind-mounted into the container; one `.bak` kept per file. The vendored clone is now only the build
   context. **Edit → `docker compose up -d --force-recreate`** (or redeploy in Komodo).
+- **Shared assets** live in the documents samba at `…/claudeai/tts/` (renamed from `athena-voice/`
+  2026-06-15 to match the project): `reference/` = cloneable voices (bind-mounted `/refs`), `studio/`
+  = generated clips (bind-mounted `/out`, sorted `<engine>/<voice>/`), `tts-bench/` = benchmarks +
+  `results.md`, `extraction/` = the Athena/Majel cue-rip corpora + scripts (kept, not load-bearing).
+  Both bind-mounted stacks (pocket-tts, xtts) point at `…/tts/reference` + `…/tts/studio`.
 
 ## Summary
 Kyutai Pocket TTS (100M-param CALM model, MIT) runs CPU-only on foundry and provides
@@ -71,14 +76,19 @@ Form fields and mutate the **already-loaded** global model per-request (under a 
 
 ## Voice Studio (web UI — folded into Pocket TTS)
 `http://192.168.0.130:8001/` — pocket-tts's own root page **is** the studio: pick a voice, dial
-temperature/decode-steps/EOS, type text, generate, play in-browser. Every clip saves to
-`athena-voice/studio/` with a spec name `{voice}_t{temp}_s{steps}.wav` (e.g.
-`athenaCalm_t0.9_s1.wav`); on a name collision a counter is appended (`…_s1_2.wav`, `…_s1_3.wav`).
-A panel lists saved clips with inline players + delete.
-- Voice picker = the custom references in `athena-voice/reference/` **+** the 26 built-in Kyutai
+temperature/decode-steps/EOS, type text, generate, play in-browser. Every clip is **sorted on
+disk by engine + input voice**: `tts/studio/<engine>/<voice>/<stem>.wav` (2026-06-15) — e.g. a
+Pocket clip of `athena_calm` lands at `studio/pocket/athena_calm/athenaCalm_t0.9_s1.wav`. The
+stem keeps the spec name (`{vkey}_t{temp}_s{steps}`); on collision a counter is appended
+(`…_s1_2.wav`). The clips panel lists clips newest-first, grouped under an `engine · voice`
+header, with inline players + a delete ✕ (deleting also prunes the now-empty voice/engine dir).
+- Voice picker = the custom references in `tts/reference/` **+** the 26 built-in Kyutai
   voices (alba, estelle, …, passed through as `voice_url`).
 - Implemented as extra FastAPI routes in pocket-tts `main.py` (`GET /`, `/voices`, `/clips`,
-  `/clips/{name}` GET+DELETE, `POST /generate`). The page is bind-mounted
+  `/clips/{name:path}` GET+DELETE+promote — `:path` so nested `engine/voice/file.wav` matches,
+  `POST /generate`). `/clips` walks the tree (`rglob`) and returns each clip's relative path +
+  split-out `engine`/`voice`; writes go through one `_resolve_out(engine, voice_slug, stem)`
+  helper. The page is bind-mounted
   (`studio/index.html` → `/app/pocket_tts/static/studio.html`); generation reuses the loaded model
   under the same `_gen_lock`, saving via `stream_audio_chunks` to `/out`.
 - **CT 130 now mounts the documents samba** (added 2026-06-13): `mp5: /mnt/documents,mp=/mnt/documents`
@@ -106,10 +116,11 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
   `POST /generate_kokoro` (Form `text`/`voice`/`speed` → kokoro `/v1/audio/speech` wav → save to the
   shared `/out`). `_gen_lock` is taken only around the name-collision check + write (kokoro does the
   heavy work in its own process). No compose change — both files were already bind-mounted.
-- **Clip naming:** `_kspec_name` → succinct `kok_<voices>.wav`, prefixes stripped, weight kept when
-  ≠1, subtraction as `~`, `_spd{n}` when speed ≠1 (e.g. `af_jadzia(2)+af_sarah(1)` →
-  `kok_jadzia2-sarah.wav`); counter `_2/_3` on collision. Lands in the same `athena-voice/studio/`
-  folder + clips panel as Pocket clips.
+- **Clip naming/sorting:** `_kblend_slug` captures the blend identity (voices + signs + weights,
+  prefixes stripped, subtraction as `~`, speed excluded) → that's the per-voice folder; `_kspec_stem`
+  adds `_spd{n}` when speed ≠1. So `af_jadzia(2)+af_sarah(1)` lands at
+  `studio/kokoro/jadzia2-sarah/jadzia2-sarah.wav` (counter `_2/_3` on collision), in the same clips
+  panel as Pocket clips.
 - Note: Kokoro is ~1.8× slower than Pocket and pegs 3 cores (per the Harvard+Rainbow benchmark), so
   it's the "design a voice you like" engine; Pocket remains the fast path.
 
@@ -125,7 +136,7 @@ The Pocket tab now exposes Pocket's zero-shot cloning two ways, beyond the prebu
   the **blend/design → clone-for-speed loop**: build a voice in the Kokoro tab (or upload one), generate
   a decent-length take, promote it, then synthesize fast with Pocket. **Requires `/refs` mounted
   writable** — the compose bind was changed `…/reference:/refs:ro` → `…/reference:/refs` (recreate
-  applied). Promoted voices land in the same `athena-voice/reference/` folder as the curated refs.
+  applied). Promoted voices land in the same `tts/reference/` folder as the curated refs.
 
 ### Gated cloning weights (one-time setup, done 2026-06-10)
 Kyutai license-gates the cloning-capable weights. Without auth, only the ~26 preset voices
@@ -139,7 +150,7 @@ again if the cache is deleted.
 ## Athena Computer Voice
 
 ### Ready-to-use references
-`/mnt/documents/personal/alec/claudeai/athena-voice/reference/` (samba: `documents\personal\alec\claudeai\athena-voice\reference\`)
+`/mnt/documents/personal/alec/claudeai/tts/reference/` (samba: `documents\personal\alec\claudeai\tts\reference\`)
 
 | File | Length | Character |
 |---|---|---|
@@ -162,8 +173,10 @@ Pass any of them as `voice_wav`. The `.txt` transcripts exist for engines that n
 reference text (Pocket TTS does not).
 
 ### How they were built (pipeline — reproducible)
-Script: `/mnt/documents/personal/alec/claudeai/athena-voice/extract_athena.py`
-(modes: `parse` / `extract` / `stitch`). Companion: `bakeoff.py` (blind A/B harness).
+Script: `/mnt/documents/personal/alec/claudeai/tts/extraction/extract_athena.py`
+(modes: `parse` / `extract` / `stitch`). Companion: `extraction/bakeoff.py` (blind A/B harness).
+The extraction corpora + cue CSVs + voicepack scratch all live under `tts/extraction/` (kept, not
+load-bearing); the live bind-mounted dirs are only `reference/` and `studio/`.
 
 1. **SDH subtitle mining** (`parse`): SDH subs label speakers explicitly
    (`ATHENA COMPUTER:`). Parser handles `<i>` tags, dash-dialogue, parentheticals,
@@ -202,7 +215,7 @@ the "best naturalness we can run CPU-only" experiment (GPU not possible).
 | Endpoint | `http://192.168.0.130:8002` — stock Coqui `tts-server` web UI; cloning over `GET /api/tts` |
 | Stack | `/mnt/docker/xtts/compose.yaml` (own project, **builds from a local Dockerfile** — see below) |
 | Container | `xtts`, 3 CPU / 4g, CPU-only; model cache `/mnt/docker/xtts/models` (1.8 GB, bind-mounted) |
-| Refs | `…/athena-voice/reference:/refs` + `…/studio:/out` (same as pocket-tts) |
+| Refs | `…/tts/reference:/refs` + `…/studio:/out` (same as pocket-tts) |
 | Trailhead | "XTTS-v2" card in AI - Foundry |
 
 **Cloning API:** `GET /api/tts?text=…&speaker_wav=/refs/<ref>.wav&language_idx=en` → 24 kHz WAV.
@@ -218,7 +231,7 @@ libs) for its audio path, and the stock server needs **`flask`** (the `[server]`
 directly so it doesn't re-resolve transformers back to 5.x). All CPU: torch 2.12.0+cpu, torchcodec
 0.14.0+cpu.
 
-**Verdict (A/B in `athena-voice/tts-bench/results.md`):** XTTS is the **slowest** by far — 0.35–0.38×
+**Verdict (A/B in `tts/tts-bench/results.md`):** XTTS is the **slowest** by far — 0.35–0.38×
 realtime (46 s for 18 s of audio), heaviest (~2.8 GiB RAM, ~2.7 cores). Pocket's native voice is ~3.3×,
 Kokoro ~1.7×, Pocket's clone path ~8 s/short line (re-encodes the ref each call) but amortizes on long
 text. Quality is ear-judged — kept for now as the "design a voice" option; Pocket remains the fast path.
@@ -227,7 +240,7 @@ text. Quality is ear-judged — kept for now as the "design a voice" option; Poc
 reaches XTTS server-side via the host IP (separate docker net, like kokoro) — routes `GET /xtts/langs`
 and `POST /generate_xtts` (Form `text`/`voice`/`language`). The tab clones from the same `/refs`
 references (so it's apples-to-apples with the Pocket tab) and adds a **language** selector (XTTS's 17
-languages). Clips save to `athena-voice/studio/` as `xtts_<voice>_<lang>.wav`. XTTS itself stays a
+languages). Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
 standalone container; the studio just calls its `/api/tts`.
 
 ## History

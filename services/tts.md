@@ -87,23 +87,27 @@ Form fields and mutate the **already-loaded** global model per-request (under a 
 
 ## Voice Studio (web UI — folded into Pocket TTS)
 `http://192.168.0.130:8001/` — pocket-tts's own root page **is** the studio: pick a voice, dial
-temperature/decode-steps/EOS, type text, generate, play in-browser. Every clip is **sorted on
-disk by engine + input voice**: `tts/studio/<engine>/<voice>/<stem>.wav` (2026-06-15) — e.g. a
-Pocket clip of `athena_calm` lands at `studio/pocket/athena_calm/athenaCalm_t0.9_s1.wav`. The
-stem keeps the spec name (`{vkey}_t{temp}_s{steps}`); on collision a counter is appended
-(`…_s1_2.wav`). The clips panel lists clips newest-first, grouped under an `engine · voice`
-header, with inline players + a delete ✕ (deleting also prunes the now-empty voice/engine dir).
+temperature/decode-steps/EOS, type text, generate, play in-browser.
+- **Generation does NOT auto-save (changed 2026-06-15).** `POST /generate*` returns the audio bytes
+  directly (played from a browser object-URL) with the suggested filename in an `X-Clip-Name` header;
+  nothing is written to disk. The result row shows the clip as **· unsaved** with a **💾 save** icon.
+- **Manual save:** the 💾 icon `POST`s the held audio + suggested name to **`/save`**, which writes it
+  into the library at `tts/studio/<engine>/<voice>/<stem>.wav` (stem = `{vkey}_t{temp}_s{steps}`;
+  collisions get `_N`). Only saved clips appear in the **Saved clips** panel — listed newest-first,
+  grouped under an `engine · voice` header, with inline players + a delete ✕ (delete prunes the
+  now-empty voice/engine dir).
 - Voice picker = the custom references discovered under `tts/voices/<persona>/` (grouped by persona
   via `<optgroup>`, voice id = `persona/name.wav`) **+** the 26 built-in Kyutai voices (alba,
   estelle, …, passed through as `voice_url`). `/voices` globs `*/*.wav`; cloning resolves
   `REFS_DIR / "<persona>/<name>.wav"` natively, so the file tree drives the UI.
 - Implemented as extra FastAPI routes in pocket-tts `main.py` (`GET /`, `/voices`, `/clips`,
   `/clips/{name:path}` GET+DELETE+promote — `:path` so nested `engine/voice/file.wav` matches,
-  `POST /generate`). `/clips` walks the tree (`rglob`) and returns each clip's relative path +
-  split-out `engine`/`voice`; writes go through one `_resolve_out(engine, voice_slug, stem)`
-  helper. The page is bind-mounted
-  (`studio/index.html` → `/app/pocket_tts/static/studio.html`); generation reuses the loaded model
-  under the same `_gen_lock`, saving via `stream_audio_chunks` to `/out`.
+  `POST /generate` / `/generate_kokoro` / `/generate_xtts` → **return audio + `X-Clip-Name`** (no
+  disk write), and `POST /save` → write the held audio into the library). `/generate*` build only a
+  *suggested* name via `_suggest_name`; `/save` does the real collision-safe `_resolve_out`. `/clips`
+  walks the tree (`rglob`). The page is bind-mounted
+  (`studio/index.html` → `/app/pocket_tts/static/studio.html`); pocket generation reuses the loaded
+  model under `_gen_lock`, rendering to a temp file it reads back (never the studio tree).
 - **CT 130 now mounts the documents samba** (added 2026-06-13): `mp5: /mnt/documents,mp=/mnt/documents`
   in `/etc/pve/lxc/130.conf`. This was required for the fold-in (so foundry can read
   `voices/` and write `studio/`) and needed a one-time CT 130 reboot to apply (mp hotplug

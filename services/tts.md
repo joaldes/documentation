@@ -96,8 +96,8 @@ the per-engine controls, type text, generate, play in-browser.
     **normalization** toggles (`normalize`/url/email/phone/optional-pluralization/replace-symbols/unit)
     → forwarded as Kokoro's `normalization_options`. (Payload sets `stream:false` — `urllib.read()`
     raises `IncompleteRead` on Kokoro's default chunked stream.)
-  - **XTTS:** voice (clone a `/voices` reference **or** one of XTTS-v2's **58 built-in studio speakers**,
-    id `builtin/<Name>` → server `speaker_id`), language (17). **Not exposed:** temperature/top_k/top_p/repetition+length-penalty/
+  - **XTTS:** voice (clone a `/voices` reference, **upload a clip to clone**, **or** one of XTTS-v2's
+    **58 built-in studio speakers** id `builtin/<Name>` → server `speaker_id`), language (17). **Not exposed:** temperature/top_k/top_p/repetition+length-penalty/
     text-splitting and `speed` — the stock Coqui `tts-server` `/api/tts` doesn't pass them to the model
     (its `/v1/audio/speech` has `speed` but hardcodes language to the server default), so reaching them
     needs a **custom XTTS inference server** (deferred — would mean rebuilding the xtts container).
@@ -157,12 +157,18 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
 - Note: Kokoro is ~1.8× slower than Pocket and pegs 3 cores (per the Harvard+Rainbow benchmark), so
   it's the "design a voice you like" engine; Pocket remains the fast path.
 
-### Cloning controls in the studio (2026-06-14)
-The Pocket tab now exposes Pocket's zero-shot cloning two ways, beyond the prebuilt `/voices` refs:
-- **Upload a clip to clone (on the fly):** a file input on the Pocket tab. `POST /generate` now accepts
-  an optional `voice_wav` UploadFile (priority: upload > selected `/voices`/built-in voice); it clones the
-  uploaded audio via `get_state_for_audio_prompt(..., truncate=True)` and saves the result named off the
-  upload's filename stem. Good for one-off clones; longer/cleaner reference (~10–30s) clones better.
+### Cloning + voice management in the studio (2026-06-14 / -15)
+Pocket **and XTTS** both expose upload-to-clone, and a **Voice library** panel manages the reference set:
+- **Upload a clip to clone (on the fly):** file input on the Pocket **and** XTTS tabs (`voice_wav` on
+  `POST /generate` and `POST /generate_xtts`; priority: upload > built-in/dropdown). Pocket clones via
+  `get_state_for_audio_prompt(..., truncate=True)`. XTTS has no writable `/voices`, so its upload is
+  **staged into `/out/.xtts_refs/`** (xtts mounts `/out` rw), passed as `speaker_wav=/out/.xtts_refs/…`,
+  then deleted; `/clips` skips dot-dirs so the staging never shows as a clip. (XTTS accepts wav/mp3 — it
+  has ffmpeg; Pocket's `/voices` uploads are WAV-only, no transcoder in that container.)
+- **Voice library panel** (right column) — manage the cloneable references used by Pocket + XTTS:
+  `GET /voices/{rel:path}` preview, `POST /voices/upload` (persona/name/WAV), `POST /voices/rename`
+  (rename or move persona, carries the `.txt` companion, prunes empty dirs), `DELETE /voices/{rel:path}`.
+  All paths are traversal-guarded under `/voices` (`_safe_voice`). Edits refresh every voice picker live.
 - **Save as Pocket voice (promote a clip → reference):** every saved clip has a **➜ voice** button →
   `POST /clips/{name:path}/promote` (Form `refname`) copies the clip from `/out` into
   `/voices/custom/{name}.wav` as a permanent, cloneable voice (id `custom/{name}.wav`), then it appears

@@ -24,16 +24,21 @@ The **Voice Studio** (`http://192.168.0.130:8001/`) is the single UI over all th
   bind-mounted into the container; one `.bak` kept per file. The vendored clone is now only the build
   context. **Edit → `docker compose up -d --force-recreate`** (or redeploy in Komodo).
 - **Shared assets** live in the documents samba at `…/claudeai/tts/` (renamed from `athena-voice/`
-  2026-06-15 to match the project), organized **per voice** (2026-06-15):
-  - `reference/` = cloneable voices, **bind-mounted `/refs`, kept FLAT** (the studio globs it
-    non-recursively + clones via `/refs/<name>`, so this stays a flat dir — do not nest it).
+  2026-06-15), organized **fully per voice** — the folder tree is the source of truth and the app
+  conforms to it (2026-06-15):
+  - `voices/<persona>/` = **everything for that voice in one place**: the cloneable refs sit right
+    in the persona folder (`voices/athena/athena_natural.wav` + `.txt`, etc.), with supporting
+    material in subfolders — `source-clips/` (SDH cue-rips), `<persona>_cues.csv`, Majel's
+    `majel_scores.csv`, Athena's `expressiveness-samples/` + stitch artifacts (`picks.txt`, `_sil.wav`).
+    Personas today: `athena`, `majel`, and `custom/` (where "➜ voice" promotions land).
+  - **`voices/` IS the live `/voices` mount** (bind-mounted into pocket-tts rw + xtts ro). The app
+    discovers voices by globbing `*/*.wav` (one level), so a voice's id is `persona/name.wav`; the
+    picker groups by persona. There is **no flat `reference/` dir anymore** — it was dissolved into
+    `voices/` 2026-06-15 and the app rewired to read the tree (see Voice Studio §).
   - `studio/` = generated clips, bind-mounted `/out`, sorted `<engine>/<voice>/`.
-  - `voices/<persona>/` = each voice's **source material + metadata**: `voices/athena/` and
-    `voices/majel/` hold `source-clips/` (the SDH cue-rips), `<persona>_cues.csv`, plus Majel's
-    `majel_scores.csv` and Athena's `expressiveness-samples/`. Not load-bearing.
   - `tools/` = the extraction/bakeoff scripts (`extract_athena.py`, `bakeoff.py`).
   - `tts-bench/` = cross-engine benchmarks + `results.md`.
-  Both bind-mounted stacks (pocket-tts, xtts) point at `…/tts/reference` + `…/tts/studio`.
+  Bind-mounted stacks point at `…/tts/voices` (`/voices`) + `…/tts/studio` (`/out`).
 
 ## Summary
 Kyutai Pocket TTS (100M-param CALM model, MIT) runs CPU-only on foundry and provides
@@ -88,8 +93,10 @@ Pocket clip of `athena_calm` lands at `studio/pocket/athena_calm/athenaCalm_t0.9
 stem keeps the spec name (`{vkey}_t{temp}_s{steps}`); on collision a counter is appended
 (`…_s1_2.wav`). The clips panel lists clips newest-first, grouped under an `engine · voice`
 header, with inline players + a delete ✕ (deleting also prunes the now-empty voice/engine dir).
-- Voice picker = the custom references in `tts/reference/` **+** the 26 built-in Kyutai
-  voices (alba, estelle, …, passed through as `voice_url`).
+- Voice picker = the custom references discovered under `tts/voices/<persona>/` (grouped by persona
+  via `<optgroup>`, voice id = `persona/name.wav`) **+** the 26 built-in Kyutai voices (alba,
+  estelle, …, passed through as `voice_url`). `/voices` globs `*/*.wav`; cloning resolves
+  `REFS_DIR / "<persona>/<name>.wav"` natively, so the file tree drives the UI.
 - Implemented as extra FastAPI routes in pocket-tts `main.py` (`GET /`, `/voices`, `/clips`,
   `/clips/{name:path}` GET+DELETE+promote — `:path` so nested `engine/voice/file.wav` matches,
   `POST /generate`). `/clips` walks the tree (`rglob`) and returns each clip's relative path +
@@ -99,9 +106,9 @@ header, with inline players + a delete ✕ (deleting also prunes the now-empty v
   under the same `_gen_lock`, saving via `stream_audio_chunks` to `/out`.
 - **CT 130 now mounts the documents samba** (added 2026-06-13): `mp5: /mnt/documents,mp=/mnt/documents`
   in `/etc/pve/lxc/130.conf`. This was required for the fold-in (so foundry can read
-  `reference/` and write `studio/`) and needed a one-time CT 130 reboot to apply (mp hotplug
+  `voices/` and write `studio/`) and needed a one-time CT 130 reboot to apply (mp hotplug
   doesn't take; the reboot bounces ollama/open-webui/searxng/kokoro — they auto-recover). compose
-  binds: `…/reference:/refs:ro` and `…/studio:/out`.
+  binds: `…/tts/voices:/voices` and `…/tts/studio:/out`.
 - An earlier interim build hosted the same UI as a standalone Flask app on CT 124 (port 8088); that
   was retired once the fold-in was verified (the documents-mount approach was chosen instead).
 
@@ -131,18 +138,17 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
   it's the "design a voice you like" engine; Pocket remains the fast path.
 
 ### Cloning controls in the studio (2026-06-14)
-The Pocket tab now exposes Pocket's zero-shot cloning two ways, beyond the prebuilt `/refs` voices:
+The Pocket tab now exposes Pocket's zero-shot cloning two ways, beyond the prebuilt `/voices` refs:
 - **Upload a clip to clone (on the fly):** a file input on the Pocket tab. `POST /generate` now accepts
-  an optional `voice_wav` UploadFile (priority: upload > selected `/refs`/built-in voice); it clones the
+  an optional `voice_wav` UploadFile (priority: upload > selected `/voices`/built-in voice); it clones the
   uploaded audio via `get_state_for_audio_prompt(..., truncate=True)` and saves the result named off the
   upload's filename stem. Good for one-off clones; longer/cleaner reference (~10–30s) clones better.
 - **Save as Pocket voice (promote a clip → reference):** every saved clip has a **➜ voice** button →
-  `POST /clips/{name}/promote` (Form `refname`) copies the clip from `/out` into `/refs` as a permanent,
-  cloneable Pocket voice (sanitized `{name}.wav`), then it appears in the Pocket voice dropdown. This is
-  the **blend/design → clone-for-speed loop**: build a voice in the Kokoro tab (or upload one), generate
-  a decent-length take, promote it, then synthesize fast with Pocket. **Requires `/refs` mounted
-  writable** — the compose bind was changed `…/reference:/refs:ro` → `…/reference:/refs` (recreate
-  applied). Promoted voices land in the same `tts/reference/` folder as the curated refs.
+  `POST /clips/{name:path}/promote` (Form `refname`) copies the clip from `/out` into
+  `/voices/custom/{name}.wav` as a permanent, cloneable voice (id `custom/{name}.wav`), then it appears
+  in the Pocket voice dropdown under the **custom** persona. This is the **blend/design → clone-for-speed
+  loop**: build a voice in the Kokoro tab (or upload one), generate a decent-length take, promote it, then
+  synthesize fast with Pocket. **Requires `/voices` mounted writable** (pocket-tts mounts it rw; xtts ro).
 
 ### Gated cloning weights (one-time setup, done 2026-06-10)
 Kyutai license-gates the cloning-capable weights. Without auth, only the ~26 preset voices
@@ -156,7 +162,7 @@ again if the cache is deleted.
 ## Athena Computer Voice
 
 ### Ready-to-use references
-`/mnt/documents/personal/alec/claudeai/tts/reference/` (samba: `documents\personal\alec\claudeai\tts\reference\`)
+`/mnt/documents/personal/alec/claudeai/tts/voices/athena/` (samba: `documents\personal\alec\claudeai\tts\voices\athena\`)
 
 | File | Length | Character |
 |---|---|---|
@@ -182,8 +188,9 @@ reference text (Pocket TTS does not).
 Script: `/mnt/documents/personal/alec/claudeai/tts/tools/extract_athena.py`
 (modes: `parse` / `extract` / `stitch`; `SHOW=athena|majel`). Companion: `tools/bakeoff.py` (blind
 A/B harness). Each persona's cue-rips + CSV live under `tts/voices/<persona>/` (`source-clips/`,
-`<persona>_cues.csv`); the stitch step still writes the finished refs into the flat `reference/`
-(`/refs`). The live bind-mounted dirs are only `reference/` and `studio/`.
+`<persona>_cues.csv`); the stitch step writes the finished ref + `picks.txt` + `_sil.wav` straight
+into the persona folder (`tts/voices/athena/`). The live bind-mounted dirs are `voices/` (`/voices`)
+and `studio/` (`/out`).
 
 1. **SDH subtitle mining** (`parse`): SDH subs label speakers explicitly
    (`ATHENA COMPUTER:`). Parser handles `<i>` tags, dash-dialogue, parentheticals,
@@ -222,10 +229,10 @@ the "best naturalness we can run CPU-only" experiment (GPU not possible).
 | Endpoint | `http://192.168.0.130:8002` — stock Coqui `tts-server` web UI; cloning over `GET /api/tts` |
 | Stack | `/mnt/docker/xtts/compose.yaml` (own project, **builds from a local Dockerfile** — see below) |
 | Container | `xtts`, 3 CPU / 4g, CPU-only; model cache `/mnt/docker/xtts/models` (1.8 GB, bind-mounted) |
-| Refs | `…/tts/reference:/refs` + `…/studio:/out` (same as pocket-tts) |
+| Refs | `…/tts/voices:/voices:ro` + `…/studio:/out` (same tree as pocket-tts; ro) |
 | Trailhead | "XTTS-v2" card in AI - Foundry |
 
-**Cloning API:** `GET /api/tts?text=…&speaker_wav=/refs/<ref>.wav&language_idx=en` → 24 kHz WAV.
+**Cloning API:** `GET /api/tts?text=…&speaker_wav=/voices/<persona>/<ref>.wav&language_idx=en` → 24 kHz WAV.
 Plain/native voices use XTTS's built-in studio speakers (`speaker_idx`).
 
 **Why a custom build (not a prebuilt image):** `ghcr.io/idiap/coqui-tts-cpu:latest` ships **no torch** —
@@ -245,7 +252,7 @@ text. Quality is ear-judged — kept for now as the "design a voice" option; Poc
 
 **Folded into the Voice Studio (3rd tab "XTTS Clone", 2026-06-14):** the studio (pocket-tts `:8001`)
 reaches XTTS server-side via the host IP (separate docker net, like kokoro) — routes `GET /xtts/langs`
-and `POST /generate_xtts` (Form `text`/`voice`/`language`). The tab clones from the same `/refs`
+and `POST /generate_xtts` (Form `text`/`voice`/`language`). The tab clones from the same `/voices`
 references (so it's apples-to-apples with the Pocket tab) and adds a **language** selector (XTTS's 17
 languages). Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
 standalone container; the studio just calls its `/api/tts`.

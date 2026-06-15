@@ -87,7 +87,19 @@ Form fields and mutate the **already-loaded** global model per-request (under a 
 
 ## Voice Studio (web UI — folded into Pocket TTS)
 `http://192.168.0.130:8001/` — pocket-tts's own root page **is** the studio: pick a voice, dial
-temperature/decode-steps/EOS, type text, generate, play in-browser.
+the per-engine controls, type text, generate, play in-browser.
+- **Exposed controls per engine (2026-06-15 — every natively-reachable knob):**
+  - **Pocket:** temperature, decode_steps, eos_threshold, **noise_clamp** (`0`=off). These are the 4
+    live-mutable sampler attrs (`tts_model.temp/lsd_decode_steps/eos_threshold/noise_clamp`), set per
+    request under `_gen_lock` then restored.
+  - **Kokoro:** voice/blend, speed, **volume_multiplier**, **lang_code** (accent override), and the 7
+    **normalization** toggles (`normalize`/url/email/phone/optional-pluralization/replace-symbols/unit)
+    → forwarded as Kokoro's `normalization_options`. (Payload sets `stream:false` — `urllib.read()`
+    raises `IncompleteRead` on Kokoro's default chunked stream.)
+  - **XTTS:** voice, language. **Not exposed:** temperature/top_k/top_p/repetition+length-penalty/
+    text-splitting and `speed` — the stock Coqui `tts-server` `/api/tts` doesn't pass them to the model
+    (its `/v1/audio/speech` has `speed` but hardcodes language to the server default), so reaching them
+    needs a **custom XTTS inference server** (deferred — would mean rebuilding the xtts container).
 - **Generation does NOT auto-save (changed 2026-06-15).** `POST /generate*` returns the audio bytes
   directly (played from a browser object-URL) with the suggested filename in an `X-Clip-Name` header;
   nothing is written to disk. The result row shows the clip as **· unsaved** with a **💾 save** icon.
@@ -130,9 +142,12 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
   server-side (stdlib `urllib`, no `requests` dep). The browser stays same-origin (no CORS) because
   the studio proxies through pocket-tts.
 - **New routes in `main.py`:** `GET /kokoro/voices` (cached proxy to kokoro's voice list) and
-  `POST /generate_kokoro` (Form `text`/`voice`/`speed` → kokoro `/v1/audio/speech` wav → save to the
-  shared `/out`). `_gen_lock` is taken only around the name-collision check + write (kokoro does the
-  heavy work in its own process). No compose change — both files were already bind-mounted.
+  `POST /generate_kokoro` (Form `text`/`voice`/`speed`/`volume_multiplier`/`lang_code`/`normalization`
+  → kokoro `/v1/audio/speech` wav, returned to the browser). kokoro does the heavy work in its own
+  process. No compose change — both files were already bind-mounted.
+- **Single-voice blend fix:** `buildBlendString()` emits a lone voice **bare** (`af_bella`), not
+  `af_bella(1)` — Kokoro only parses weights inside a `+`/`-` blend, so a parenthesized single voice is
+  read as a literal filename → 500.
 - **Clip naming/sorting:** `_kblend_slug` captures the blend identity (voices + signs + weights,
   prefixes stripped, subtraction as `~`, speed excluded) → that's the per-voice folder; `_kspec_stem`
   adds `_spd{n}` when speed ≠1. So `af_jadzia(2)+af_sarah(1)` lands at

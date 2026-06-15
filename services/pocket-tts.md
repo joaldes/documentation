@@ -69,7 +69,8 @@ A panel lists saved clips with inline players + delete.
   was retired once the fold-in was verified (the documents-mount approach was chosen instead).
 
 ### Kokoro blend — second engine in the studio (2026-06-14)
-The studio is now **dual-engine**: an engine switch (`Pocket TTS` | `Kokoro Blend`) above the shared
+The studio is **multi-engine** (Pocket TTS | Kokoro Blend | XTTS Clone — see the XTTS section for the
+third tab): an engine switch above the shared
 text box / result player / clips panel. The Kokoro tab is a **voice-blend builder** — add any of the
 67 Kokoro voices, give each a `+`/`−` sign and a relative weight, set speed, generate. It leverages
 Kokoro's own blend config: the `voice` string `af_jadzia(2)+af_sarah(1)-am_adam(0.5)` (additive `+`,
@@ -201,6 +202,13 @@ directly so it doesn't re-resolve transformers back to 5.x). All CPU: torch 2.12
 realtime (46 s for 18 s of audio), heaviest (~2.8 GiB RAM, ~2.7 cores). Pocket's native voice is ~3.3×,
 Kokoro ~1.7×, Pocket's clone path ~8 s/short line (re-encodes the ref each call) but amortizes on long
 text. Quality is ear-judged — kept for now as the "design a voice" option; Pocket remains the fast path.
+
+**Folded into the Voice Studio (3rd tab "XTTS Clone", 2026-06-14):** the studio (pocket-tts `:8001`)
+reaches XTTS server-side via the host IP (separate docker net, like kokoro) — routes `GET /xtts/langs`
+and `POST /generate_xtts` (Form `text`/`voice`/`language`). The tab clones from the same `/refs`
+references (so it's apples-to-apples with the Pocket tab) and adds a **language** selector (XTTS's 17
+languages). Clips save to `athena-voice/studio/` as `xtts_<voice>_<lang>.wav`. XTTS itself stays a
+standalone container; the studio just calls its `/api/tts`.
 
 ## History
 - 2026-06-10: Deployed; bake-off vs NeuTTS Air (q4-GGUF fork) — Pocket TTS won on voice

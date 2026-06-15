@@ -96,7 +96,8 @@ the per-engine controls, type text, generate, play in-browser.
     **normalization** toggles (`normalize`/url/email/phone/optional-pluralization/replace-symbols/unit)
     → forwarded as Kokoro's `normalization_options`. (Payload sets `stream:false` — `urllib.read()`
     raises `IncompleteRead` on Kokoro's default chunked stream.)
-  - **XTTS:** voice, language. **Not exposed:** temperature/top_k/top_p/repetition+length-penalty/
+  - **XTTS:** voice (clone a `/voices` reference **or** one of XTTS-v2's **58 built-in studio speakers**,
+    id `builtin/<Name>` → server `speaker_id`), language (17). **Not exposed:** temperature/top_k/top_p/repetition+length-penalty/
     text-splitting and `speed` — the stock Coqui `tts-server` `/api/tts` doesn't pass them to the model
     (its `/v1/audio/speech` has `speed` but hardcodes language to the server default), so reaching them
     needs a **custom XTTS inference server** (deferred — would mean rebuilding the xtts container).
@@ -251,8 +252,11 @@ the "best naturalness we can run CPU-only" experiment (GPU not possible).
 | Refs | `…/tts/voices:/voices:ro` + `…/studio:/out` (same tree as pocket-tts; ro) |
 | Trailhead | "XTTS-v2" card in AI - Foundry |
 
-**Cloning API:** `GET /api/tts?text=…&speaker_wav=/voices/<persona>/<ref>.wav&language_idx=en` → 24 kHz WAV.
-Plain/native voices use XTTS's built-in studio speakers (`speaker_idx`).
+**Synthesis API** (`GET /api/tts` → 24 kHz WAV): clone → `&speaker_wav=/voices/<persona>/<ref>.wav`;
+built-in speaker → `&speaker_id=<Name>` (list at the xtts server's `GET /voices`, 58 speakers). **The
+language param is `language_id` — NOT `language_idx`** (the server silently ignores the wrong name and
+falls back to its default `en`; this was a real bug in the studio, fixed 2026-06-15). The studio's
+`/xtts/speakers` route proxies + caches that speaker list.
 
 **Why a custom build (not a prebuilt image):** `ghcr.io/idiap/coqui-tts-cpu:latest` ships **no torch** —
 unusable. So we build from `python:3.11-slim`: install **CPU torch first** from the pytorch CPU index
@@ -271,9 +275,10 @@ text. Quality is ear-judged — kept for now as the "design a voice" option; Poc
 
 **Folded into the Voice Studio (3rd tab "XTTS Clone", 2026-06-14):** the studio (pocket-tts `:8001`)
 reaches XTTS server-side via the host IP (separate docker net, like kokoro) — routes `GET /xtts/langs`
-and `POST /generate_xtts` (Form `text`/`voice`/`language`). The tab clones from the same `/voices`
-references (so it's apples-to-apples with the Pocket tab) and adds a **language** selector (XTTS's 17
-languages). Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
+and `POST /generate_xtts` (Form `text`/`voice`/`language`) + `GET /xtts/speakers`. The tab's voice
+dropdown offers **both** the `/voices` clone references (apples-to-apples with Pocket) **and** XTTS's 58
+built-in studio speakers (`builtin/<Name>`), plus a working **language** selector (XTTS's 17 languages).
+Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
 standalone container; the studio just calls its `/api/tts`.
 
 ## History

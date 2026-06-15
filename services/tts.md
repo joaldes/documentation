@@ -31,7 +31,7 @@ The **Voice Studio** (`http://192.168.0.130:8001/`) is the single UI over all th
   - `voices/<persona>/` = each voice's **source material + metadata**: `voices/athena/` and
     `voices/majel/` hold `source-clips/` (the SDH cue-rips), `<persona>_cues.csv`, plus Majel's
     `majel_scores.csv` and Athena's `expressiveness-samples/`. Not load-bearing.
-  - `tools/` = the extraction/bakeoff scripts + the `af_bella.pt` Kokoro voicepack (non-persona).
+  - `tools/` = the extraction/bakeoff scripts (`extract_athena.py`, `bakeoff.py`).
   - `tts-bench/` = cross-engine benchmarks + `results.md`.
   Both bind-mounted stacks (pocket-tts, xtts) point at `…/tts/reference` + `…/tts/studio`.
 

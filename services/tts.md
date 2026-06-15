@@ -1,7 +1,28 @@
-# Pocket TTS — Voice Cloning on foundry (+ Athena Computer Voice Pipeline)
+# TTS on foundry — Pocket TTS · Kokoro · XTTS-v2 · Voice Studio (+ Athena/Majel pipeline)
 
-**Last Updated**: 2026-06-14
-**Related Systems**: CT 130 "foundry" (192.168.0.130) — Pocket TTS + Kokoro (dual-engine Voice Studio), Trailhead (AI - Foundry group), documents samba (athena-voice)
+**Last Updated**: 2026-06-15
+**Related Systems**: CT 130 "foundry" (192.168.0.130) — three CPU TTS engines behind one Voice Studio,
+Komodo-managed, Trailhead (AI - Foundry group), documents samba (athena-voice)
+
+## Engines at a glance
+| Engine | Port | Role | Cloning | Speed (CPU) |
+|---|---|---|---|---|
+| **Pocket TTS** (Kyutai, 100M) | 8001 | fast zero-shot cloning; hosts the Voice Studio UI | yes (zero-shot) | ~3× realtime (fastest) |
+| **Kokoro** (82M, remsky) | 8880 | 67 preset voices + blend builder | no (blend only) | ~1.7× realtime |
+| **XTTS-v2** (Coqui/idiap) | 8002 | most natural + multilingual cloning | yes (zero-shot, 17 langs) | ~0.35× realtime (slowest, heaviest) |
+
+The **Voice Studio** (`http://192.168.0.130:8001/`) is the single UI over all three — tabs *Pocket TTS*
+/ *Kokoro Blend* / *XTTS Clone*, sharing one text box, player, and clips panel.
+
+## Deployment / source of truth
+- All three stacks are **Komodo-managed, "Files on Host"** at `/mnt/docker/<name>/` (registered 2026-06-15
+  on the foundry server) — same as every other homelab stack; manage via the Komodo UI. **No git** (no
+  homelab stack uses it; durability rides on system backups — note `/mnt/docker` backup coverage is a
+  known homelab-wide gap, tracked separately).
+- The only hand-authored code is Pocket TTS's overlay: `/mnt/docker/pocket-tts/app/main.py` (de-conflated
+  out of the vendored Kyutai clone 2026-06-15) + `/mnt/docker/pocket-tts/studio/index.html`, both
+  bind-mounted into the container; one `.bak` kept per file. The vendored clone is now only the build
+  context. **Edit → `docker compose up -d --force-recreate`** (or redeploy in Komodo).
 
 ## Summary
 Kyutai Pocket TTS (100M-param CALM model, MIT) runs CPU-only on foundry and provides
@@ -44,9 +65,9 @@ Form fields and mutate the **already-loaded** global model per-request (under a 
   reference's prosody, so a deadpan computer ref yields a deadpan read by design.
 - **decode_steps** >1 = richer/smoother at ~linear CPU cost. **eos_threshold** tunes trailing.
 - Deployed rebuild-free: patched `main.py` is **bind-mounted** over `/app/pocket_tts/main.py`
-  from the build context (`/mnt/docker/pocket-tts/pocket-tts/pocket_tts/main.py`); a
-  `docker compose up -d --force-recreate` (one warm load) applies it. Backups:
-  `main.py.bak-prestudio`, `compose.yaml.bak-prestudio`.
+  from `/mnt/docker/pocket-tts/app/main.py` (de-conflated 2026-06-15 — see "Deployment / source of
+  truth" above); a `docker compose up -d --force-recreate` (one warm load) applies it. One `.bak` kept
+  per hand-authored file.
 
 ## Voice Studio (web UI — folded into Pocket TTS)
 `http://192.168.0.130:8001/` — pocket-tts's own root page **is** the studio: pick a voice, dial
@@ -90,8 +111,7 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
   `kok_jadzia2-sarah.wav`); counter `_2/_3` on collision. Lands in the same `athena-voice/studio/`
   folder + clips panel as Pocket clips.
 - Note: Kokoro is ~1.8× slower than Pocket and pegs 3 cores (per the Harvard+Rainbow benchmark), so
-  it's the "design a voice you like" engine; Pocket remains the fast path. Backups from this change:
-  `main.py.bak-preblend`, `studio/index.html.bak-preblend`.
+  it's the "design a voice you like" engine; Pocket remains the fast path.
 
 ### Cloning controls in the studio (2026-06-14)
 The Pocket tab now exposes Pocket's zero-shot cloning two ways, beyond the prebuilt `/refs` voices:

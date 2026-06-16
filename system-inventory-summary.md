@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-12 20:00 UTC*
+*Last updated: 2026-06-16 07:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.33, 3.48, 5.71 | RAM: 33/62 GB | Uptime: 9 days
+**Shipyard** (192.168.0.151) | CPU: 0.77, 1.73, 2.28 | RAM: 37/62 GB | Uptime: 13 days
 
-**53 services** — 25 LXC containers, 28 Docker stacks, 3 VMs, 11 storage pools
+**54 services** — 25 LXC containers, 29 Docker stacks, 3 VMs, 11 storage pools
 
-## All Services (53)
+## All Services (54)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -45,7 +45,7 @@
 | reyday | docker | 192.168.0.179 | 8105 | http://192.168.0.179:8105 | running |
 | samba | lxc | 192.168.0.176 | - | - | running |
 | scanopy | lxc | 192.168.0.219 | - | - | stopped |
-| screener | docker | 192.168.0.179 | - | - | running |
+| screener | docker | 192.168.0.179 | 8087 | http://192.168.0.179:8087 | running |
 | sftp | docker | 192.168.0.179 | 8070 | http://192.168.0.179:8070 | running |
 | shoplist | docker | 192.168.0.179 | 8086 | http://192.168.0.179:8086 | running |
 | sonarr | lxc | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
@@ -58,6 +58,7 @@
 | unmanic | lxc | 192.168.0.207 | 8888 | http://192.168.0.207:8888 | running |
 | uptimekuma | lxc | 192.168.0.44 | 3001 | http://192.168.0.44:3001 | running |
 | urbackup | lxc | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
+| vaultwarden | docker | 192.168.0.179 | 8092 | http://192.168.0.179:8092 | running |
 | vpn | lxc | 192.168.0.220 | - | - | running |
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
@@ -91,7 +92,7 @@
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
 
-## Docker Stacks (28) — 192.168.0.179
+## Docker Stacks (29) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -115,13 +116,14 @@
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
 | prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
-| screener | - | 1/1 | 0 | running | - |
+| screener | 8087 | 1/1 | 0 | running | http://192.168.0.179:8087 |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | shoplist | 8086 | 1/1 | 0 | running | http://192.168.0.179:8086 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
 | tinyauth | 3005 | 1/1 | 1 | running | http://192.168.0.179:3005 |
 | tplan | 8084 | 2/2 | 0 | running | http://192.168.0.179:8084 |
 | trailhead | 8076 | 2/2 | 2 | running | http://192.168.0.179:8076 |
+| vaultwarden | 8092 | 1/1 | 1 | running | http://192.168.0.179:8092 |
 
 ## VMs (3)
 | VMID | Name | Status |
@@ -133,14 +135,14 @@
 ## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 7076/10158 | 69% |
+| backups | dir | 7139/10158 | 70% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 902/1006 | 89% |
-| docker-data | dir | 349/2014 | 17% |
-| littlestorage | lvmthin | 197/1830 | 10% |
-| local | dir | 51/93 | 54% |
-| local-lvm | lvmthin | 311/348 | 89% |
+| container-backups | dir | 901/1006 | 89% |
+| docker-data | dir | 354/2014 | 17% |
+| littlestorage | lvmthin | 194/1830 | 10% |
+| local | dir | 50/93 | 54% |
+| local-lvm | lvmthin | 312/348 | 89% |
 | smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 593/1006 | 58% |
-| smb-hometheater | dir | 16943/29679 | 57% |
+| smb-frigate | dir | 592/1006 | 58% |
+| smb-hometheater | dir | 17012/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |

@@ -37,7 +37,7 @@ lvmthin: ssd
 ```
 - **Why**: Crucial BX500 (`/dev/sda`, storage `littlestorage`) flagged failing — DRAM-less QLC with high write amplification + a pending sector. Moved all live guests (CT 130/131/132/133, VM 100/119) onto a new `ssd` LVM-thin pool carved from the empty ~839 GiB tail of the Samsung 870 QVO (`/dev/sde`).
 - **Effect**: Live pool now on the Samsung; Crucial idle but still installed, holding retained `--delete 0` fallback copies. `littlestorage` still enabled (soak); disable + pull later.
-- **Caveat (cross-ref smartd note above)**: attr 202 `FAILING_NOW` on the BX500 is a known firmware false-positive (smartd already configured to ignore it). The migration decision rested on **write amplification + a real pending sector + observed behavior**, not attr 202 alone. Worth re-checking the Crucial's true health before discarding it — it may be usable as scratch.
+- **Health verdict (full SMART pulled 2026-06-16)**: attr 202 `FAILING_NOW` is **REAL here**, not the BX500 false-positive — corroborated by attr 173 Ave_Block-Erase_Count = **2330** (far beyond QLC's ~1000-cycle rating) and a confirmed **~280× write amplification** (attr 248 FTL pages 336.3B ÷ attr 247 host pages 1.2B; host only wrote ~19.6 TB per attr 246). Drive is genuinely endurance-exhausted. Still PASSED with only 1 reallocated / 1 pending / 0 uncorrectable, so it's "replace promptly," not "corrupting now." **Recommendation: retire it — do not reuse for anything that matters** (worn QLC = poor data retention).
 - **Full runbook**: [ssd-pool-migration.md](ssd-pool-migration.md)
 - **Standing risk**: `ssd` VG is on a USB disk — may need `vgchange -ay ssd` after a future host reboot.
 

@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-17 04:00 UTC*
+*Last updated: 2026-06-17 08:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 26.89, 21.31, 13.70 | RAM: 38/62 GB | Uptime: 13 days
+**Shipyard** (192.168.0.151) | CPU: 1.70, 1.32, 1.49 | RAM: 37/62 GB | Uptime: 14 days
 
-**54 services** — 25 LXC containers, 29 Docker stacks, 3 VMs, 12 storage pools
+**55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 13 storage pools
 
-## All Services (54)
+## All Services (55)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -39,6 +39,7 @@
 | nginxproxymanager | lxc | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
 | paperless | docker | 192.168.0.179 | 8010 | http://192.168.0.179:8010 | running |
 | paperless-ai | docker | 192.168.0.179 | 3030 | http://192.168.0.179:3030 | running |
+| pbs | lxc | 192.168.0.134 | - | - | running |
 | prometheus | docker | 192.168.0.179 | 9092 | http://192.168.0.179:9092 | running |
 | pulse | lxc | 192.168.0.175 | 7655 | http://192.168.0.175:7655 | running |
 | radarr | lxc | 192.168.0.42 | 7878 | http://192.168.0.42:7878 | running |
@@ -63,7 +64,7 @@
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
-## LXC Containers (25)
+## LXC Containers (26)
 | CT | Name | IP | Port | URL | Status |
 |-----|------------------|----------------|-------|------------------------------|---------|
 | 101 | adguard | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -91,6 +92,7 @@
 | 131 | cartography | 192.168.0.229 | - | - | running |
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
+| 134 | pbs | 192.168.0.134 | - | - | running |
 
 ## Docker Stacks (29) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
@@ -132,18 +134,19 @@
 | 106 | WindowsXP | stopped |
 | 119 | WindowsTiny10 | stopped |
 
-## Storage (12)
+## Storage (13)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 7135/10158 | 70% |
+| backups | dir | 7136/10158 | 70% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 903/1006 | 89% |
 | docker-data | dir | 354/2014 | 17% |
 | littlestorage | lvmthin | 195/1830 | 10% |
-| local | dir | 51/93 | 54% |
+| local | dir | 50/93 | 54% |
 | local-lvm | lvmthin | 312/348 | 89% |
+| pbs-homelab | pbs | 0/7110 | 0% |
 | smb-documents | dir | 77/921 | 8% |
 | smb-frigate | dir | 590/1006 | 58% |
 | smb-hometheater | dir | 17097/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |
-| ssd | lvmthin | 81/838 | 9% |
+| ssd | lvmthin | 183/838 | 21% |

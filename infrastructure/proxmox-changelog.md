@@ -28,6 +28,19 @@ exclude-path: /var/lib/docker /var/log/journal
 - **Why**: Default tmpdir was /tmp (on NVMe), caused local storage to fill during backups
 - **Effect**: Temp files go directly to backup drive
 
+### LVM storage — `ssd` pool added, live guests migrated off Crucial (2026-06-16)
+```
+lvmthin: ssd
+	thinpool data
+	vgname ssd
+	# on /dev/disk/by-id/usb-JMicron_Generic_DISK00_0123456789ABCDEF-0:0-part2 (Samsung 870 QVO tail)
+```
+- **Why**: Crucial BX500 (`/dev/sda`, storage `littlestorage`) flagged failing — DRAM-less QLC with high write amplification + a pending sector. Moved all live guests (CT 130/131/132/133, VM 100/119) onto a new `ssd` LVM-thin pool carved from the empty ~839 GiB tail of the Samsung 870 QVO (`/dev/sde`).
+- **Effect**: Live pool now on the Samsung; Crucial idle but still installed, holding retained `--delete 0` fallback copies. `littlestorage` still enabled (soak); disable + pull later.
+- **Caveat (cross-ref smartd note above)**: attr 202 `FAILING_NOW` on the BX500 is a known firmware false-positive (smartd already configured to ignore it). The migration decision rested on **write amplification + a real pending sector + observed behavior**, not attr 202 alone. Worth re-checking the Crucial's true health before discarding it — it may be usable as scratch.
+- **Full runbook**: [ssd-pool-migration.md](ssd-pool-migration.md)
+- **Standing risk**: `ssd` VG is on a USB disk — may need `vgchange -ay ssd` after a future host reboot.
+
 ### Backups Mount - `/etc/systemd/system/mnt-backups.mount`
 - **Path**: `/mnt/backups` (was /mnt/pve/backups)
 - **Device**: `/dev/sdd1` (UUID: e424b756-df58-41b6-83fd-291525fc6e95)

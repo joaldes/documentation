@@ -25,6 +25,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [samba-smb3-migration.md](infrastructure/samba-smb3-migration.md) | Samba minimum protocol raised to SMB3, LANMAN/NTLMv1 disabled (CT 104) |
 | [url-naming-standard.md](infrastructure/url-naming-standard.md) | Standard for service URLs (split-horizon `.1701.me` + `.home` aliases), env-var patterns, container DNS, NPM/AdGuard conventions |
 | [account-standard.md](infrastructure/account-standard.md) | Service account & credential standard: the `alec`/`[service]admin`/`claudeai` admin triad, unique-password-per-service, Vaultwarden as source of truth |
+| [ssd-pool-migration.md](infrastructure/ssd-pool-migration.md) | Rescued all live guests off the dying Crucial (`littlestorage`) onto a new `ssd` LVM-thin pool on the Samsung 870 QVO; efidisk-online gotcha, QLC-write findings |
 
 ### Services
 

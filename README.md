@@ -31,6 +31,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 
 | Document | Description |
 |----------|-------------|
+| [pbs.md](services/pbs.md) | Proxmox Backup Server (CT 134) — deduplicated guest backups, datastore on sdg2 thick-LVM, nightly job + retention/verify |
 | [urbackup-setup.md](services/urbackup-setup.md) | UrBackup server configuration |
 | [unmanic-config.md](services/unmanic-config.md) | Unmanic transcoding service |
 | [prometheus-config.yaml](services/prometheus-config.yaml) | Prometheus scrape configuration |

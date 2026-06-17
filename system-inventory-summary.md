@@ -1,9 +1,9 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-16 07:00 UTC*
+*Last updated: 2026-06-17 02:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 0.77, 1.73, 2.28 | RAM: 37/62 GB | Uptime: 13 days
+**Shipyard** (192.168.0.151) | CPU: 1.79, 3.95, 6.09 | RAM: 32/62 GB | Uptime: 13 days
 
-**54 services** — 25 LXC containers, 29 Docker stacks, 3 VMs, 11 storage pools
+**54 services** — 25 LXC containers, 29 Docker stacks, 3 VMs, 12 storage pools
 
 ## All Services (54)
 | Name | Type | IP | Port | URL | Status |
@@ -16,7 +16,7 @@
 | cartography | lxc | 192.168.0.229 | - | - | running |
 | claudeai | lxc | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
-| foundry | lxc | 192.168.0.130 | - | - | running |
+| foundry | lxc | 192.168.0.130 | - | - | stopped |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
 | garmin | lxc | 192.168.0.132 | - | - | running |
@@ -87,7 +87,7 @@
 | 121 | scanopy | 192.168.0.219 | - | - | stopped |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
-| 130 | foundry | 192.168.0.130 | - | - | running |
+| 130 | foundry | 192.168.0.130 | - | - | stopped |
 | 131 | cartography | 192.168.0.229 | - | - | running |
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
@@ -132,17 +132,18 @@
 | 106 | WindowsXP | stopped |
 | 119 | WindowsTiny10 | stopped |
 
-## Storage (11)
+## Storage (12)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 7139/10158 | 70% |
+| backups | dir | 7153/10158 | 70% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 901/1006 | 89% |
+| container-backups | dir | 903/1006 | 89% |
 | docker-data | dir | 354/2014 | 17% |
-| littlestorage | lvmthin | 194/1830 | 10% |
-| local | dir | 50/93 | 54% |
+| littlestorage | lvmthin | 195/1830 | 10% |
+| local | dir | 51/93 | 54% |
 | local-lvm | lvmthin | 312/348 | 89% |
 | smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 592/1006 | 58% |
-| smb-hometheater | dir | 17012/29679 | 57% |
+| smb-frigate | dir | 590/1006 | 58% |
+| smb-hometheater | dir | 17015/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |
+| ssd | lvmthin | 48/838 | 5% |

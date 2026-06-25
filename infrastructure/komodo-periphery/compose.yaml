@@ -1,0 +1,21 @@
+# Komodo Periphery agent — codified from the prior bare `docker run` so the
+# apparmor=unconfined fix (stops the /proc ptrace-deny audit flood) survives updates.
+# NOT a Komodo-managed stack (circular — this agent is what Komodo Core manages the host through).
+# Update with: cd /opt/komodo-periphery && docker compose pull && docker compose up -d
+# Do NOT re-run the upstream Komodo periphery installer (it reverts apparmor=unconfined).
+services:
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:latest
+    container_name: komodo-periphery
+    restart: unless-stopped
+    labels:
+      komodo.skip: "true"     # don't let Komodo StopAllContainers kill the agent
+    security_opt:
+      - apparmor=unconfined   # periphery reads other procs' /proc; avoids docker-default ptrace-deny audit flood
+    ports:
+      - "8120:8120"
+    env_file: ./periphery.env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - /mnt/docker:/mnt/docker

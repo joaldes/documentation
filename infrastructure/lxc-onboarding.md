@@ -1,6 +1,6 @@
 # LXC Container Onboarding Guide
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-06-25
 **Proxmox Host**: 192.168.0.151 (Shipyard)
 
 ---
@@ -95,6 +95,35 @@ pct exec <CTID> -- bash -c 'echo -e "APT::Periodic::Update-Package-Lists \"1\";\
 
 ---
 
+### 7. Clear ext4 MMP on Container Volumes
+
+Proxmox formats every guest volume with the ext4 **Multi-Mount Protection (MMP)** feature, which forces a
+**~45-second mount-time stall per filesystem** at boot. With many containers this makes a cold boot /
+power-loss recovery take 15–20+ minutes. MMP only guards against two hosts mounting one filesystem
+(shared/clustered storage) — useless on this single node, pure boot tax. Clear it on every new container.
+
+```bash
+# From the Proxmox host. Requires the volume OFFLINE → stop the container first.
+# Clears mmp on the container's rootfs AND any storage-backed mountpoint disks (mpX).
+CTID=<CTID>
+pct stop $CTID
+for vol in $(pct config $CTID | grep -E '^(rootfs|mp[0-9]+):' \
+            | grep -oE '(pve|local-lvm|ssd):vm-[0-9]+-disk-[0-9]+'); do
+    stor=${vol%%:*}; lv=${vol##*:}
+    case "$stor" in pve|local-lvm) vg=pve;; ssd) vg=ssd;; *) continue;; esac
+    tune2fs -O ^mmp /dev/$vg/$lv && echo "  cleared mmp: /dev/$vg/$lv"
+done
+pct start $CTID
+```
+
+**Why**: removes the ~45s/volume boot stall (a CT restart drops from ~45s to ~3s). Metadata-only, instant,
+reversible (`tune2fs -O mmp` re-adds it). **Recurs**: PVE re-applies `mmp` to any newly created / restored
+/ migrated volume — so this must be run for every new container (and after any `pct restore` or disk move).
+Bind mounts (`mpX: /host/path,...`) are NOT volumes — only storage-backed `vg:vm-N-disk-N` get mmp; VM
+disks are unaffected.
+
+---
+
 ## Quick Onboarding Script
 
 Run this from the Proxmox host to fully onboard a container:
@@ -111,11 +140,11 @@ fi
 echo "=== Onboarding Container $CTID ==="
 
 # 1. Set root password
-echo "[1/5] Setting root password..."
+echo "[1/7] Setting root password..."
 pct exec $CTID -- bash -c 'echo "root:password" | chpasswd'
 
 # 2. Install and enable SSH
-echo "[2/5] Enabling SSH..."
+echo "[2/7] Enabling SSH..."
 pct exec $CTID -- apt-get update -qq
 pct exec $CTID -- apt-get install -y -qq openssh-server
 pct exec $CTID -- sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
@@ -123,12 +152,12 @@ pct exec $CTID -- systemctl enable --now ssh
 pct exec $CTID -- systemctl restart ssh
 
 # 3. Enable unattended-upgrades
-echo "[3/5] Enabling unattended-upgrades..."
+echo "[3/7] Enabling unattended-upgrades..."
 pct exec $CTID -- apt-get install -y -qq unattended-upgrades apt-listchanges
 pct exec $CTID -- bash -c 'echo -e "APT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Unattended-Upgrade \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
 
 # 4. Console auto-login
-echo "[4/5] Enabling console auto-login..."
+echo "[4/7] Enabling console auto-login..."
 pct exec $CTID -- mkdir -p /etc/systemd/system/container-getty@.service.d
 pct exec $CTID -- bash -c 'cat > /etc/systemd/system/container-getty@.service.d/override.conf << EOF
 [Service]
@@ -138,11 +167,11 @@ EOF'
 pct exec $CTID -- systemctl daemon-reload
 
 # 5. Deploy Claude AI SSH key
-echo "[5/6] Deploying Claude AI SSH key..."
+echo "[5/7] Deploying Claude AI SSH key..."
 pct exec $CTID -- bash -c 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && grep -qF "claudeai@claudeai" /root/.ssh/authorized_keys 2>/dev/null || echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6bFl3Ti0W6ZY5zkqgdovFawDDQ/y3YvCGoIrVzDX28OnOCnQWg0H1xcwUB+6jjM51tFtLGXtNzWOu6L0m+G+Q4LLrwo6cDDIb5j2tr0Kse3TE0uJCZ2XEknpoXEDU2ttV+Mk18lwBhIxDDRdA7RggicwX88EY9vj0HqIipUr+SFX/rYkt7ky3t1EQhBvPVRugIXQPplG2+AJA7gdSCNnn1kAEyHgZS5AWR5X+tF6JkFPRkWZqcAEDxJJGEUxuDBIbxUxh7NKWUS7kFIRvrsnOabuK7zykyh8N5ZxO3pvBm+t+a2G1k6lWcz9WzHACwshrs/LVRhw6QE25Ev9LXnoc7HrTv9N9Z5EbrjogNyGnsEP5uQnL0z0b16pzvriWRuj8THBu9yG9Hp2BJluCLDClvX7QLUWezwT36deGrvF44lLBQ7svrYHLh9vPToLZWHDUkM0H6wOBviKv5SbgXzKGqap/EUnXY7UbHoWTRcEtkDcv4xCQl6qPAYH6/SGQSkE= claudeai@claudeai" >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys'
 
 # 6. AppArmor (manual step)
-echo "[6/6] AppArmor..."
+echo "[6/7] AppArmor..."
 if grep -q "lxc.apparmor.profile: unconfined" /etc/pve/lxc/${CTID}.conf 2>/dev/null; then
     echo "  AppArmor already disabled"
 else
@@ -150,6 +179,17 @@ else
     echo "  lxc.apparmor.profile: unconfined"
     echo "  Then restart the container: pct reboot $CTID"
 fi
+
+# 7. Clear ext4 MMP (removes ~45s/volume boot stall) — needs the volume offline
+echo "[7/7] Clearing ext4 MMP on container volume(s)..."
+pct stop $CTID
+for vol in $(pct config $CTID | grep -E '^(rootfs|mp[0-9]+):' \
+            | grep -oE '(pve|local-lvm|ssd):vm-[0-9]+-disk-[0-9]+'); do
+    stor=${vol%%:*}; lv=${vol##*:}
+    case "$stor" in pve|local-lvm) vg=pve;; ssd) vg=ssd;; *) continue;; esac
+    tune2fs -O ^mmp /dev/$vg/$lv >/dev/null 2>&1 && echo "  cleared mmp: /dev/$vg/$lv"
+done
+pct start $CTID
 
 echo ""
 echo "=== Onboarding Complete ==="
@@ -174,6 +214,15 @@ echo "=== Container $CTID Status ==="
 echo -n "AppArmor: "
 grep -q "lxc.apparmor.profile: unconfined" /etc/pve/lxc/${CTID}.conf && echo "DISABLED (good)" || echo "ENABLED (needs fix)"
 
+# MMP (ext4 multi-mount protection — should be CLEARED for fast boot)
+echo -n "MMP: "
+mmp=0
+for vol in $(pct config $CTID | grep -E '^(rootfs|mp[0-9]+):' | grep -oE '(pve|local-lvm|ssd):vm-[0-9]+-disk-[0-9]+'); do
+    s=${vol%%:*}; lv=${vol##*:}; case "$s" in pve|local-lvm) vg=pve;; ssd) vg=ssd;; *) continue;; esac
+    tune2fs -l /dev/$vg/$lv 2>/dev/null | grep -qw mmp && mmp=1
+done
+[ $mmp -eq 0 ] && echo "CLEARED (good)" || echo "PRESENT (needs fix — ~45s/volume boot stall)"
+
 # SSH
 echo -n "SSH: "
 pct exec $CTID -- systemctl is-active ssh 2>/dev/null && echo "" || echo "NOT RUNNING"
@@ -194,6 +243,7 @@ for CTID in $(pct list | tail -n +2 | awk '{print $1}'); do
     if [ "$STATUS" = "running" ]; then
         echo "=== Container $CTID ==="
         grep -q "lxc.apparmor.profile: unconfined" /etc/pve/lxc/${CTID}.conf && echo "  AppArmor: OK" || echo "  AppArmor: NEEDS FIX"
+        mmp=0; for vol in $(pct config $CTID | grep -E '^(rootfs|mp[0-9]+):' | grep -oE '(pve|local-lvm|ssd):vm-[0-9]+-disk-[0-9]+'); do s=${vol%%:*}; lv=${vol##*:}; case "$s" in pve|local-lvm) vg=pve;; ssd) vg=ssd;; *) continue;; esac; tune2fs -l /dev/$vg/$lv 2>/dev/null | grep -qw mmp && mmp=1; done; [ $mmp -eq 0 ] && echo "  MMP: OK" || echo "  MMP: NEEDS FIX"
         pct exec $CTID -- systemctl is-active ssh &>/dev/null && echo "  SSH: OK" || echo "  SSH: NEEDS FIX"
         pct exec $CTID -- dpkg -l unattended-upgrades 2>/dev/null | grep -q "^ii" && echo "  Upgrades: OK" || echo "  Upgrades: NEEDS FIX"
     fi
@@ -266,9 +316,13 @@ When accessing containers, follow this priority:
 4. Test from host: `pct exec $CTID -- ss -tlnp | grep 22`
 
 ### Slow container boot
-1. Check if AppArmor is disabled in config
-2. Look for stuck services: `pct exec $CTID -- systemd-analyze blame`
-3. Common culprits: systemd-logind, motd-news, network-wait
+1. **Check ext4 MMP first** (Step 7) — `~45s` host-side mount stall *per volume* before the container's
+   PID 1 even runs. Symptom: `journalctl -b | grep multi_mount_protect` shows "please wait"; `pve-guests`
+   starts CTs ~45s apart. This is the #1 cause of a 15–20 min cold boot. Clear with `tune2fs -O ^mmp`.
+2. Check if AppArmor is disabled in config
+3. Look for stuck services: `pct exec $CTID -- systemd-analyze blame` (note: this measures *inside* the
+   container — MMP stall happens on the host BEFORE this, so a fast `systemd-analyze` doesn't rule it out)
+4. Common culprits: systemd-logind, motd-news, network-wait
 
 ### Password not working
 1. Reset via pct: `pct exec $CTID -- bash -c 'echo "root:password" | chpasswd'`
@@ -280,6 +334,7 @@ When accessing containers, follow this priority:
 
 | Date | Change |
 |------|--------|
+| 2026-06-25 | Added Step 7 — clear ext4 MMP on container volumes (fixes ~45s/volume cold-boot stall); added MMP to script, audit, and troubleshooting |
 | 2026-02-16 | Added SSH key deployment for Claude AI (CT 124) to onboarding checklist |
 | 2026-01-26 | Initial document created |
 | 2025-12-26 | Standards established (per CLAUDE.md) |

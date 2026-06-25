@@ -1,14 +1,15 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-17 08:00 UTC*
+*Last updated: 2026-06-25 05:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.70, 1.32, 1.49 | RAM: 37/62 GB | Uptime: 14 days
+**Shipyard** (192.168.0.151) | CPU: 6.51, 5.14, 5.69 | RAM: 23/62 GB | Uptime: 0 days
 
-**55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 13 storage pools
+**56 services** — 26 LXC containers, 30 Docker stacks, 3 VMs, 13 storage pools
 
-## All Services (55)
+## All Services (56)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
+| admiring_proskuriakova | docker | 192.168.0.179 | - | - | running |
 | authentik | docker | 192.168.0.179 | 9000 | http://192.168.0.179:9000 | running |
 | bazarr | lxc | 192.168.0.48 | 6767 | http://192.168.0.48:6767 | running |
 | bento-pdf | docker | 192.168.0.179 | 8095 | http://192.168.0.179:8095 | running |
@@ -94,9 +95,10 @@
 | 133 | vpn | 192.168.0.220 | - | - | running |
 | 134 | pbs | 192.168.0.134 | - | - | running |
 
-## Docker Stacks (29) — 192.168.0.179
+## Docker Stacks (30) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
+| admiring_proskuriakova | - | 1/1 | 0 | running | - |
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
 | bento-pdf | 8095 | 1/1 | 0 | running | http://192.168.0.179:8095 |
 | birdnet-go | 8060 | 1/1 | 1 | running | http://192.168.0.179:8060 |
@@ -104,7 +106,7 @@
 | frigate | 5000 | 1/1 | 1 | running | http://192.168.0.179:5000 |
 | grafana | 3001 | 1/1 | 1 | running | http://192.168.0.179:3001 |
 | hometheaterfiles | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
-| immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
+| immich | 2283 | 2/5 | 2 | running | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
 | jobsd | 8077 | 1/1 | 0 | running | http://192.168.0.179:8077 |
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
@@ -137,16 +139,16 @@
 ## Storage (13)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 7136/10158 | 70% |
+| backups | dir | 7229/10158 | 71% |
 | birdnet | dir | 0/228 | 0% |
-| container-backups | dir | 903/1006 | 89% |
-| docker-data | dir | 354/2014 | 17% |
+| container-backups | dir | 905/1006 | 89% |
+| docker-data | dir | 352/2014 | 17% |
 | littlestorage | lvmthin | 195/1830 | 10% |
-| local | dir | 50/93 | 54% |
-| local-lvm | lvmthin | 312/348 | 89% |
-| pbs-homelab | pbs | 0/7110 | 0% |
+| local | dir | 50/93 | 53% |
+| local-lvm | lvmthin | 314/348 | 90% |
+| pbs-homelab | pbs | 156/7110 | 2% |
 | smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 590/1006 | 58% |
-| smb-hometheater | dir | 17097/29679 | 57% |
+| smb-frigate | dir | 501/1006 | 49% |
+| smb-hometheater | dir | 17140/29679 | 57% |
 | smb-pictures | dir | 2405/10158 | 23% |
-| ssd | lvmthin | 183/838 | 21% |
+| ssd | lvmthin | 139/838 | 16% |

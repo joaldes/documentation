@@ -27,6 +27,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [account-standard.md](infrastructure/account-standard.md) | Service account & credential standard: the `alec`/`[service]admin`/`claudeai` admin triad, unique-password-per-service, Vaultwarden as source of truth |
 | [ssd-pool-migration.md](infrastructure/ssd-pool-migration.md) | Rescued all live guests off the dying Crucial (`littlestorage`) onto a new `ssd` LVM-thin pool on the Samsung 870 QVO; efidisk-online gotcha, QLC-write findings |
 | [komodo-periphery/](infrastructure/komodo-periphery/) | Komodo Periphery compose for non-Core hosts (130/131) — `apparmor=unconfined` to stop the `/proc` ptrace audit-log flood; durable deployment template |
+| [claude-cli-shared-store.md](infrastructure/claude-cli-shared-store.md) | `/usr/local/bin/claude` wrapper on CT 124 — runs the CLI as `claudeai` from `/home/claudeai` so the console/SSH/browser/claude-dev all share one conversation store |
 
 ### Services
 

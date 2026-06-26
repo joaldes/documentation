@@ -1,15 +1,16 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-26 08:00 UTC*
+*Last updated: 2026-06-26 18:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.67, 2.27, 4.75 | RAM: 32/62 GB | Uptime: 1 days
+**Shipyard** (192.168.0.151) | CPU: 3.80, 4.03, 4.18 | RAM: 31/62 GB | Uptime: 1 days
 
-**55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 13 storage pools
+**56 services** — 26 LXC containers, 30 Docker stacks, 3 VMs, 13 storage pools
 
-## All Services (55)
+## All Services (56)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
 | authentik | docker | 192.168.0.179 | 9000 | http://192.168.0.179:9000 | running |
+| backups-status | docker | 192.168.0.179 | 8079 | http://192.168.0.179:8079 | running |
 | bazarr | lxc | 192.168.0.48 | 6767 | http://192.168.0.48:6767 | running |
 | bento-pdf | docker | 192.168.0.179 | 8095 | http://192.168.0.179:8095 | running |
 | birdnet-go | docker | 192.168.0.179 | 8060 | http://192.168.0.179:8060 | running |
@@ -94,10 +95,11 @@
 | 133 | vpn | 192.168.0.220 | - | - | running |
 | 134 | pbs | 192.168.0.134 | - | - | running |
 
-## Docker Stacks (29) — 192.168.0.179
+## Docker Stacks (30) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
+| backups-status | 8079 | 1/1 | 0 | running | http://192.168.0.179:8079 |
 | bento-pdf | 8095 | 1/1 | 0 | running | http://192.168.0.179:8095 |
 | birdnet-go | 8060 | 1/1 | 1 | running | http://192.168.0.179:8060 |
 | fragments | 8075 | 2/2 | 0 | running | http://192.168.0.179:8075 |
@@ -137,16 +139,16 @@
 ## Storage (13)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6391/10158 | 62% |
-| birdnet | dir | 0/228 | 0% |
+| backups | dir | 6584/10158 | 64% |
+| birdnet | dir | 0/48 | 0% |
 | container-backups | dir | 905/1006 | 89% |
-| docker-data | dir | 352/2014 | 17% |
+| docker-data | dir | 337/2014 | 16% |
 | littlestorage | lvmthin | 195/1830 | 10% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 315/348 | 90% |
-| pbs-homelab | pbs | 163/7110 | 2% |
+| pbs-homelab | pbs | 179/7110 | 2% |
 | smb-documents | dir | 81/921 | 8% |
-| smb-frigate | dir | 500/1006 | 49% |
-| smb-hometheater | dir | 17153/29679 | 57% |
+| smb-frigate | dir | 498/1006 | 49% |
+| smb-hometheater | dir | 17159/29679 | 57% |
 | smb-pictures | dir | 2577/10158 | 25% |
-| ssd | lvmthin | 140/838 | 16% |
+| ssd | lvmthin | 141/838 | 16% |

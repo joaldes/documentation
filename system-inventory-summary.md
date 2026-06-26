@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-25 06:00 UTC*
+*Last updated: 2026-06-26 08:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 1.92, 1.60, 1.50 | RAM: 27/62 GB | Uptime: 0 days
+**Shipyard** (192.168.0.151) | CPU: 1.67, 2.27, 4.75 | RAM: 32/62 GB | Uptime: 1 days
 
 **55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 13 storage pools
 
@@ -24,7 +24,7 @@
 | homelable | lxc | 192.168.0.218 | - | - | stopped |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | stopped |
 | hometheaterfiles | docker | 192.168.0.179 | 8100 | http://192.168.0.179:8100 | running |
-| immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | running |
+| immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | stopped |
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | jellystat | docker | 192.168.0.179 | 3000 | http://192.168.0.179:3000 | running |
 | jobsd | docker | 192.168.0.179 | 8077 | http://192.168.0.179:8077 | running |
@@ -104,7 +104,7 @@
 | frigate | 5000 | 1/1 | 1 | running | http://192.168.0.179:5000 |
 | grafana | 3001 | 1/1 | 1 | running | http://192.168.0.179:3001 |
 | hometheaterfiles | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
-| immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
+| immich | 2283 | 0/5 | 0 | stopped | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
 | jobsd | 8077 | 1/1 | 0 | running | http://192.168.0.179:8077 |
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
@@ -137,16 +137,16 @@
 ## Storage (13)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 7253/10158 | 71% |
+| backups | dir | 6391/10158 | 62% |
 | birdnet | dir | 0/228 | 0% |
 | container-backups | dir | 905/1006 | 89% |
 | docker-data | dir | 352/2014 | 17% |
 | littlestorage | lvmthin | 195/1830 | 10% |
 | local | dir | 50/93 | 53% |
-| local-lvm | lvmthin | 314/348 | 90% |
-| pbs-homelab | pbs | 156/7110 | 2% |
-| smb-documents | dir | 77/921 | 8% |
-| smb-frigate | dir | 499/1006 | 49% |
-| smb-hometheater | dir | 17140/29679 | 57% |
-| smb-pictures | dir | 2405/10158 | 23% |
-| ssd | lvmthin | 139/838 | 16% |
+| local-lvm | lvmthin | 315/348 | 90% |
+| pbs-homelab | pbs | 163/7110 | 2% |
+| smb-documents | dir | 81/921 | 8% |
+| smb-frigate | dir | 500/1006 | 49% |
+| smb-hometheater | dir | 17153/29679 | 57% |
+| smb-pictures | dir | 2577/10158 | 25% |
+| ssd | lvmthin | 140/838 | 16% |

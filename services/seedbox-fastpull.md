@@ -28,8 +28,15 @@ re-establish. A single TCP stream over the 153 ms link caps ~150 Mbps.
 "Syncthing Ultra<>HomeLab"). Connections now persist (30+ streams). Also raised, on the home
 folder `oih7u-aikvq`: `pullerMaxPendingKiB=262144`, `copiers=8`, `maxConcurrentWrites=8`.
 
-**But:** even fully tuned, Syncthing plateaus at **~20 MiB/s** for a single large file (block-pull
-scheduling + SFTP-like windowing over high latency). That's an architectural ceiling — see benchmark.
+**The real ~20 MiB/s cause (corrected 2026-06-27):** NOT architectural. The **seedbox** Syncthing had a
+configured bandwidth limit `maxSendKbps=20000` (= 19.5 MiB/s) in its global `<options>` *and* on every
+`<device>` (`~/.apps/syncthing/config.xml`); the home side (CT 103) was already `0`. That 20000 KiB/s cap
+is exactly why pulls plateaued at ~20 MiB/s, while `ssh|dd` hit 90 — it bypasses Syncthing, so the cap
+never applied. **Fix:** zero the limits in the seedbox Syncthing UI -> Actions -> Settings -> Connections
+-> Incoming/Outgoing Rate Limit = `0` (and each device's Advanced rate limit). With the cap removed,
+Syncthing itself should run far faster, so **Turbo Pull (below) is now optional, not a necessity** —
+re-measure on the next live pull. (A leftover `<defaults><device>` template on the seedbox still carries
+20000; it is inert and only affects future device additions.)
 
 ## Throughput benchmark (2026-06-26, 4 GiB test file, sequential, encrypted only)
 | Method | Streams | MiB/s |
@@ -40,10 +47,11 @@ scheduling + SFTP-like windowing over high latency). That's an architectural cei
 | `ssh \| dd` | 8 | 59.3 |
 | lftp `pget` (sftp) | 24 | 48.4 |
 | rclone (sftp, multi-thread) | 16 | 38.7 |
-| Syncthing (reference) | 30+ | ~20 |
+| Syncthing (reference, **throttled**) | 30+ | ~20 |
 
-Conclusion: **multi-stream `ssh|dd` ≈ 2× any SFTP client, ≈ 4.5× Syncthing**, and saturates the WAN
-at 16–24 streams. Cipher choice is irrelevant at these speeds.
+Conclusion: **multi-stream `ssh|dd` ≈ 2× any SFTP client**, and saturates the WAN at 16–24 streams.
+Cipher choice is irrelevant at these speeds. NOTE: the Syncthing ~20 row reflects the **rate-limited**
+state (see Problem 1's correction) — un-throttled Syncthing throughput is pending re-measurement.
 
 ## Solution — on-demand "Turbo Pull"
 For an urgent/large file, pull it with parallel `ssh|dd` instead of waiting on Syncthing.

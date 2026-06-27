@@ -951,3 +951,6 @@ The `magazine` template var is non-null AND `magazine.available` is True. Otherw
 
 ### Bookmark card
 Under the **Bookmarks** tab, `id: magazine`, `title: Magazine`, `category: The Curious` (the title is the displayed card name; `category` is the small label above), `url: http://192.168.0.179:8089`. Ordered alphabetically by title.
+
+### Action buttons
+- **Turbo Pull** (Media group) -> http://192.168.0.179:8096/ triggers a fast multi-stream pull of the in-progress seedbox download (~90 MiB/s). Backed by host service fastpull-action.service on CT 128. See seedbox-fastpull.md.

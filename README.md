@@ -57,7 +57,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [photogrammetry/photogrammetry.md](services/photogrammetry/photogrammetry.md) | Photogrammetry automation system — Samsung S10 + ADB + RC + turntable marker rig + HA dashboard (v5.24) |
 | [magazine.md](services/magazine.md) | The Curious — self-writing fun-fact magazine (CT 128, 4-agent Claude pipeline, adversarial fact-check, source archiving, magazine.home:8089) |
 | [vpn.md](services/vpn.md) | Self-hosted WireGuard VPN with deep traffic logging (Zeek + Suricata + Loki/Grafana, CT 133) |
-| [seedbox-fastpull.md](services/seedbox-fastpull.md) | Seedbox Fast-Pull and Syncthing tuning - Ultra.cc to home media sync, port-forward fix, throughput benchmark, Turbo Pull button (CT 128:8096, ~90 MiB/s) |
+| [seedbox-syncthing.md](services/seedbox-syncthing.md) | Seedbox → home Syncthing tuning — Ultra.cc media sync: removed the seedbox rate-limit cap (the real ~20 MiB/s bottleneck), NAT-PMP static port-forward fix, scan-delay fix |
 
 ### Incidents
 

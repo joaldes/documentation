@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-26 18:00 UTC*
+*Last updated: 2026-06-27 07:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 3.80, 4.03, 4.18 | RAM: 31/62 GB | Uptime: 1 days
+**Shipyard** (192.168.0.151) | CPU: 22.43, 17.12, 13.23 | RAM: 33/62 GB | Uptime: 2 days
 
-**56 services** — 26 LXC containers, 30 Docker stacks, 3 VMs, 13 storage pools
+**57 services** — 26 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
 
-## All Services (56)
+## All Services (57)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -41,6 +41,7 @@
 | paperless | docker | 192.168.0.179 | 8010 | http://192.168.0.179:8010 | running |
 | paperless-ai | docker | 192.168.0.179 | 3030 | http://192.168.0.179:3030 | running |
 | pbs | lxc | 192.168.0.134 | - | - | running |
+| profilarr | docker | 192.168.0.179 | 5005 | http://192.168.0.179:5005 | running |
 | prometheus | docker | 192.168.0.179 | 9092 | http://192.168.0.179:9092 | running |
 | pulse | lxc | 192.168.0.175 | 7655 | http://192.168.0.175:7655 | running |
 | radarr | lxc | 192.168.0.42 | 7878 | http://192.168.0.42:7878 | running |
@@ -95,7 +96,7 @@
 | 133 | vpn | 192.168.0.220 | - | - | running |
 | 134 | pbs | 192.168.0.134 | - | - | running |
 
-## Docker Stacks (30) — 192.168.0.179
+## Docker Stacks (31) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
@@ -118,6 +119,7 @@
 | mealie | 9925 | 1/1 | 1 | running | http://192.168.0.179:9925 |
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
+| profilarr | 5005 | 2/2 | 2 | running | http://192.168.0.179:5005 |
 | prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
 | screener | 8087 | 1/1 | 0 | running | http://192.168.0.179:8087 |
@@ -142,13 +144,13 @@
 | backups | dir | 6584/10158 | 64% |
 | birdnet | dir | 0/48 | 0% |
 | container-backups | dir | 905/1006 | 89% |
-| docker-data | dir | 337/2014 | 16% |
+| docker-data | dir | 245/441 | 55% |
 | littlestorage | lvmthin | 195/1830 | 10% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 315/348 | 90% |
-| pbs-homelab | pbs | 179/7110 | 2% |
-| smb-documents | dir | 81/921 | 8% |
-| smb-frigate | dir | 498/1006 | 49% |
-| smb-hometheater | dir | 17159/29679 | 57% |
+| pbs-homelab | pbs | 1231/7110 | 17% |
+| smb-documents | dir | 81/195 | 41% |
+| smb-frigate | dir | 26/589 | 4% |
+| smb-hometheater | dir | 17237/29679 | 58% |
 | smb-pictures | dir | 2577/10158 | 25% |
 | ssd | lvmthin | 141/838 | 16% |

@@ -34,8 +34,9 @@ configured bandwidth limit `maxSendKbps=20000` (= 19.5 MiB/s) in its global `<op
 is exactly why pulls plateaued at ~20 MiB/s, while `ssh|dd` hit 90 — it bypasses Syncthing, so the cap
 never applied. **Fix:** zero the limits in the seedbox Syncthing UI -> Actions -> Settings -> Connections
 -> Incoming/Outgoing Rate Limit = `0` (and each device's Advanced rate limit). With the cap removed,
-Syncthing itself should run far faster, so **Turbo Pull (below) is now optional, not a necessity** —
-re-measure on the next live pull. (A leftover `<defaults><device>` template on the seedbox still carries
+Syncthing now pulls at **~92 MiB/s = full WAN ceiling** (measured 2026-06-26 on a live 56.8 GiB pull;
+ramps 47->92 as the connection warms). It matches raw `ssh|dd`, so **Turbo Pull (below) is now redundant**
+— Syncthing saturates the link on its own; the button/tooling can stay as a fallback but isn't needed. (A leftover `<defaults><device>` template on the seedbox still carries
 20000; it is inert and only affects future device additions.)
 
 ## Throughput benchmark (2026-06-26, 4 GiB test file, sequential, encrypted only)
@@ -47,11 +48,12 @@ re-measure on the next live pull. (A leftover `<defaults><device>` template on t
 | `ssh \| dd` | 8 | 59.3 |
 | lftp `pget` (sftp) | 24 | 48.4 |
 | rclone (sftp, multi-thread) | 16 | 38.7 |
-| Syncthing (reference, **throttled**) | 30+ | ~20 |
+| Syncthing (**throttled** — old cap) | 30+ | ~20 |
+| **Syncthing (cap removed, 2026-06-26)** | 30+ | **~92** (= WAN ceiling) |
 
 Conclusion: **multi-stream `ssh|dd` ≈ 2× any SFTP client**, and saturates the WAN at 16–24 streams.
-Cipher choice is irrelevant at these speeds. NOTE: the Syncthing ~20 row reflects the **rate-limited**
-state (see Problem 1's correction) — un-throttled Syncthing throughput is pending re-measurement.
+Cipher choice is irrelevant at these speeds. NOTE: the Syncthing ~20 row was the **rate-limited** state (see Problem 1's correction); once the
+cap was removed Syncthing itself hit ~92 MiB/s, equal to `ssh|dd` — i.e. the cap was the entire gap.
 
 ## Solution — on-demand "Turbo Pull"
 For an urgent/large file, pull it with parallel `ssh|dd` instead of waiting on Syncthing.

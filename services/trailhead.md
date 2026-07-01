@@ -198,7 +198,7 @@ docker exec trailhead-generator python3 /app/generate.py
 | Direct IP | `http://192.168.0.179:8076` |
 | Sky events page | `http://192.168.0.179:8076/sky` |
 | TV calendar page | `http://192.168.0.179:8076/tv` |
-| Media Requests tracker | `http://192.168.0.179:8076/requests.html` (`https://homepage.1701.me/requests.html`) |
+| Media Requests tracker | `http://trailhead.home/requests.html` (`https://trailhead.1701.me/requests.html`) |
 | Local domain | `http://weather.home` |
 | External domain | `https://home.1701.me` (SSL via NPM, Force SSL enabled) |
 | Health check | `http://192.168.0.179:8076/health` |

@@ -35,6 +35,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 |----------|-------------|
 | [pbs.md](services/pbs.md) | Proxmox Backup Server (CT 134) — deduplicated guest backups, datastore on sdg2 thick-LVM, nightly job + retention/verify |
 | [urbackup-setup.md](services/urbackup-setup.md) | UrBackup server configuration |
+| [arr-stack.md](services/arr-stack.md) | *arr media pipeline — Jellyseerr → Radarr/Sonarr → seedbox (usenet+torrent) → Emby; per-request status, import-blocked failure mode, Request Tracker |
 | [unmanic-config.md](services/unmanic-config.md) | Unmanic transcoding service |
 | [prometheus-config.yaml](services/prometheus-config.yaml) | Prometheus scrape configuration |
 | [homeassistant-mcp-integration.md](services/homeassistant-mcp-integration.md) | Home Assistant MCP integration for Claude |

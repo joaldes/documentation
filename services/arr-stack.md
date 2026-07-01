@@ -131,8 +131,14 @@ live system; nothing is flipped until a deliberate activation step. Emby stays i
 - **Prowlarr is now home** (FlareSolverr for Cloudflare) with 19 indexers = 2 usenet (NZBgeek, Nzb.su)
   + 17 torrent. (16 old torrent trackers are defunct/removed from current Prowlarr.) Radarr/Sonarr added
   as Applications → auto-sync.
-- **Verified end-to-end:** a usenet search through the new stack returned 184 real releases
-  (NZBgeek + Nzb.su) — the pipeline works, not just the config.
+- **Verified end-to-end (2026-07-01):** a real controlled usenet grab flowed all the way through —
+  Prowlarr search → SABnzbd grab → seedbox download → Syncthing home → **Radarr import** → Unmanic
+  hook. The whole last mile works, then reverted to dormant.
+- **⚠ arrs must run as root (`PUID=0`):** Syncthing writes `root:root` files into `processingnzb/`;
+  a uid-1000 container can't move them → import "Permission denied". The live LXC arrs already run as
+  root, so this matches; `fix-ownership.sh` chowns imports back to 1000. (Also: Radarr validates a
+  download-client category exists in SABnzbd before it'll enable — create `radarr-docker`/`tv-sonarr-docker`
+  on the seedbox at activation.)
 - **Dormant safeguards:** both download clients (SABnzbd_ultra.cc + qBittorrent) present but **disabled**
   on **distinct categories** `radarr-docker`/`tv-sonarr-docker`; nothing monitored; no library import;
   `setPermissions=false`; Bazarr providers off. The `fix-ownership.sh`→Unmanic hook + Emby connection

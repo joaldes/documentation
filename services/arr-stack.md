@@ -119,6 +119,29 @@ The **Request Tracker** page correlates all of the above into one status per tit
 - **Available but unused:** Radarr/Sonarr `onManualInteractionRequired` webhook fires on import-blocked
   — the intended hook for future proactive "stuck download" alerts (Request Tracker v2).
 
+## Consolidation — parallel `servarr` stack (deployed DORMANT, 2026-07-01)
+
+The five arr LXCs are being consolidated into **one Komodo-managed Docker stack** on a dedicated LXC.
+Approach: **greenfield parallel deploy** — built + wired + verified, but the existing LXCs remain the
+live system; nothing is flipped until a deliberate activation step. Emby stays its own LXC.
+
+- **CT 135 `servarr` @ 192.168.0.135** — privileged Ubuntu 24.04 LXC, Docker + Komodo Periphery.
+  Stack `/mnt/docker/servarr/compose.yaml` (LinuxServer images, PUID/PGID 1000): prowlarr :9696 ·
+  flaresolverr :8191 · radarr :7878 · sonarr :8989 · bazarr :6767 · jellyseerr :5055.
+- **Prowlarr is now home** (FlareSolverr for Cloudflare) with 19 indexers = 2 usenet (NZBgeek, Nzb.su)
+  + 17 torrent. (16 old torrent trackers are defunct/removed from current Prowlarr.) Radarr/Sonarr added
+  as Applications → auto-sync.
+- **Verified end-to-end:** a usenet search through the new stack returned 184 real releases
+  (NZBgeek + Nzb.su) — the pipeline works, not just the config.
+- **Dormant safeguards:** both download clients (SABnzbd_ultra.cc + qBittorrent) present but **disabled**
+  on **distinct categories** `radarr-docker`/`tv-sonarr-docker`; nothing monitored; no library import;
+  `setPermissions=false`; Bazarr providers off. The `fix-ownership.sh`→Unmanic hook + Emby connection
+  are recreated in the new arrs. Live stack confirmed untouched.
+
+**Left for activation** (separate step): enable clients, library-import, copy Jellyseerr DB (preserve
+requests), repoint NPM/Trailhead/Prometheus/Uptime-Kuma/profilarr, Komodo Core server-registration,
+verify qBit password, then decommission the old LXCs. Full checklist in the plan.
+
 ## Verification
 
 - Requests view: `jellyseerr.1701.me` → Requests.

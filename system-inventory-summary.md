@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-01 04:00 UTC*
+*Last updated: 2026-07-01 05:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 4.49, 3.34, 3.90 | RAM: 34/62 GB | Uptime: 5 days
+**Shipyard** (192.168.0.151) | CPU: 8.76, 13.32, 14.34 | RAM: 34/62 GB | Uptime: 5 days
 
-**57 services** — 26 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
+**58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
 
-## All Services (57)
+## All Services (58)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -49,6 +49,7 @@
 | samba | lxc | 192.168.0.176 | - | - | running |
 | scanopy | lxc | 192.168.0.219 | - | - | stopped |
 | screener | docker | 192.168.0.179 | 8087 | http://192.168.0.179:8087 | running |
+| servarr | lxc | 192.168.0.135 | - | - | running |
 | sftp | docker | 192.168.0.179 | 8070 | http://192.168.0.179:8070 | running |
 | shoplist | docker | 192.168.0.179 | 8086 | http://192.168.0.179:8086 | running |
 | sonarr | lxc | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
@@ -66,7 +67,7 @@
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
-## LXC Containers (26)
+## LXC Containers (27)
 | CT | Name | IP | Port | URL | Status |
 |-----|------------------|----------------|-------|------------------------------|---------|
 | 101 | adguard | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -95,6 +96,7 @@
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
 | 134 | pbs | 192.168.0.134 | - | - | running |
+| 135 | servarr | 192.168.0.135 | - | - | running |
 
 ## Docker Stacks (31) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
@@ -148,9 +150,9 @@
 | littlestorage | lvmthin | 195/1830 | 10% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 318/348 | 91% |
-| pbs-homelab | pbs | 2474/7110 | 34% |
+| pbs-homelab | pbs | 2484/7110 | 34% |
 | smb-documents | dir | 81/491 | 16% |
-| smb-frigate | dir | 352/1510 | 23% |
+| smb-frigate | dir | 356/1510 | 23% |
 | smb-hometheater | dir | 17358/29679 | 58% |
 | smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 323/838 | 38% |
+| ssd | lvmthin | 330/838 | 39% |

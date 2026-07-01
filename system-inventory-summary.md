@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-06-27 07:00 UTC*
+*Last updated: 2026-07-01 04:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 22.43, 17.12, 13.23 | RAM: 33/62 GB | Uptime: 2 days
+**Shipyard** (192.168.0.151) | CPU: 4.49, 3.34, 3.90 | RAM: 34/62 GB | Uptime: 5 days
 
 **57 services** — 26 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
 
@@ -60,7 +60,7 @@
 | trailhead | docker | 192.168.0.179 | 8076 | http://192.168.0.179:8076 | running |
 | unmanic | lxc | 192.168.0.207 | 8888 | http://192.168.0.207:8888 | running |
 | uptimekuma | lxc | 192.168.0.44 | 3001 | http://192.168.0.44:3001 | running |
-| urbackup | lxc | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
+| urbackup | lxc | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | stopped |
 | vaultwarden | docker | 192.168.0.179 | 8092 | http://192.168.0.179:8092 | running |
 | vpn | lxc | 192.168.0.220 | - | - | running |
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
@@ -78,7 +78,7 @@
 | 108 | zwave-js-ui | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 | 109 | homelable | 192.168.0.218 | - | - | stopped |
 | 110 | sonarr | 192.168.0.24 | 8989 | http://192.168.0.24:8989 | running |
-| 111 | urbackup | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | running |
+| 111 | urbackup | 192.168.0.209 | 55414 | http://192.168.0.209:55414 | stopped |
 | 112 | nginxproxymanager | 192.168.0.30 | 81 | http://192.168.0.30:81 | running |
 | 113 | jellyseerr | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | 114 | uptimekuma | 192.168.0.44 | 3001 | http://192.168.0.44:3001 | running |
@@ -141,16 +141,16 @@
 ## Storage (13)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
-| backups | dir | 6584/10158 | 64% |
-| birdnet | dir | 0/48 | 0% |
+| backups | dir | 6739/10158 | 66% |
+| birdnet | dir | 0/294 | 0% |
 | container-backups | dir | 905/1006 | 89% |
-| docker-data | dir | 245/441 | 55% |
+| docker-data | dir | 244/1006 | 24% |
 | littlestorage | lvmthin | 195/1830 | 10% |
 | local | dir | 50/93 | 53% |
-| local-lvm | lvmthin | 315/348 | 90% |
-| pbs-homelab | pbs | 1231/7110 | 17% |
-| smb-documents | dir | 81/195 | 41% |
-| smb-frigate | dir | 26/589 | 4% |
-| smb-hometheater | dir | 17237/29679 | 58% |
-| smb-pictures | dir | 2577/10158 | 25% |
-| ssd | lvmthin | 141/838 | 16% |
+| local-lvm | lvmthin | 318/348 | 91% |
+| pbs-homelab | pbs | 2474/7110 | 34% |
+| smb-documents | dir | 81/491 | 16% |
+| smb-frigate | dir | 352/1510 | 23% |
+| smb-hometheater | dir | 17358/29679 | 58% |
+| smb-pictures | dir | 2571/6046 | 42% |
+| ssd | lvmthin | 323/838 | 38% |

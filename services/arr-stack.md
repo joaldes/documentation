@@ -67,6 +67,24 @@ The download clients run on the seedbox, so the arrs translate seedbox paths to 
 (`/var/lib/{radarr,sonarr}/config.xml`, Jellyseerr `settings.json`, Bazarr `config.yaml`, Emby →
 Dashboard → API Keys) and, for the Request Tracker, in `/mnt/docker/trailhead/.env` on CT 128.
 
+## Storage & mounts
+
+The whole stack shares **one library filesystem** so imports are same-filesystem hardlink/instant-moves
+(no cross-device copies):
+
+- Host `Shipyard` `/mnt/hometheater` = a **mergerfs pool (~29 TB, ~17 TB used)**, bind-mounted into each
+  guest at the same path via LXC `mp` entries — **not** SMB/NFS between containers:
+  - CT 107 Radarr `mp0`, CT 110 Sonarr `mp1`, CT 115 Bazarr `mp0`, CT 102 Emby `mp0`, CT 103 Syncthing `mp0`.
+- **Seedbox → home transport:** Syncthing (CT 103) pulls the seedbox completed dirs into
+  `/mnt/hometheater/processingnzb/` (usenet) and `/mnt/hometheater/processingtorrent/` (torrent).
+  Tuning in `services/seedbox-syncthing.md`.
+- Radarr/Sonarr import from those `processing*` dirs (via the remote path mappings above) into
+  `/mnt/hometheater/Movies` and `/mnt/hometheater/TV Shows`, which Emby serves.
+- (Samba CT 104 also exports `hometheater` for file access; not part of the import path.)
+
+Per-app tuning (quality profiles, naming, media-management/hardlink settings) lives in each app's own
+config, not here — reachable at each service's URL below.
+
 ## Request status / lifecycle
 
 Authoritative source per stage (do NOT trust Jellyseerr's cache for download/import state — it is

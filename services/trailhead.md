@@ -29,6 +29,7 @@ Two-service Docker Compose on Komodo (CT 128, 192.168.0.179:8076). Python genera
 | `template.html` | Jinja2 template for main dashboard |
 | `sky-events.html` | Jinja2 template for `/sky` reference page |
 | `tv-calendar.html` | Jinja2 template for `/tv` TV calendar page |
+| `requests.html` | Jinja2 template for `/requests.html` media-request tracker page |
 | `trailhead.yaml` | Access groups + sidebar tab/card definitions |
 | `.env` | API keys (Ecowitt, NPS, N2YO, etc.) + coordinates |
 | `entrypoint.sh` | Font copy + generator loop (5s trigger check) + regen HTTP server on :8077 |
@@ -78,10 +79,23 @@ Compose file: `/mnt/docker/trailhead/compose.yaml`
 | Curated sky events | Eclipses, conjunctions, supermoons, oppositions | Static |
 | NPS API | Park of the day (name, description, image) | Daily |
 | Sonarr API (local) | Upcoming TV episodes (calendar endpoint, 90-day window) | 5 min |
+| Jellyseerr / Radarr / Sonarr / Emby (local) | Media-request lifecycle tracker (`/requests.html`) — see below | 5 min |
+
+**Media Requests tracker (`/requests.html`, added 2026-06-30):** correlates every Jellyseerr
+request across the pipeline into one status per title. Polls each **authoritative** service (NOT
+Jellyseerr's cache, which is blind to import failures): Jellyseerr owns request/requester/approval;
+Radarr/Sonarr `/api/v3/queue` owns download %/import-state (`trackedDownloadState`); Emby's
+provider-id index owns "actually playable". Join key = `media.externalServiceId` → arr internal id,
+falling back to a `tmdbId→movie` / `tvdbId→series` reverse lookup. Stage ladder: In Emby · Partial
+N/M (TV, per requested season) · ⚠ Import blocked · Importing · Downloading % · Grabbed/Wanted ·
+Pending · ⚠ Not in library (orphan) · No release yet (>72h, informational). Movies match Emby on
+`Tmdb` only; TV on `Tvdb`. Code: `build_all_request_rows()` + `fetch_{jellyseerr,radarr,sonarr,emby}_*`
+in `generate.py`. **v2 TODO:** Telegram alerts via the Radarr/Sonarr `onManualInteractionRequired`
+webhook; Bazarr subtitle status.
 
 ### Generated Output (`/output/` shared volume)
 
-`index.html`, `sky.html`, `tv.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `iss_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
+`index.html`, `sky.html`, `tv.html`, `requests.html`, `temp-chart.png`, `wind-chart.png`, `radar.gif`, `driveway.jpg`, `nps_parks_cache.json`, `iss_cache.json`, `launch_cache.json`, `synopsis_cache.json`, `forecast_cache.json`, `fonts/*.woff2`
 
 ### Quick Commands
 
@@ -184,6 +198,7 @@ docker exec trailhead-generator python3 /app/generate.py
 | Direct IP | `http://192.168.0.179:8076` |
 | Sky events page | `http://192.168.0.179:8076/sky` |
 | TV calendar page | `http://192.168.0.179:8076/tv` |
+| Media Requests tracker | `http://192.168.0.179:8076/requests.html` (`https://homepage.1701.me/requests.html`) |
 | Local domain | `http://weather.home` |
 | External domain | `https://home.1701.me` (SSL via NPM, Force SSL enabled) |
 | Health check | `http://192.168.0.179:8076/health` |
@@ -251,6 +266,13 @@ docker exec trailhead-generator python3 /app/generate.py
 | `N2YO_API_KEY` | N2YO satellite tracking API key | `abc123...` |
 | `SONARR_URL` | Sonarr base URL | `http://192.168.0.24:8989` |
 | `SONARR_API_KEY` | Sonarr API key | `abc123...` |
+| `RADARR_URL` / `RADARR_API_KEY` | Radarr — Media Requests tracker | `http://192.168.0.42:7878` |
+| `JELLYSEERR_URL` / `JELLYSEERR_API_KEY` | Jellyseerr (`X-Api-Key` header) — request list | `http://192.168.0.43:5055` |
+| `EMBY_URL` / `EMBY_API_KEY` | Emby — authoritative "playable" check | `http://192.168.0.13:8096` |
+
+> **Deploy note:** `generate.py`, `requests.html`, and the other templates are **baked into the
+> image** (Dockerfile `COPY`) — changing them needs `docker compose build && up -d`, then
+> `touch /tmp/regen`. Only `trailhead.yaml` / `template.html` / `alerts.json` are bind-mounted (hot).
 
 ### Docker Compose
 

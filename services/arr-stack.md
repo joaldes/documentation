@@ -23,9 +23,11 @@ Tracker** (`services/trailhead.md`).
       │  search indexers (Prowlarr on seedbox) → send to a download client
       ▼
  Seedbox download clients (both ENABLED):
-   • SABnzbd_ultra.cc  — usenet  (primary active path observed)
-   • qBittorrent       — torrent (seedbox 46.232.211.159)
-      │  completed files sync home  → /mnt/hometheater/processingnzb/
+   • SABnzbd_ultra.cc  — usenet  (primary active path observed) → seedbox …/sabnzbd/complete/
+   • qBittorrent       — torrent (seedbox 46.232.211.159)      → seedbox …/qbittorrent/
+      │  seedbox completed dirs synced home + translated by arr remote path mappings:
+      │    …/sabnzbd/complete/  → /mnt/hometheater/processingnzb/
+      │    …/qbittorrent/       → /mnt/hometheater/processingtorrent/
       ▼
  Radarr/Sonarr IMPORT → /mnt/hometheater/Movies  |  /mnt/hometheater/TV Shows
       │                         └─ ⚠ can stall here: "Manual Import required" (see Failure Modes)
@@ -33,7 +35,17 @@ Tracker** (`services/trailhead.md`).
  Emby (CT102)  →  playable   (Bazarr CT115 adds subtitles)
 ```
 
-Seedbox → home sync tuning is documented separately in `services/seedbox-syncthing.md`.
+Both arrs share the same client + mapping config. Seedbox → home sync tuning is documented
+separately in `services/seedbox-syncthing.md`.
+
+### Remote path mappings (Radarr + Sonarr, identical)
+
+The download clients run on the seedbox, so the arrs translate seedbox paths to the local mounts:
+
+| Client host | Seedbox path | Local path |
+|---|---|---|
+| `45.86.221.138` (SABnzbd_ultra.cc) | `/home/bigalpha/downloads/sabnzbd/complete/` | `/mnt/hometheater/processingnzb/` |
+| `46.232.211.159` (qBittorrent) | `/home/bigalpha/downloads/qbittorrent/` | `/mnt/hometheater/processingtorrent/` |
 
 ## Components
 
@@ -46,7 +58,7 @@ Seedbox → home sync tuning is documented separately in `services/seedbox-synct
 | Media server | Emby | 102 | `192.168.0.13:8096` · `emby.1701.me` | library on `/mnt/hometheater` (~17 TB) |
 | Indexers | Prowlarr | (seedbox) | `https://bigalpha.beryl.usbx.me/prowlarr/…` | proxied into Radarr/Sonarr as per-tracker indexers |
 | Download (usenet) | SABnzbd_ultra.cc | (seedbox) | `45.86.221.138:17357` | **enabled**, active path |
-| Download (torrent) | qBittorrent | (seedbox) | `46.232.211.159:17391` | enabled; categories `movieCategory` / `tvCategory` |
+| Download (torrent) | qBittorrent | (seedbox) | `46.232.211.159:17391` | enabled; categories `radarr` / `tv-sonarr` |
 | Status dashboard | Request Tracker | 128 | `trailhead.1701.me/requests.html` | see `services/trailhead.md` |
 
 > There is also a **disabled** local SABnzbd (`192.168.0.81:7777`) in the config — legacy, not used.
@@ -82,8 +94,10 @@ The **Request Tracker** page correlates all of the above into one status per tit
 
 ## Notifications (existing)
 
-- **Sonarr → Node-RED / Home Assistant** webhook (onGrab…onImport) — the one push integration wired.
-- Radarr/Sonarr → Emby library sync on import; Telegram on both.
+- **Sonarr → Node-RED** ("Webhook to Node Red", onGrab…onImport) — the one webhook push wired;
+  Radarr has **no** webhook.
+- Both arrs: **Emby/Jellyfin** library sync (MediaBrowser, on grab+import), **Telegram** (on import),
+  and a **Custom Script** (post-import file-ownership fix).
 - **Available but unused:** Radarr/Sonarr `onManualInteractionRequired` webhook fires on import-blocked
   — the intended hook for future proactive "stuck download" alerts (Request Tracker v2).
 

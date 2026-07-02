@@ -184,3 +184,17 @@ postgres:
 **Risk**: On crash, up to 0.5s of transactions may be lost. Acceptable for stats/management DBs.
 
 **Rollback**: Backup files exist at *.bak-YYYYMMDD
+
+### PBS backup scope + frigate config relocation (2026-07-01/02)
+```
+/usr/local/bin/pbs-fileshares-backup.sh   # + docker.pxar:/mnt/docker
+/etc/komodo/stacks/frigate/compose.yaml   # /mnt/frigate/config → /mnt/docker/frigate/config (CT128)
+```
+- **Why**: `/mnt/docker` (245G of app state incl. all stack DBs) had no backup; Frigate's 64M config
+  (camera setup, events DB) lived on the otherwise-ephemeral 1.5T footage share.
+- **Effect**: Nightly 02:48 fileshares backup now covers pictures+documents+docker; frigate config
+  relocated into `/mnt/docker/frigate/config` (compose volume edit + container recreate,
+  3-agent-reviewed) so it rides in `docker.pxar` — `/mnt/frigate` is now 100% disposable footage.
+  One-time 245G read absorbed in a 39-min nightly; steady-state back to minutes (metadata mode).
+- **Also (2026-06-30)**: guest-job prune ACL fixed — `DatastorePowerUser` on `pve@pbs` + token
+  (`DatastorePrune` is not a valid role name in this PBS version).

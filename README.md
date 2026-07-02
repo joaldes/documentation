@@ -33,7 +33,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 
 | Document | Description |
 |----------|-------------|
-| [pbs.md](services/pbs.md) | Proxmox Backup Server (CT 134) — deduplicated guest backups, datastore on sdg2 thick-LVM, nightly job + retention/verify |
+| [pbs.md](services/pbs.md) | Proxmox Backup Server (CT 134) — nightly guest backups (04:00) + host fileshares backups (02:48: pictures/documents/docker), retention/verify, status page :8079 |
 | [urbackup-setup.md](services/urbackup-setup.md) | UrBackup server configuration |
 | [arr-stack.md](services/arr-stack.md) | *arr media pipeline — Jellyseerr → Radarr/Sonarr → seedbox (usenet+torrent) → Emby; per-request status, import-blocked failure mode, Request Tracker |
 | [unmanic-config.md](services/unmanic-config.md) | Unmanic transcoding service |

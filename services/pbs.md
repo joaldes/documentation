@@ -45,11 +45,15 @@ same location) is known and accepted.
 ## Fileshares backup (02:48) — host file-level
 - **Timer:** `pbs-backup-fileshares.timer` (host) → wrapper **`/usr/local/bin/pbs-fileshares-backup.sh`**.
 - **Command:** `proxmox-backup-client backup pictures.pxar:/mnt/pictures documents.pxar:/mnt/documents
-  docker.pxar:/mnt/docker --ns fileshares --backup-id fileshares --change-detection-mode=metadata --skip-lost-and-found`
+  docker.pxar:/mnt/docker --ns fileshares --backup-id fileshares --change-detection-mode=metadata --skip-lost-and-found --exclude /frigate/`
+- **Scope: pictures + documents + docker (excluding `/mnt/docker/frigate`).**
 - **Scope history:** pictures+documents from 2026-06-26; **docker added 2026-07-01** (245G actual;
-  includes the regenerable 188G map data on purpose — Overpass rebuild takes weeks). **Frigate's
-  config lives INSIDE this scope at `/mnt/docker/frigate/config` since 2026-07-02** (relocated off
-  the ephemeral footage share; `/mnt/frigate` is now 100% disposable recordings/clips, not backed up).
+  includes the regenerable 188G map data on purpose — Overpass rebuild takes weeks). Frigate config was
+  briefly folded into docker (relocated to `/mnt/docker/frigate/config` 2026-07-02) then **excluded again
+  the same day per user** via `--exclude /frigate/` — camera config/event-DB is regenerable, not worth
+  backing up; `/mnt/frigate` footage was never backed up. A `music` LV (rescued iTunes library) was also
+  briefly slated for backup then **removed per user 2026-07-02 — music is NOT backed up** (lives only on
+  the sdd LV; accepted). `/mnt/birdnet` real data is under `/mnt/docker/birdnet-go` so it rides in docker.pxar.
 - **`metadata` change-detection = fast nightlies:** only changed files are re-read (2.6T initial run
   ~11h; steady-state nightlies run in minutes — 71 s on 2026-07-01).
 - **Status surfacing:** wrapper writes `/mnt/docker/backups-status/fileshares.json` → served at

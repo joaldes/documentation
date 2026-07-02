@@ -79,7 +79,7 @@ Compose file: `/mnt/docker/trailhead/compose.yaml`
 | Curated sky events | Eclipses, conjunctions, supermoons, oppositions | Static |
 | NPS API | Park of the day (name, description, image) | Daily |
 | Sonarr API (local) | Upcoming TV episodes (calendar endpoint, 90-day window) | 5 min |
-| Jellyseerr / Radarr / Sonarr / Emby (local) | Media-request lifecycle tracker (`/requests.html`) — see below | 5 min |
+| Jellyseerr / Radarr / Sonarr / Emby / Syncthing / Unmanic (local) | Media-request lifecycle tracker (`/requests.html`) — see below | 5 min |
 
 **Media Requests tracker (`/requests.html`, added 2026-06-30):** correlates every Jellyseerr
 request across the pipeline into one status per title. Polls each **authoritative** service (NOT
@@ -87,11 +87,19 @@ Jellyseerr's cache, which is blind to import failures): Jellyseerr owns request/
 Radarr/Sonarr `/api/v3/queue` owns download %/import-state (`trackedDownloadState`); Emby's
 provider-id index owns "actually playable". Join key = `media.externalServiceId` → arr internal id,
 falling back to a `tmdbId→movie` / `tvdbId→series` reverse lookup. Stage ladder: In Emby · Partial
-N/M (TV, per requested season) · ⚠ Import blocked · Importing · Downloading % · Grabbed/Wanted ·
-Pending · ⚠ Not in library (orphan) · No release yet (>72h, informational). Movies match Emby on
-`Tmdb` only; TV on `Tvdb`. Code: `build_all_request_rows()` + `fetch_{jellyseerr,radarr,sonarr,emby}_*`
-in `generate.py`. **v2 TODO:** Telegram alerts via the Radarr/Sonarr `onManualInteractionRequired`
-webhook; Bazarr subtitle status.
+N/M (TV, per requested season) · ⚠ Import blocked · **Syncing home** · Importing · Downloading % ·
+**Transcoding** · Grabbed/Wanted · Pending · ⚠ Not in library (orphan) · No release yet (>72h). Movies
+match Emby on `Tmdb` only; TV on `Tvdb`. Code: `build_all_request_rows()` +
+`fetch_{jellyseerr,radarr,sonarr,emby,syncthing,unmanic}_*` in `generate.py`.
+
+**v2 pipeline observability (added 2026-07-01):** the seedbox→home hop and transcode step are now
+distinct stages, closing the blind spot where a *still-syncing* download looked identical to a
+*genuinely stuck* one. **Syncthing** (CT103 `:8384`, `/rest/db/need`) → if a completed item's release
+folder is still being pulled home → **"Syncing home"**; only if Syncthing is idle and the arr still
+can't import → **"⚠ Import blocked"** (actionable). **Unmanic** (`:8888`, `/workers/status` +
+`/pending/tasks`) → an imported movie whose folder Unmanic is working → **"Transcoding"**. Both wrapped
+in `safe_fetch` (a dead service just skips that disambiguation). **v2 TODO still open:** Telegram
+alerts (stuck vs syncing), per-file sync % bars, Bazarr subtitle status.
 
 ### Generated Output (`/output/` shared volume)
 

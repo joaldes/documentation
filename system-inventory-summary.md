@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-01 20:00 UTC*
+*Last updated: 2026-07-02 19:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 2.14, 1.60, 1.75 | RAM: 37/62 GB | Uptime: 6 days
+**Shipyard** (192.168.0.151) | CPU: 12.45, 10.78, 8.21 | RAM: 36/62 GB | Uptime: 7 days
 
 **58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
 
@@ -9,7 +9,7 @@
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
-| authentik | docker | 192.168.0.179 | 9000 | http://192.168.0.179:9000 | running |
+| authentik | docker | 192.168.0.179 | 9000 | http://192.168.0.179:9000 | stopped |
 | backups-status | docker | 192.168.0.179 | 8079 | http://192.168.0.179:8079 | running |
 | bazarr | lxc | 192.168.0.48 | 6767 | http://192.168.0.48:6767 | running |
 | bento-pdf | docker | 192.168.0.179 | 8095 | http://192.168.0.179:8095 | running |
@@ -101,7 +101,7 @@
 ## Docker Stacks (31) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
-| authentik | 9000 | 4/4 | 4 | running | http://192.168.0.179:9000 |
+| authentik | 9000 | 0/4 | 0 | stopped | http://192.168.0.179:9000 |
 | backups-status | 8079 | 1/1 | 0 | running | http://192.168.0.179:8079 |
 | bento-pdf | 8095 | 1/1 | 0 | running | http://192.168.0.179:8095 |
 | birdnet-go | 8060 | 1/1 | 1 | running | http://192.168.0.179:8060 |
@@ -111,7 +111,7 @@
 | hometheaterfiles | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
 | immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
-| jobsd | 8077 | 1/1 | 0 | running | http://192.168.0.179:8077 |
+| jobsd | 8077 | 1/1 | 1 | running | http://192.168.0.179:8077 |
 | karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
 | komodo | 9120 | 7/7 | 2 | running | http://192.168.0.179:9120 |
 | lldap | 17170 | 1/1 | 1 | running | http://192.168.0.179:17170 |
@@ -122,7 +122,7 @@
 | paperless | 8010 | 5/5 | 3 | running | http://192.168.0.179:8010 |
 | paperless-ai | 3030 | 1/1 | 1 | running | http://192.168.0.179:3030 |
 | profilarr | 5005 | 2/2 | 2 | running | http://192.168.0.179:5005 |
-| prometheus | 9092 | 5/5 | 2 | running | http://192.168.0.179:9092 |
+| prometheus | 9092 | 5/5 | 3 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
 | screener | 8087 | 1/1 | 0 | running | http://192.168.0.179:8087 |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
@@ -146,13 +146,13 @@
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
 | container-backups | dir | 905/1006 | 89% |
-| docker-data | dir | 244/1006 | 24% |
+| docker-data | dir | 245/1006 | 24% |
 | littlestorage | lvmthin | 195/1830 | 10% |
 | local | dir | 50/93 | 53% |
-| local-lvm | lvmthin | 318/348 | 91% |
-| pbs-homelab | pbs | 3024/7110 | 42% |
+| local-lvm | lvmthin | 319/348 | 91% |
+| pbs-homelab | pbs | 3176/7110 | 44% |
 | smb-documents | dir | 81/491 | 16% |
-| smb-frigate | dir | 408/1510 | 27% |
-| smb-hometheater | dir | 17358/29679 | 58% |
+| smb-frigate | dir | 489/1510 | 32% |
+| smb-hometheater | dir | 17369/29679 | 58% |
 | smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 333/838 | 39% |
+| ssd | lvmthin | 335/838 | 39% |

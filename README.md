@@ -78,6 +78,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-04-16-lizard-tank-overheat.md](incidents/2026-04-16-lizard-tank-overheat.md) | Lizard tank aux heat stuck ON 5hrs — old NR flow binary sensor gate blocked turn-off |
 | [2026-05-01-ha-unreachable-claude-ai-overload.md](incidents/2026-05-01-ha-unreachable-claude-ai-overload.md) | HA unreachable 55min — Claude AI CT overload starved Proxmox host, stalled HA vCPU, missed DHCP renewal |
 | [2026-06-24-shipyard-powerloss-boot-failure.md](incidents/2026-06-24-shipyard-powerloss-boot-failure.md) | Power outage → emergency mode (fstab missing `nofail`); enclosure reattach + `nofail`/mergerfs hardening, GPU render-only fix, PBS datastore restored |
+| [2026-07-03-runaway-grep-disk-io.md](incidents/2026-07-03-runaway-grep-disk-io.md) | Stray `grep -r frigate/config /` in CT 124 crawled all media shares for 28h, pinning `sdd` at 81% util (~142 MB/s reads); killed the process → dropped to ~5% |
 
 ### Troubleshoot
 

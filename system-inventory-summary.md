@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-02 19:00 UTC*
+*Last updated: 2026-07-07 09:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 12.45, 10.78, 8.21 | RAM: 36/62 GB | Uptime: 7 days
+**Shipyard** (192.168.0.151) | CPU: 2.54, 4.34, 4.93 | RAM: 34/62 GB | Uptime: 0 days
 
 **58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
 
@@ -145,14 +145,14 @@
 |-----------------|---------|---------------|--------|
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
-| container-backups | dir | 905/1006 | 89% |
-| docker-data | dir | 245/1006 | 24% |
-| littlestorage | lvmthin | 195/1830 | 10% |
+| container-backups | dir | 356/1006 | 35% |
+| docker-data | dir | 246/1006 | 24% |
+| littlestorage | lvmthin | 0/0 | 0% |
 | local | dir | 50/93 | 53% |
-| local-lvm | lvmthin | 319/348 | 91% |
-| pbs-homelab | pbs | 3176/7110 | 44% |
+| local-lvm | lvmthin | 123/348 | 35% |
+| pbs-homelab | pbs | 3194/7110 | 44% |
 | smb-documents | dir | 81/491 | 16% |
-| smb-frigate | dir | 489/1510 | 32% |
-| smb-hometheater | dir | 17369/29679 | 58% |
+| smb-frigate | dir | 590/1510 | 39% |
+| smb-hometheater | dir | 17459/29679 | 58% |
 | smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 335/838 | 39% |
+| ssd | lvmthin | 264/1740 | 15% |

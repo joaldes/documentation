@@ -12,6 +12,9 @@ Custom configurations and changes to Shipyard (192.168.0.151).
 ```
 - **Why**: Crucial BX500 SSDs have firmware bug causing false "FAILING_NOW" on attribute 202 (Percent_Lifetime_Remain)
 - **Effect**: Ignores bogus lifetime counter, still monitors real health attributes
+- ⚠ **STALE (2026-07-07)**: the Crucial BX500 was pulled in the Micron swap and `/dev/sda` is now the
+  **Micron 5300**. This line now suppresses attr-202 on the healthy Micron (masking a real wear signal) →
+  **slated for removal** (deferred cleanup, docs-only pass). See [ssd-pool-migration.md](ssd-pool-migration.md).
 
 ### rsyslog - `/etc/rsyslog.d/10-filter-acpi-rucc.conf`
 ```
@@ -29,6 +32,9 @@ exclude-path: /var/lib/docker /var/log/journal
 - **Effect**: Temp files go directly to backup drive
 
 ### LVM storage — `ssd` pool added, live guests migrated off Crucial (2026-06-16)
+> ⚠ **SUPERSEDED 2026-07-07** by the Micron swap — VG `ssd` is now the internal **Micron 5300** (`/dev/sda`),
+> not the Samsung QVO tail. The QVO is now `ssd_old` (rollback). Kept below for history. See the
+> 2026-07-07 entry in the Change Log and [ssd-pool-migration.md](ssd-pool-migration.md).
 ```
 lvmthin: ssd
 	thinpool data
@@ -69,6 +75,19 @@ All LXC containers have:
 
 ## Change Log
 
+### SSD swap — guest tier onto internal Micron 5300 (2026-07-07)
+- **Why**: The June stopgap left the live guest tier on QLC-over-USB (Samsung 870 QVO — fragile enumeration,
+  ~1.6 yr projected life) and the boot NVMe (`local-lvm`) was ~97 % full.
+- **Effect**: New **Micron 5300 MAX 1.92 TB** (TLC + DRAM + PLP) in the internal SATA bay → `/dev/sda`, VG
+  `ssd`, thin pool `data`, now hosting **all** guest volumes (~24 LXC roots + VM 100/119 + Unmanic `/cache`).
+  ~20 LXC roots moved off the NVMe → **97 % → 35 %**. Dying **Crucial BX500** pulled (VG `littlestorage`
+  gone). Samsung QVO demoted to VG **`ssd_old`** (rollback, 7-day soak). Zero data loss. The window's cold
+  power-off doubled as the sdd→`data` cold-reboot acceptance test — **PASS** (all 6 `data` mounts by UUID).
+  **Not moved (stay on NVMe):** `pve/root`+`swap` and CT128 Komodo (busiest random-write overlay).
+- **Deferred cleanup**: after the soak (~2026-07-14) `vgremove ssd_old`; remove the now-misdirected smartd
+  `/dev/sda -a -I 202` line; `systemctl mask openipmi.service`.
+- **Full runbook**: [ssd-pool-migration.md](ssd-pool-migration.md)
+
 ### 2026-01-09
 - Disabled USB autosuspend for Coral TPU (18d1:9302) via udev rule
 - Reason: Periodic resets were causing system hangs
@@ -94,28 +113,41 @@ All LXC containers have:
 
 ## Storage Layout
 
+> ⚠ **Device letters are NOT stable across reboots** — all LVM VGs and `/mnt` mounts assemble by UUID.
+> The `sdX` labels below are the current (2026-07-07) enumeration; treat them as illustrative, not fixed.
+
 ```
 /mnt/
-├── backups           # sdd1 - Proxmox backups
-├── docker            # LVM on sda - Container docker data
-├── documents         # sde4 - Shared documents (1TB)
-├── frigate           # sde1 - Frigate NVR data
+├── backups           # sdf1        - Proxmox vzdump backups (ext4)
+├── birdnet           # data VG LV  - /dev/mapper/data-birdnet
+├── container-backups # sdd1        - LXC backups on the Samsung QVO (ext4)
+├── docker            # data VG LV  - /dev/mapper/data-docker (container app data)
+├── documents         # data VG LV  - /dev/mapper/data-documents
+├── frigate           # data VG LV  - /dev/mapper/data-frigate (NVR footage, disposable)
 ├── hometheater       # mergerfs (sdb + sdc)
-├── hometheater-disk1 # sdb - 14.6TB
-├── hometheater-disk2 # sdc - 14.6TB
-└── pictures          # sde2 - Photo storage
+├── hometheater-disk1 # sdb         - 14.6TB
+├── hometheater-disk2 # sdc         - 14.6TB
+├── music             # data VG LV  - /dev/mapper/data-music
+└── pictures          # data VG LV  - /dev/mapper/data-pictures
 ```
+Guest disks (LXC roots + VM 100/119 + Unmanic `/cache`) live on VG **`ssd`** (Micron 5300, `/dev/sda`).
+Host OS (`pve/root`+`swap`) and CT128 Komodo stay on the boot NVMe (`nvme0n1`, `pve`/local-lvm).
 
 ## Disks
 
+*Current (2026-07-07) enumeration — letters shuffle across reboots; VGs are UUID-assembled.*
+
 | Device | Size | Label/Purpose | Notes |
 |--------|------|---------------|-------|
-| nvme0n1 | 500GB | OS/PVE root | Boot drive |
-| sda | 2TB | littlestorage LVM | BX500 - ignore SMART 202 |
-| sdb | 14.6TB | hometheater-disk1 | mergerfs member |
-| sdc | 14.6TB | hometheater-disk2 | mergerfs member |
-| sdd | 2TB | proxmox-backups | Backup storage |
-| sde | 2TB | Multi-partition | frigate/pictures/docker/docs |
+| nvme0n1 | 477GB | `pve` — OS/PVE root + local-lvm | Kingston; boot drive (~35% after guest-tier move) |
+| sda | 1.75TB | `ssd` VG — guest tier | **Micron 5300 MAX**, internal SATA (TLC+DRAM+PLP) |
+| sdb | 14.6TB | hometheater-disk1 | Seagate ST16000NM; mergerfs member |
+| sdc | 14.6TB | hometheater-disk2 | Seagate ST16000NM; mergerfs member |
+| sdd | 1.8TB | `ssd_old` VG (`sdd2`) + container-backups (`sdd1`) | Samsung 870 QVO (USB); swap rollback, 7-day soak |
+| sde | 18.2TB | `data` VG — all fileshares | Seagate ST20000NT (frigate/pictures/docker/documents/birdnet/music) |
+| sdf | 18.2TB | `pbs` VG (`sdf2`) + vzdump backups (`sdf1`) | Seagate ST20000NE |
+
+*Retired 2026-07-07: Crucial BX500 (was `littlestorage`) physically pulled to free the internal SATA bay.*
 
 ---
 

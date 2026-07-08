@@ -1,6 +1,6 @@
 # TTS on foundry — Pocket TTS · Kokoro · XTTS-v2 · Voice Studio (+ Athena/Majel pipeline)
 
-**Last Updated**: 2026-06-15
+**Last Updated**: 2026-07-07
 **Related Systems**: CT 130 "foundry" (192.168.0.130) — three standalone CPU TTS engines fronted by a standalone Voice Studio gateway (:8010),
 Komodo-managed, Trailhead (AI - Foundry group), documents samba (tts)
 
@@ -306,6 +306,27 @@ dropdown offers **both** the `/voices` clone references (apples-to-apples with P
 built-in studio speakers (`builtin/<Name>`), plus a working **language** selector (XTTS's 17 languages).
 Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
 standalone container; the studio just calls its `/api/tts`.
+
+## Announcer — play Voice Studio voices on the Chromecast (2026-07-07)
+A small **`announcer`** service casts Voice Studio audio to the Chromecast Audio **"Home Announcer"**
+(`192.168.0.206`). Compose stack at `/mnt/docker/announcer/` on CT 130, **host-networked**, FastAPI at
+**`http://192.168.0.130:8011`**.
+- **From the Voice Studio UI:** every generated clip now has a **📢 cast** button (beside 💾 save) that
+  POSTs the held audio blob to `announcer:/cast_upload` → plays it on Home Announcer (casts the exact
+  audio you auditioned, no regeneration). Use the **HTTP** studio URL (`192.168.0.130:8010` /
+  `voice-studio.home`) — an HTTPS page (`voice-studio.1701.me`) blocks the cross-origin HTTP cast call
+  (mixed content).
+- **From anything (curl/HA):** `GET /say?text=...&voice=athena/athena_calm.wav&engine=pocket&volume=0.5`
+  regenerates via Voice Studio, serves the WAV, casts it. `POST /cast_upload` (multipart `audio` +
+  `volume`) casts an existing clip. Temp WAVs auto-pruned after 10 min.
+- **How it works:** the CCA plays a *URL it fetches itself*, so the announcer serves the WAV at
+  `http://192.168.0.130:8011/audio/<id>.wav` (host-reachable) and drives playback via **pychromecast**
+  (`get_chromecasts(known_hosts=["192.168.0.206"])`, retried — mDNS is lossy). CORS `*` on the announcer
+  so the UI button can call it.
+- **Files:** `/mnt/docker/announcer/{app.py,Dockerfile,requirements.txt,compose.yaml}`; UI button
+  (`castClip`) in `pocket-tts/studio/index.html` (bind-mounted, rebuild-free; `.bak` kept). Announcer
+  app edits need `docker compose up -d --build`.
+- Chromecast provisioning itself (orphaned CCA → local `eureka` API): `troubleshoot/chromecast-audio-provisioning.md`.
 
 ## History
 

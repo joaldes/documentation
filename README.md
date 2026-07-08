@@ -85,6 +85,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | Document | Description |
 |----------|-------------|
 | [lxc-usb-passthrough.md](troubleshoot/lxc-usb-passthrough.md) | LXC USB passthrough — stable device mapping (avoid `dev0:` bus/device pins; use `lxc.mount.entry` with `/dev/serial/by-id`) |
+| [chromecast-audio-provisioning.md](troubleshoot/chromecast-audio-provisioning.md) | Provision an orphaned Chromecast Audio without Google Home via the local `eureka` API (writes on HTTPS :8443, skip scan, RSA-encrypt password); Windows-can't-hold-hotspot + 403 gotchas |
 
 ---
 

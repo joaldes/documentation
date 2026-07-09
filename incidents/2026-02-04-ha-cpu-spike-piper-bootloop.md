@@ -185,7 +185,10 @@ The initial disk I/O burst (1.3MB/s writes vs 250KB/s baseline) was caused by Do
 ### Immediate
 - [x] Piper add-on disabled; CPU restored to baseline
 - [ ] Check Piper logs to understand the crash reason
-- [ ] Consider reinstalling Piper if TTS is needed
+- [x] ~~Consider reinstalling Piper if TTS is needed~~ **Closed won't-do 2026-07-07**: HA Assist-pipeline
+  review concluded Piper/Whisper/Wyoming aren't needed (no mic hardware; pipelines use cloud TTS, and
+  local voice is served by the foundry TTS stack — see `services/tts.md` § Home Assistant integration).
+  Piper remains installed-but-stopped.
 
 ### Short-term
 - [ ] Review all add-ons with `state: error` (SQLite Web, openWakeWord) and either fix or remove them

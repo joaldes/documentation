@@ -1,8 +1,8 @@
 # TTS on foundry — Pocket TTS · Kokoro · XTTS-v2 · Voice Studio (+ Athena/Majel pipeline)
 
-**Last Updated**: 2026-07-07
+**Last Updated**: 2026-07-09
 **Related Systems**: CT 130 "foundry" (192.168.0.130) — three standalone CPU TTS engines fronted by a standalone Voice Studio gateway (:8010),
-Komodo-managed, Trailhead (AI - Foundry group), documents samba (tts)
+Komodo-managed, Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements)
 
 ## Engines at a glance
 | Engine | Port | Role | Cloning | Speed (CPU) |
@@ -23,8 +23,8 @@ XTTS `:8002/`, Kokoro `:8880/web/`. **(Split from the fused pocket-tts container
 ## Deployment / source of truth
 - All three stacks are **Komodo-managed, "Files on Host"** at `/mnt/docker/<name>/` (registered 2026-06-15
   on the foundry server) — same as every other homelab stack; manage via the Komodo UI. **No git** (no
-  homelab stack uses it; durability rides on system backups — note `/mnt/docker` backup coverage is a
-  known homelab-wide gap, tracked separately).
+  homelab stack uses it; durability rides on system backups — the former `/mnt/docker` backup gap was
+  **closed 2026-07-01**: the nightly PBS fileshares job now backs up `/mnt/docker` as `docker.pxar`).
 - **One image, two containers via a `ROLE` env (split 2026-06-15).** The single image
   `pocket-tts-pocket-tts:latest` runs as **`pocket-engine`** (`ROLE=engine`, `/mnt/docker/pocket-tts/`,
   :8001 — loads the model, serves the native Pocket UI + `/generate` + `/tts`) and **`voice-studio`**
@@ -327,9 +327,64 @@ A small **`announcer`** service casts Voice Studio audio to the Chromecast Audio
   (`castClip`) in `pocket-tts/studio/index.html` (bind-mounted, rebuild-free; `.bak` kept). Announcer
   app edits need `docker compose up -d --build`.
 - Chromecast provisioning itself (orphaned CCA → local `eureka` API): `troubleshoot/chromecast-audio-provisioning.md`.
+- **Trailhead card** "Announcer (cast)" (AI - Foundry tab, Voice group — same group as the engine cards)
+  → `:8011/docs` (added 2026-07-09 — the root path is API-only/404, Swagger is the landing page).
+
+## Home Assistant integration
+Where HA voice stands relative to the local TTS stack — written 2026-07-09, per the HA voice sessions of
+2026-07-05→08 plus a live check:
+
+**HA voice today is fully cloud.** Both Assist pipelines ("Home Assistant Cloud" and the preferred
+"Concierge") use Nabu Casa cloud STT/TTS (`stt./tts.home_assistant_cloud`, voices JennyNeural/SaraNeural).
+Nothing in HA is wired to the foundry engines yet.
+
+**Deliberate non-goals (decided 2026-07-07):** Wyoming / openWakeWord / Piper / Whisper are **not needed**
+— there is no microphone/satellite hardware, so wake-word and local STT are moot. The `core_piper` and
+`core_openwakeword` add-ons are installed but **stopped** (dead weight from past experiments; Piper has
+been off since the 2026-02-04 boot-loop incident — that incident's "reinstall if needed" TODO is hereby
+closed as won't-do). Whisper was never installed. If hands-free interaction is ever wanted, the path is an
+HA Voice Preview Edition puck (~$60) or a DIY ESP32-S3 satellite — revisit then.
+
+**What works now:**
+- **Chime TTS** (HACS integration, verified 2026-07-08): `chime_tts.say` →
+  `media_player.chromecastaudio7822` ("Home Announcer" CCA, `192.168.0.206`) — pre-merges chime+speech
+  into one file, eliminating the Google cast "beep" and ~2 s lead delay. Currently voiced by
+  `tts.home_assistant_cloud`.
+- **Announcer from HA automations (no token needed):** any HA `rest_command` can hit the announcer's
+  `/say` (endpoints in the Announcer § above) today — the announcer drives the CCA itself. HA can also
+  cast a served WAV URL directly via `media_player.play_media`.
+
+**Designed but NOT built (blocked):** a `via=cca|hass` switch on the announcer + a
+`rest_command.announcer_say` in `/config/packages/announcer.yaml` + a 🏠 HA cast chip in the studio UI —
+so casts route *through* HA's media_player (more reliable than pychromecast's lossy mDNS, occasional
+504s/6× retries). **Blocked on a Home Assistant long-lived access token** (user task; HA's REST API has no
+trusted-network bypass). Designed 2026-07-08, not resumed since.
+
+**Local voice in the HA pipeline (open, the "good voice for HASS" path):**
+- **Kokoro**: install HACS **"OpenAI TTS Speech Service"** (sfortis) pointed at
+  `http://192.168.0.130:8880/v1`, model `kokoro`, any preset voice → creates a `tts.` entity that Chime
+  TTS and the Assist pipelines can use instead of cloud. Explained 2026-07-08, **not installed yet**.
+- **Pocket TTS (Athena/Majel)**: its API is not OpenAI-shaped, so reaching HA-native TTS needs a small
+  OpenAI-compatible (or Wyoming) shim in front of `pocket-engine`. Until then the Athena voice reaches
+  speakers only via the announcer path above.
+
+## Open TODOs (voice stack)
+1. HA long-lived access token → build the `via=hass` announcer path + `rest_command.announcer_say` + 🏠 HA studio chip.
+2. Kokoro as an HA-native `tts.` entity (HACS OpenAI TTS Speech Service → `:8880/v1`), then point Chime TTS/pipelines at it.
+3. OpenAI-compatible shim for pocket-engine so Athena/Majel can be an HA pipeline voice.
+4. Kokoro blend → promote-to-Pocket-reference button (Pocket/XTTS clips have ➜ voice; Kokoro blends don't).
+5. XTTS deep knobs (temperature/top_k/top_p/penalties/speed) — deferred; needs a custom inference server + rebuild (declined 2026-06-15).
 
 ## History
 
+- **2026-07-09 — Voice audit + doc consolidation.** Multi-agent sweep of chats/docs/live state; all five
+  voice containers verified healthy. Announcer Trailhead card added (had been missed at deploy). HA
+  integration state + open TODOs captured above.
+- **2026-07-08 — Chime TTS live in HA; announcer-via-HA designed but blocked.** Chime TTS (HACS) verified
+  end-to-end on the Home Announcer with the cloud voice; the `via=hass` announcer route was designed but
+  is blocked on an HA long-lived access token. Studio UI: Kokoro blend weight-slider step fixed to 0.1.
+- **2026-07-07 — Announcer deployed** (see section above) after the Chromecast Audio provisioning saga;
+  HA Assist-pipeline review concluded Wyoming/Piper/Whisper/wake-word are not needed (no mic hardware).
 - **2026-06-15 — Split: standalone Voice Studio gateway (:8010) + standalone engines.** The fused
   `pocket-tts` container (which did model + studio UI + proxy at :8001) was split via a `ROLE` env flag
   into `pocket-engine` (:8001, model + native UI) and `voice-studio` (:8010, studio UI + proxy), sharing

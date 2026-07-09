@@ -1,9 +1,9 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-07 09:00 UTC*
+*Last updated: 2026-07-09 22:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 2.54, 4.34, 4.93 | RAM: 34/62 GB | Uptime: 0 days
+**Shipyard** (192.168.0.151) | CPU: 0.90, 1.38, 2.04 | RAM: 38/62 GB | Uptime: 2 days
 
-**58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 13 storage pools
+**58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 12 storage pools
 
 ## All Services (58)
 | Name | Type | IP | Port | URL | Status |
@@ -140,19 +140,18 @@
 | 106 | WindowsXP | stopped |
 | 119 | WindowsTiny10 | stopped |
 
-## Storage (13)
+## Storage (12)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
-| container-backups | dir | 356/1006 | 35% |
-| docker-data | dir | 246/1006 | 24% |
-| littlestorage | lvmthin | 0/0 | 0% |
+| container-backups | dir | 0/0 | 0% |
+| docker-data | dir | 245/1006 | 24% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 123/348 | 35% |
-| pbs-homelab | pbs | 3194/7110 | 44% |
+| pbs-homelab | pbs | 3211/7110 | 45% |
 | smb-documents | dir | 81/491 | 16% |
-| smb-frigate | dir | 590/1510 | 39% |
-| smb-hometheater | dir | 17459/29679 | 58% |
+| smb-frigate | dir | 439/1510 | 29% |
+| smb-hometheater | dir | 17507/29679 | 58% |
 | smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 264/1740 | 15% |
+| ssd | lvmthin | 298/1740 | 17% |

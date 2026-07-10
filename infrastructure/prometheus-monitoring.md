@@ -5,7 +5,7 @@ A comprehensive Prometheus + Grafana monitoring solution for a Proxmox-based hom
 ## Overview
 
 This monitoring stack provides complete observability for:
-- **Proxmox host** - CPU, memory, disk, network metrics
+- **Proxmox hosts** - CPU, memory, disk, network metrics (Shipyard `.151` + t5 `.152`)
 - **LXC containers** - Per-container resource usage via Node Exporter
 - **Docker containers** - Container metrics via cAdvisor
 - **Services** - HTTP/TCP endpoint monitoring via Blackbox Exporter
@@ -73,6 +73,15 @@ This monitoring stack provides complete observability for:
 | pulse | 192.168.0.175 | 120 | Active |
 | claude-ai | 192.168.0.180 | 124 | Active |
 | komodo | 192.168.0.179 | 128 | Active |
+
+### Proxmox Nodes (2 standalone)
+
+| Node | IP | node_exporter (instance) | PVE API job | Notes |
+|------|-----|--------------------------|-------------|-------|
+| Shipyard | 192.168.0.151 | `proxmox-host` | `proxmox-pve` (module `default`) | Primary node |
+| t5 | 192.168.0.152 | `t5-host` | `proxmox-pve-t5` (module `t5`) | GPU node; PVE-API scraped via Shipyard's pve_exporter using token `claude@pam!api` on t5 |
+
+> **Live Prometheus config lives at `/mnt/docker/prometheus/prometheus.yaml`** on CT 128 (mounted to `/etc/prometheus/prometheus.yaml`). The copy under `/etc/komodo/stacks/prometheus/` is a stale leftover — do not edit it. Multi-node pve_exporter uses per-node modules in `/etc/prometheus/pve.yml` on the Shipyard host; each `?module=<name>&target=<ip>` query authenticates with that module's token.
 
 ### Blackbox HTTP Probes (26 endpoints)
 

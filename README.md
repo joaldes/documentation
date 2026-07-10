@@ -28,6 +28,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [ssd-pool-migration.md](infrastructure/ssd-pool-migration.md) | Guest tier consolidated onto an internal `Micron 5300` (VG `ssd`); NVMe relieved 97%→35%; dying BX500 pulled; Samsung QVO kept as `ssd_old` rollback; device-letter reshuffle + cold-reboot gotchas (June QVO stopgap kept as history) |
 | [komodo-periphery/](infrastructure/komodo-periphery/) | Komodo Periphery compose for non-Core hosts (130/131) — `apparmor=unconfined` to stop the `/proc` ptrace audit-log flood; durable deployment template |
 | [claude-cli-shared-store.md](infrastructure/claude-cli-shared-store.md) | `/usr/local/bin/claude` wrapper on CT 124 — runs the CLI as `claudeai` from `/home/claudeai` so the console/SSH/browser/claude-dev all share one conversation store |
+| [t5-pve-node.md](infrastructure/t5-pve-node.md) | Second Proxmox node `t5` (192.168.0.152, Legion T5 + GTX 1660 Super) — install runbook, repo fix, BIOS/iGPU findings; CUDA workloads phase pending |
 
 ### Services
 

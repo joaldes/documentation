@@ -77,7 +77,7 @@ container on 2026-06-15 — see History.)**
     `voices/` 2026-06-15 and the app rewired to read the tree (see Voice Studio §).
   - `studio/` = generated clips, bind-mounted `/out`, sorted `<engine>/<voice>/`.
   - `tools/` = the extraction/bakeoff scripts (`extract_athena.py`, `bakeoff.py`).
-  - `tts-bench/` = cross-engine benchmarks + `results.md`.
+  - `tts-bench/` = `results.md` (cross-engine bench writeup; the WAVs were pruned 2026-07-11).
   Bind-mounted stacks point at `…/tts/voices` (`/voices`) + `…/tts/studio` (`/out`).
 
 ## Summary
@@ -319,7 +319,7 @@ flat read is ever wanted; `chatterbox-multilingual` (23 langs) is a config-only 
 cloning is ever needed. All output carries Resemble's inaudible **Perth watermark** (not disableable).
 
 **VRAM leak FIXED 2026-07-11** (was: creep 3.1→5.4 GB over a varied session → intermittent 502s from
-CUDA OOM; full forensics in `…/claudeai/chatterbox-vram-leak-findings.md`). Two upstream bugs in the
+CUDA OOM; full forensics in `…/claudeai/tts/chatterbox-vram-leak-findings.md`). Two upstream bugs in the
 devnen server's `engine.py`, patched locally (file is **bind-mounted** `./engine.py:/app/engine.py` AND
 in the build context; rollback = `git checkout -- engine.py`): (1) the voice-conditioning cache
 `_conds_cache` held GPU tensors with **no eviction** — now LRU-capped via **`CONDS_CACHE_MAX`**
@@ -347,8 +347,7 @@ trio (hand-built image, `transformers==4.57.1`+`torchcodec`+CPU-torch pins, stoc
 its own sampling knobs) and slowest (0.35× realtime on CPU). Container stopped + Voice Studio/announcer/
 Trailhead rewired 2026-07-10; **A/B confirmed by ear same night ("chatter is way better") → fully
 deleted**: `/mnt/docker/xtts/` removed and `xtts-xtts` image rmi'd (~5 GB reclaimed; compose.yaml +
-Dockerfile archived at `tts/_xtts-retired-2026-07-10/`; A/B clips kept in
-`tts/studio/{xtts,chatterbox}/athena_natural/`). Only the stale Komodo UI stack entry remains (TODO #5).
+Dockerfile archive + A/B clips since removed in the 2026-07-11 samba cleanup). Only the stale Komodo UI stack entry remains (TODO #5).
 Lessons worth
 keeping: prebuilt `ghcr.io/idiap/coqui-tts-cpu` ships no torch; coqui-tts 0.27 needs `transformers==4.57.1`
 (5.x dropped `isin_mps_friendly`); Coqui's `/api/tts` language param is `language_id`, NOT `language_idx`
@@ -434,7 +433,7 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
   allocator release). Patched locally (LRU cap `CONDS_CACHE_MAX=3` + `empty_cache()` in a finally),
   deployed via bind mount, hardened per pre-deploy opus review (env clamp, race-safe eviction).
   Measured ~260 MiB per cache entry; verified flat ~4.0 GB plateau over varied generations. Nightly
-  restart cron kept as backstop. Forensics doc: `…/claudeai/chatterbox-vram-leak-findings.md`.
+  restart cron kept as backstop. Forensics doc: `…/claudeai/tts/chatterbox-vram-leak-findings.md`.
 - **2026-07-11 — Real split: standalone voice-studio gateway + engine-only pocket-tts.** The 2026-06-15
   ROLE-flag arrangement (one image, two containers, code living in the neighbor's dir) was rebuilt into
   properly-separated stacks: `/mnt/docker/voice-studio/` now owns its own slim image (`voice-studio:latest`,
@@ -472,8 +471,8 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
   `pocket-tts` container (which did model + studio UI + proxy at :8001) was split via a `ROLE` env flag
   into `pocket-engine` (:8001, model + native UI) and `voice-studio` (:8010, studio UI + proxy), sharing
   one image and the shared `tts` network. Each engine now exposes its native dashboard on its own port.
-  Verified end-to-end (all three tabs generate through the gateway). Pre-split backup kept at
-  `…/tts/_pre-split-backup-2026-06-15/`.
+  Verified end-to-end (all three tabs generate through the gateway). The pre-split backup dir was removed in the 2026-07-11 samba cleanup
+  (superseded by the real split's on-box .baks).
 - 2026-06-10: Deployed; bake-off vs NeuTTS Air (q4-GGUF fork) — Pocket TTS won on voice
   quality (user ear test) and operational simplicity. NeuTTS stack/image/folder removed
   (22GB reclaimed). Athena references built same day.

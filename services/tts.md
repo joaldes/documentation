@@ -292,8 +292,8 @@ cross-node engine. Replaced XTTS-v2 (see the decommission note below).
 | Container | `chatterbox`, `gpus: all` + explicit `/dev/nvidia*` devices (same pattern as forge's ollama/sd-webui) |
 | Build | local clone of github.com/devnen/Chatterbox-TTS-Server; CUDA 12.1 Dockerfile, fp32 (Turing has no bf16) |
 | Config | `./config.yaml` — `model.repo_id: chatterbox` (base 0.5B), `tts_engine.device: cuda`, exaggeration default 0.5 |
-| Model cache | `./hf_cache` bind mount (survives rebuilds) |
-| VRAM | **~3.3 GB resident** (measured) — model stays loaded; `POST /api/unload` frees it |
+| Model cache | `./hf_cache` bind mount (survives rebuilds — the upstream compose's *named volume* would re-download; that file is kept as `docker-compose.yml.upstream`, do NOT deploy from it) |
+| VRAM | **~3.3 GB resident, ~3.9 GB after a clone** — model stays loaded; `POST /api/unload` frees it. Compose sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (added 2026-07-10 after allocator creep to 5.5 GB caused real generation OOMs — do not remove) |
 | Trailhead | "Chatterbox (engine)" card, AI - Foundry → Voice |
 
 **Server API** (what the gateway uses): `POST /tts` (JSON: `text`, `voice_mode` `clone|predefined`,
@@ -352,8 +352,9 @@ A small **`announcer`** service casts Voice Studio audio to the Chromecast Audio
   (`get_chromecasts(known_hosts=["192.168.0.206"])`, retried — mDNS is lossy). CORS `*` on the announcer
   so the UI button can call it.
 - **Files:** `/mnt/docker/announcer/{app.py,Dockerfile,requirements.txt,compose.yaml}`; UI button
-  (`castClip`) in `pocket-tts/studio/index.html` (bind-mounted, rebuild-free; `.bak` kept). Announcer
-  app edits need `docker compose up -d --build`.
+  (`castClip`) in `pocket-tts/studio/index.html` (bind-mounted, rebuild-free; `.bak` kept). ⚠ **Announcer
+  app edits need `docker compose up -d --build` — `app.py` is BAKED into the image (COPY, no bind mount);
+  a plain `docker restart` silently keeps the old code** (bit us on the 2026-07-10 chatterbox remap).
 - Chromecast provisioning itself (orphaned CCA → local `eureka` API): `troubleshoot/chromecast-audio-provisioning.md`.
 - **Trailhead card** "Announcer (cast)" (AI - Foundry tab, Voice group — same group as the engine cards)
   → `:8011/docs` (added 2026-07-09 — the root path is API-only/404, Swagger is the landing page).
@@ -413,9 +414,12 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
   `/chatterbox/voices`; cloning went shared-path → HTTP upload (content-hashed, dedup'd); studio tab now
   has exaggeration/cfg_weight/temperature sliders (base chosen over Turbo BECAUSE Turbo ignores the first
   two); announcer's `engine=xtts` remapped with alias kept. Measured: chatterbox 3.3 GB VRAM resident,
-  ~2–7s/line vs XTTS's 25–46s. XTTS container stopped; dir+image kept pending by-ear A/B. Multi-agent
-  recon + adversarial review preceded the swap (caught the Turbo-ignores-emotion-knobs trap and the
-  announcer dependency).
+  ~2–7s/line vs XTTS's 25–46s. A/B passed by ear same night → XTTS fully deleted (see decommission note).
+  Multi-agent recon + adversarial review preceded the swap (caught the Turbo-ignores-emotion-knobs trap
+  and the announcer dependency); a post-deploy review round caught three more: the announcer patch needed
+  an image **rebuild** (app.py is baked — a restart doesn't apply it), forge's rootfs hit 100% (16 GB
+  chatterbox build cache → pruned, rootfs grown 90→130 G), and CUDA-allocator creep caused generation
+  OOMs → fixed with `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` in the chatterbox compose.
 - **2026-07-09 — Voice audit + doc consolidation.** Multi-agent sweep of chats/docs/live state; all five
   voice containers verified healthy. Announcer Trailhead card added (had been missed at deploy). HA
   integration state + open TODOs captured above.

@@ -3,7 +3,7 @@
 **Last Updated**: 2026-07-11
 **Related Systems**: CT 130 "foundry" (192.168.0.130) — two CPU TTS engines + the Voice Studio gateway (:8010);
 CT 200 "forge" on the t5 node (192.168.0.155) — Chatterbox on the GTX 1660 Super (CUDA).
-Komodo-managed (foundry stacks), Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements)
+Plain-compose stacks in `/mnt/docker/` (NOT Komodo-registered), Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements)
 
 ## Engines at a glance
 | Engine | Host | Port | Role | Cloning | Speed |
@@ -428,6 +428,8 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
   `xtts_default` network + empty `/mnt/docker/xtts/` removed. Old image kept as rollback. Pre- and
   post-implementation multi-agent (opus) reviews; pre-review caught 2 CRITICAL packaging bugs
   (missing WORKDIR/CMD; a surviving `import typer` in the slim image) + a stale-backup rollback trap.
+  **Rollback to the ROLE-era gateway is NOT a one-file restore** — `voice-studio/compose.yaml.bak`
+  mounts files that moved; the prerequisite steps are written at the top of that .bak itself.
 - **2026-07-10 — XTTS-v2 → Chatterbox (first GPU engine).** XTTS dumped as highest-maintenance/slowest;
   Chatterbox base 0.5B (devnen server, CUDA fp32) deployed on forge/CT200's GTX 1660 Super at
   `192.168.0.155:8004`. Gateway `/generate_xtts` + `/xtts/*` routes replaced by `/generate_chatterbox` +

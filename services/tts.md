@@ -1,6 +1,6 @@
 # TTS — Pocket TTS · Kokoro · Chatterbox · Voice Studio (+ Athena/Majel pipeline)
 
-**Last Updated**: 2026-07-10
+**Last Updated**: 2026-07-11
 **Related Systems**: CT 130 "foundry" (192.168.0.130) — two CPU TTS engines + the Voice Studio gateway (:8010);
 CT 200 "forge" on the t5 node (192.168.0.155) — Chatterbox on the GTX 1660 Super (CUDA).
 Komodo-managed (foundry stacks), Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements)
@@ -26,26 +26,35 @@ Chatterbox `192.168.0.155:8004/` (devnen web UI), Kokoro `:8880/web/`. **(Split 
 container on 2026-06-15 — see History.)**
 
 ## Deployment / source of truth
-- The **foundry** stacks (pocket-tts, voice-studio, kokoro) are **Komodo-managed, "Files on Host"** at
-  `/mnt/docker/<name>/` (registered 2026-06-15 on the foundry server) — manage via the Komodo UI.
+- The **foundry** stacks (pocket-tts, voice-studio, kokoro, announcer) live at `/mnt/docker/<name>/`
+  (compose.yaml + code in each) and are deployed with plain `docker compose` from those dirs — the
+  Komodo periphery on foundry can see `/mnt/docker`, but **no server-side Komodo stack definitions
+  exist for them** (verified 2026-07-11), so treat the dirs as the sole source of truth.
   **Chatterbox is a plain `docker compose` stack at `/mnt/docker/chatterbox/` on CT 200 (forge)** — forge
   is *not* in the Komodo fleet (no periphery installed; same as forge's ollama/sd-webui stacks). **No git**
   (no homelab stack uses it; durability rides on system backups — the former `/mnt/docker` backup gap was
   **closed 2026-07-01**: the nightly PBS fileshares job backs up foundry's `/mnt/docker` as `docker.pxar`.
   ⚠ forge/CT200 has no PBS coverage yet — the chatterbox stack dir is small and re-cloneable from
   github.com/devnen/Chatterbox-TTS-Server; `config.yaml` + `compose.yaml` are the only local edits).
-- **One image, two containers via a `ROLE` env (split 2026-06-15).** The single image
-  `pocket-tts-pocket-tts:latest` runs as **`pocket-engine`** (`ROLE=engine`, `/mnt/docker/pocket-tts/`,
-  :8001 — loads the model, serves the native Pocket UI + `/generate` + `/tts`) and **`voice-studio`**
-  (`ROLE=gateway`, `/mnt/docker/voice-studio/`, :8010 — no model; serves the studio UI and proxies
-  `/generate`→`pocket-engine`, `/generate_kokoro`→`kokoro`, `/generate_chatterbox`→chatterbox on forge).
-  No rebuild — both reference the existing image tag.
-- The only hand-authored code is `/mnt/docker/pocket-tts/app/main.py` + `/mnt/docker/pocket-tts/studio/index.html`,
-  bind-mounted into **both** containers (engine mounts only `main.py` → native UI; gateway also mounts
-  `studio/index.html` → studio). One `.bak` per file; a full pre-split backup is at
-  `…/claudeai/tts/_pre-split-backup-2026-06-15/`. The vendored clone is only the build context.
-- **HTML edits are rebuild-free** — `studio/index.html` is read per request, so editing it needs no
-  recreate. Only `main.py` edits need **`docker compose up -d --force-recreate`** (engine and/or gateway).
+- **Two SEPARATE services, each owning its stack (real split 2026-07-11 — replaced the 2026-06-15
+  `ROLE`-flag arrangement).** No shared image, no ROLE env:
+  - **`voice-studio`** (`/mnt/docker/voice-studio/`, image `voice-studio:latest`, **:8010→8010**) —
+    the standalone gateway. Slim `python:3.12-slim` + fastapi/uvicorn/python-multipart (no pocket_tts
+    package, no model). Owns **its** code `app/main.py` (UI serving, voice library, clips, `/save`,
+    `/generate` proxy→pocket-engine, kokoro + chatterbox proxies) and **its** UI `studio/index.html`.
+    Built-in Kyutai voice names are proxied from the engine's `/voices` (cached ~5 min; degrades to
+    an empty builtin list if the engine is down). Paths env-overridable: `VOICES_DIR`/`CLIPS_DIR`/`STUDIO_DIR`.
+  - **`pocket-engine`** (`/mnt/docker/pocket-tts/`, image **`pocket-tts:latest`** — retag of the
+    original 2026-06-10 build, NOT rebuilt, :8001→8000) — ENGINE ONLY. Its `app/main.py` keeps the
+    expressiveness patch, `/generate` (studio contract, X-Clip-Name), `/tts`, `/voices` (+`/voices/{rel}`
+    read), native UI at `/`. All gateway routes removed (they 404 here). ⚠ its compose's `build:` stanza
+    is **dormant** — the base image tag is rolling; if you ever rebuild, `docker compose build` +
+    smoke-test BEFORE `up -d`.
+- **Edit workflow:** `studio/index.html` (in **voice-studio/**) is read per request → save + browser
+  refresh, nothing to restart. `app/main.py` edits: **`docker restart voice-studio`** (its app dir is
+  bind-mounted) or **`docker restart pocket-engine`** (single-file bind over the installed package —
+  overwrite the host file IN PLACE with cp/sed so the inode survives). Nothing is baked into either
+  image except python deps.
 - The foundry engines talk over the **external `tts` docker network**, reached by container name:
   `KOKORO_BASE=http://kokoro:8880`, `POCKET_BASE=http://pocket-engine:8000`. **Chatterbox is cross-node**,
   reached by host IP: `CHATTERBOX_BASE=http://192.168.0.155:8004`. Create the network once with
@@ -84,8 +93,8 @@ SDH subtitle mining.
 | | |
 |---|---|
 | Endpoint | `http://192.168.0.130:8001` — Swagger UI at `/docs`, health at `/health` |
-| Stack | `/mnt/docker/pocket-tts/compose.yaml` (own compose project, image built from `./pocket-tts` clone of github.com/kyutai-labs/pocket-tts) |
-| Container | `pocket-tts`, 2 CPUs / 2g cap, **no iGPU** (deliberate — Ollama owns the Iris Xe) |
+| Stack | `/mnt/docker/pocket-tts/compose.yaml` (own compose project; image `pocket-tts:latest` originally built from the `./pocket-tts` clone of github.com/kyutai-labs/pocket-tts) |
+| Container | `pocket-engine`, 2 CPUs / 2g cap, **no iGPU** (deliberate — Ollama owns the Iris Xe) |
 | Model cache | `/mnt/docker/pocket-tts/cache/huggingface` (bind mount — survives rebuilds) |
 | Voices dir | `/mnt/docker/pocket-tts/voices` (for exported .safetensors voices) |
 
@@ -112,13 +121,14 @@ Form fields and mutate the **already-loaded** global model per-request (under a 
   reference's prosody, so a deadpan computer ref yields a deadpan read by design.
 - **decode_steps** >1 = richer/smoother at ~linear CPU cost. **eos_threshold** tunes trailing.
 - Deployed rebuild-free: patched `main.py` is **bind-mounted** over `/app/pocket_tts/main.py`
-  from `/mnt/docker/pocket-tts/app/main.py` (de-conflated 2026-06-15 — see "Deployment / source of
-  truth" above); a `docker compose up -d --force-recreate` (one warm load) applies it. One `.bak` kept
-  per hand-authored file.
+  from `/mnt/docker/pocket-tts/app/main.py` (see "Deployment / source of truth" above); a
+  `docker restart pocket-engine` (one warm load) applies edits. One `.bak` kept per hand-authored file.
 
-## Voice Studio (web UI — folded into Pocket TTS)
-`http://192.168.0.130:8001/` — pocket-tts's own root page **is** the studio: pick a voice, dial
-the per-engine controls, type text, generate, play in-browser.
+## Voice Studio (web UI — standalone gateway service)
+`http://192.168.0.130:8010/` — the voice-studio gateway's root page is the studio: pick a voice,
+dial the per-engine controls, type text, generate, play in-browser. (Historically the studio was
+folded into pocket-tts at :8001, then ROLE-split 2026-06-15, then made a genuinely standalone
+service 2026-07-11 — the engine's :8001 root is back to the stock Kyutai page.)
 - **Exposed controls per engine (2026-06-15 — every natively-reachable knob):**
   - **Pocket:** temperature, decode_steps, eos_threshold, **noise_clamp** (`0`=off). These are the 4
     live-mutable sampler attrs (`tts_model.temp/lsd_decode_steps/eos_threshold/noise_clamp`), set per
@@ -144,13 +154,13 @@ the per-engine controls, type text, generate, play in-browser.
   via `<optgroup>`, voice id = `persona/name.wav`) **+** the 26 built-in Kyutai voices (alba,
   estelle, …, passed through as `voice_url`). `/voices` globs `*/*.wav`; cloning resolves
   `REFS_DIR / "<persona>/<name>.wav"` natively, so the file tree drives the UI.
-- Implemented as extra FastAPI routes in pocket-tts `main.py` (`GET /`, `/voices`, `/clips`,
+- Implemented in the gateway's own `voice-studio/app/main.py` (`GET /`, `/voices`, `/clips`,
   `/clips/{name:path}` GET+DELETE+promote — `:path` so nested `engine/voice/file.wav` matches,
   `POST /generate` / `/generate_kokoro` / `/generate_chatterbox` → **return audio + `X-Clip-Name`** (no
   disk write), and `POST /save` → write the held audio into the library). `/generate*` build only a
   *suggested* name via `_suggest_name`; `/save` does the real collision-safe `_resolve_out`. `/clips`
-  walks the tree (`rglob`). The page is bind-mounted
-  (`studio/index.html` → `/app/pocket_tts/static/studio.html`); pocket generation reuses the loaded
+  walks the tree (`rglob`). The UI is served from `voice-studio/studio/index.html` (read per request);
+  all generation is proxied — Pocket generation happens in `pocket-engine`, which reuses its loaded
   model under `_gen_lock`, rendering to a temp file it reads back (never the studio tree).
 - **CT 130 now mounts the documents samba** (added 2026-06-13): `mp5: /mnt/documents,mp=/mnt/documents`
   in `/etc/pve/lxc/130.conf`. This was required for the fold-in (so foundry can read
@@ -169,14 +179,13 @@ Kokoro's own blend config: the `voice` string `af_jadzia(2)+af_sarah(1)-am_adam(
 subtractive `−`, parenthesized weights **auto-normalized to sum 1** by kokoro-fastapi). The UI shows a
 live "effective mix %" and the literal blend string. Scope is **audition + save only** — no
 promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is deferred).
-- **Cross-network reach:** kokoro runs on its own docker network (`kokoro_default`), separate from
-  `pocket-tts_default`, so pocket-tts calls it via the **host IP** `http://192.168.0.130:8880`
-  server-side (stdlib `urllib`, no `requests` dep). The browser stays same-origin (no CORS) because
-  the studio proxies through pocket-tts.
-- **New routes in `main.py`:** `GET /kokoro/voices` (cached proxy to kokoro's voice list) and
+- **Reach:** kokoro sits on the shared external `tts` network, so the gateway calls it **by container
+  name** (`KOKORO_BASE=http://kokoro:8880`, stdlib `urllib`, no `requests` dep). The browser stays
+  same-origin (no CORS) because the studio proxies everything through the gateway.
+- **Gateway routes:** `GET /kokoro/voices` (cached proxy to kokoro's voice list) and
   `POST /generate_kokoro` (Form `text`/`voice`/`speed`/`volume_multiplier`/`lang_code`/`normalization`
   → kokoro `/v1/audio/speech` wav, returned to the browser). kokoro does the heavy work in its own
-  process. No compose change — both files were already bind-mounted.
+  process.
 - **Single-voice blend fix:** `buildBlendString()` emits a lone voice **bare** (`af_bella`), not
   `af_bella(1)` — Kokoro only parses weights inside a `+`/`-` blend, so a parenthesized single voice is
   read as a literal filename → 500.
@@ -352,7 +361,7 @@ A small **`announcer`** service casts Voice Studio audio to the Chromecast Audio
   (`get_chromecasts(known_hosts=["192.168.0.206"])`, retried — mDNS is lossy). CORS `*` on the announcer
   so the UI button can call it.
 - **Files:** `/mnt/docker/announcer/{app.py,Dockerfile,requirements.txt,compose.yaml}`; UI button
-  (`castClip`) in `pocket-tts/studio/index.html` (bind-mounted, rebuild-free; `.bak` kept). ⚠ **Announcer
+  (`castClip`) in `voice-studio/studio/index.html` (read per request, rebuild-free; `.bak` kept). ⚠ **Announcer
   app edits need `docker compose up -d --build` — `app.py` is BAKED into the image (COPY, no bind mount);
   a plain `docker restart` silently keeps the old code** (bit us on the 2026-07-10 chatterbox remap).
 - Chromecast provisioning itself (orphaned CCA → local `eureka` API): `troubleshoot/chromecast-audio-provisioning.md`.
@@ -408,6 +417,17 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
 
 ## History
 
+- **2026-07-11 — Real split: standalone voice-studio gateway + engine-only pocket-tts.** The 2026-06-15
+  ROLE-flag arrangement (one image, two containers, code living in the neighbor's dir) was rebuilt into
+  properly-separated stacks: `/mnt/docker/voice-studio/` now owns its own slim image (`voice-studio:latest`,
+  python:3.12-slim, no pocket_tts dep), its own `app/main.py` (all gateway routes; builtin voice list
+  proxied from the engine, graceful when the engine is down) and `studio/index.html`;
+  `/mnt/docker/pocket-tts/` trimmed to engine-only `main.py` (gateway routes 404 there) with the original
+  image retagged `pocket-tts:latest` (deliberately NOT rebuilt — rolling base tag). External surface
+  unchanged (ports, API contract, `tts` network, voice/clip mounts, Trailhead, DNS). Cleanup: orphan
+  `xtts_default` network + empty `/mnt/docker/xtts/` removed. Old image kept as rollback. Pre- and
+  post-implementation multi-agent (opus) reviews; pre-review caught 2 CRITICAL packaging bugs
+  (missing WORKDIR/CMD; a surviving `import typer` in the slim image) + a stale-backup rollback trap.
 - **2026-07-10 — XTTS-v2 → Chatterbox (first GPU engine).** XTTS dumped as highest-maintenance/slowest;
   Chatterbox base 0.5B (devnen server, CUDA fp32) deployed on forge/CT200's GTX 1660 Super at
   `192.168.0.155:8004`. Gateway `/generate_xtts` + `/xtts/*` routes replaced by `/generate_chatterbox` +

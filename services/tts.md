@@ -324,9 +324,11 @@ XTTS-CPU took 25–46s for the same work.
 XTTS-v2 (Coqui/idiap, foundry `:8002`) was **replaced by Chatterbox**: highest-maintenance engine of the
 trio (hand-built image, `transformers==4.57.1`+`torchcodec`+CPU-torch pins, stock server exposed none of
 its own sampling knobs) and slowest (0.35× realtime on CPU). Container stopped + Voice Studio/announcer/
-Trailhead rewired 2026-07-10; **`/mnt/docker/xtts/` and the built image are kept on foundry until the
-Chatterbox A/B is confirmed by ear** (A/B clips: `tts/studio/{xtts,chatterbox}/athena_natural/*_AB.wav`)
-— then delete the dir + `docker rmi xtts-xtts` + deregister the stack in the Komodo UI. Lessons worth
+Trailhead rewired 2026-07-10; **A/B confirmed by ear same night ("chatter is way better") → fully
+deleted**: `/mnt/docker/xtts/` removed and `xtts-xtts` image rmi'd (~5 GB reclaimed; compose.yaml +
+Dockerfile archived at `tts/_xtts-retired-2026-07-10/`; A/B clips kept in
+`tts/studio/{xtts,chatterbox}/athena_natural/`). Only the stale Komodo UI stack entry remains (TODO #5).
+Lessons worth
 keeping: prebuilt `ghcr.io/idiap/coqui-tts-cpu` ships no torch; coqui-tts 0.27 needs `transformers==4.57.1`
 (5.x dropped `isin_mps_friendly`); Coqui's `/api/tts` language param is `language_id`, NOT `language_idx`
 (silently ignored → falls back to `en`).
@@ -399,8 +401,8 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
 2. Kokoro as an HA-native `tts.` entity (HACS OpenAI TTS Speech Service → `:8880/v1`), then point Chime TTS/pipelines at it.
 3. OpenAI-compatible shim for pocket-engine so Athena/Majel can be an HA pipeline voice.
 4. Kokoro blend → promote-to-Pocket-reference button (Pocket/Chatterbox clips have ➜ voice; Kokoro blends don't).
-5. **Finish the XTTS decommission after the by-ear A/B** (clips in `tts/studio/*/athena_natural/*_AB.wav`):
-   delete `/mnt/docker/xtts/` + `docker rmi` the image on foundry, deregister the stack in the Komodo UI.
+5. Remove the dead `xtts` stack entry in the **Komodo UI** (the deploy itself is fully deleted — this is
+   just the stale registration; one click).
 6. Consider PBS/backup coverage for forge/CT200's `/mnt/docker` (chatterbox + ollama + sd-webui configs).
 
 ## History

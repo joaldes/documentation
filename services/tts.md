@@ -1,48 +1,58 @@
-# TTS on foundry — Pocket TTS · Kokoro · XTTS-v2 · Voice Studio (+ Athena/Majel pipeline)
+# TTS — Pocket TTS · Kokoro · Chatterbox · Voice Studio (+ Athena/Majel pipeline)
 
-**Last Updated**: 2026-07-09
-**Related Systems**: CT 130 "foundry" (192.168.0.130) — three standalone CPU TTS engines fronted by a standalone Voice Studio gateway (:8010),
-Komodo-managed, Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements)
+**Last Updated**: 2026-07-10
+**Related Systems**: CT 130 "foundry" (192.168.0.130) — two CPU TTS engines + the Voice Studio gateway (:8010);
+CT 200 "forge" on the t5 node (192.168.0.155) — Chatterbox on the GTX 1660 Super (CUDA).
+Komodo-managed (foundry stacks), Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements)
 
 ## Engines at a glance
-| Engine | Port | Role | Cloning | Speed (CPU) |
-|---|---|---|---|---|
-| **Pocket TTS** (Kyutai, 100M) | 8001 | fast zero-shot cloning; standalone engine + native UI | yes (zero-shot) | ~3× realtime (fastest) |
-| **Kokoro** (82M, remsky) | 8880 | 67 preset voices + blend builder | no (blend only) | ~1.7× realtime |
-| **XTTS-v2** (Coqui/idiap) | 8002 | most natural + multilingual cloning | yes (zero-shot, 17 langs) | ~0.35× realtime (slowest, heaviest) |
+| Engine | Host | Port | Role | Cloning | Speed |
+|---|---|---|---|---|---|
+| **Pocket TTS** (Kyutai, 100M) | foundry (CPU) | 8001 | fast zero-shot cloning; standalone engine + native UI | yes (zero-shot) | ~3× realtime |
+| **Kokoro** (82M, remsky) | foundry (CPU) | 8880 | 67 preset voices + blend builder | no (blend only) | ~1.7× realtime |
+| **Chatterbox** (Resemble, 0.5B base) | **forge (GPU)** | 8004 | most natural cloning + emotion knobs | yes (zero-shot) | ~2–7s/line on CUDA (≫ realtime) |
+
+*(XTTS-v2 was the third engine until 2026-07-10 — replaced by Chatterbox; see the Chatterbox § and History.)*
 
 The **Voice Studio** is a **standalone gateway** — its own container/stack on **:8010** (no model loaded) —
-that serves the single UI over all three engines (tabs *Pocket TTS* / *Kokoro Blend* / *XTTS Clone*, one
-text box / player / clips panel) and **proxies each tab's API calls to the engine containers by name** over
-the shared `tts` docker network. URLs: `http://192.168.0.130:8010/` · `voice-studio.home` ·
+that serves the single UI over all three engines (tabs *Pocket TTS* / *Kokoro Blend* / *Chatterbox Clone*, one
+text box / player / clips panel). Pocket + Kokoro are proxied **by container name** over the shared `tts`
+docker network; Chatterbox is proxied **by host IP** (`192.168.0.155:8004` — it lives on the forge GPU box,
+a different node). URLs: `http://192.168.0.130:8010/` · `voice-studio.home` ·
 `https://voice-studio.1701.me`.
 
 Each engine also stands alone on its own port with its **native** dashboard: Pocket `:8001/`,
-XTTS `:8002/`, Kokoro `:8880/web/`. **(Split from the fused pocket-tts container on 2026-06-15 — see History.)**
+Chatterbox `192.168.0.155:8004/` (devnen web UI), Kokoro `:8880/web/`. **(Split from the fused pocket-tts
+container on 2026-06-15 — see History.)**
 
 ## Deployment / source of truth
-- All three stacks are **Komodo-managed, "Files on Host"** at `/mnt/docker/<name>/` (registered 2026-06-15
-  on the foundry server) — same as every other homelab stack; manage via the Komodo UI. **No git** (no
-  homelab stack uses it; durability rides on system backups — the former `/mnt/docker` backup gap was
-  **closed 2026-07-01**: the nightly PBS fileshares job now backs up `/mnt/docker` as `docker.pxar`).
+- The **foundry** stacks (pocket-tts, voice-studio, kokoro) are **Komodo-managed, "Files on Host"** at
+  `/mnt/docker/<name>/` (registered 2026-06-15 on the foundry server) — manage via the Komodo UI.
+  **Chatterbox is a plain `docker compose` stack at `/mnt/docker/chatterbox/` on CT 200 (forge)** — forge
+  is *not* in the Komodo fleet (no periphery installed; same as forge's ollama/sd-webui stacks). **No git**
+  (no homelab stack uses it; durability rides on system backups — the former `/mnt/docker` backup gap was
+  **closed 2026-07-01**: the nightly PBS fileshares job backs up foundry's `/mnt/docker` as `docker.pxar`.
+  ⚠ forge/CT200 has no PBS coverage yet — the chatterbox stack dir is small and re-cloneable from
+  github.com/devnen/Chatterbox-TTS-Server; `config.yaml` + `compose.yaml` are the only local edits).
 - **One image, two containers via a `ROLE` env (split 2026-06-15).** The single image
   `pocket-tts-pocket-tts:latest` runs as **`pocket-engine`** (`ROLE=engine`, `/mnt/docker/pocket-tts/`,
   :8001 — loads the model, serves the native Pocket UI + `/generate` + `/tts`) and **`voice-studio`**
   (`ROLE=gateway`, `/mnt/docker/voice-studio/`, :8010 — no model; serves the studio UI and proxies
-  `/generate`→`pocket-engine`, `/generate_kokoro`→`kokoro`, `/generate_xtts`→`xtts`). No rebuild — both
-  reference the existing image tag.
+  `/generate`→`pocket-engine`, `/generate_kokoro`→`kokoro`, `/generate_chatterbox`→chatterbox on forge).
+  No rebuild — both reference the existing image tag.
 - The only hand-authored code is `/mnt/docker/pocket-tts/app/main.py` + `/mnt/docker/pocket-tts/studio/index.html`,
   bind-mounted into **both** containers (engine mounts only `main.py` → native UI; gateway also mounts
   `studio/index.html` → studio). One `.bak` per file; a full pre-split backup is at
   `…/claudeai/tts/_pre-split-backup-2026-06-15/`. The vendored clone is only the build context.
 - **HTML edits are rebuild-free** — `studio/index.html` is read per request, so editing it needs no
   recreate. Only `main.py` edits need **`docker compose up -d --force-recreate`** (engine and/or gateway).
-- Engines talk over the **external `tts` docker network**, reached by container name:
-  `KOKORO_BASE=http://kokoro:8880`, `XTTS_BASE=http://xtts:5002` (xtts's *internal* port is 5002),
-  `POCKET_BASE=http://pocket-engine:8000`. Create once with `docker network create tts`; all four
-  composes reference it `external: true`. A oneshot **`tts-network.service`** on CT 130 (enabled, `After=docker.service`) recreates the network at boot so it survives a reboot / `docker prune`.
+- The foundry engines talk over the **external `tts` docker network**, reached by container name:
+  `KOKORO_BASE=http://kokoro:8880`, `POCKET_BASE=http://pocket-engine:8000`. **Chatterbox is cross-node**,
+  reached by host IP: `CHATTERBOX_BASE=http://192.168.0.155:8004`. Create the network once with
+  `docker network create tts`; the foundry composes reference it `external: true`. A oneshot
+  **`tts-network.service`** on CT 130 (enabled, `After=docker.service`) recreates the network at boot so it survives a reboot / `docker prune`.
 - **NPM:** `voice-studio.home` (HTTP) + `voice-studio.1701.me` (LE cert) → `192.168.0.130:8010`.
-  **Trailhead** (AI - Foundry): *Voice Studio* → :8010; *Pocket/XTTS/Kokoro (engine)* cards → native ports.
+  **Trailhead** (AI - Foundry): *Voice Studio* → :8010; *Pocket/Chatterbox/Kokoro (engine)* cards → native ports.
 - **Shared assets** live in the documents samba at `…/claudeai/tts/` (renamed from `athena-voice/`
   2026-06-15), organized **fully per voice** — the folder tree is the source of truth and the app
   conforms to it (2026-06-15):
@@ -51,7 +61,8 @@ XTTS `:8002/`, Kokoro `:8880/web/`. **(Split from the fused pocket-tts container
     material in subfolders — `source-clips/` (SDH cue-rips), `<persona>_cues.csv`, Majel's
     `majel_scores.csv`, Athena's `expressiveness-samples/` + stitch artifacts (`picks.txt`, `_sil.wav`).
     Personas today: `athena`, `majel`, and `custom/` (where "➜ voice" promotions land).
-  - **`voices/` IS the live `/voices` mount** (bind-mounted into pocket-tts rw + xtts ro). The app
+  - **`voices/` IS the live `/voices` mount** (bind-mounted into pocket-tts + the gateway rw; Chatterbox
+    has **no mount** — the gateway ships reference clips to it over HTTP, see the Chatterbox §). The app
     discovers voices by globbing `*/*.wav` (one level), so a voice's id is `persona/name.wav`; the
     picker groups by persona. There is **no flat `reference/` dir anymore** — it was dissolved into
     `voices/` 2026-06-15 and the app rewired to read the tree (see Voice Studio §).
@@ -116,11 +127,11 @@ the per-engine controls, type text, generate, play in-browser.
     **normalization** toggles (`normalize`/url/email/phone/optional-pluralization/replace-symbols/unit)
     → forwarded as Kokoro's `normalization_options`. (Payload sets `stream:false` — `urllib.read()`
     raises `IncompleteRead` on Kokoro's default chunked stream.)
-  - **XTTS:** voice (clone a `/voices` reference, **upload a clip to clone**, **or** one of XTTS-v2's
-    **58 built-in studio speakers** id `builtin/<Name>` → server `speaker_id`), language (17). **Not exposed:** temperature/top_k/top_p/repetition+length-penalty/
-    text-splitting and `speed` — the stock Coqui `tts-server` `/api/tts` doesn't pass them to the model
-    (its `/v1/audio/speech` has `speed` but hardcodes language to the server default), so reaching them
-    needs a **custom XTTS inference server** (deferred — would mean rebuilding the xtts container).
+  - **Chatterbox:** voice (clone a `/voices` reference, **upload a clip to clone**, **or** one of the
+    server's built-in predefined voices, id `predefined/<file>` → `predefined_voice_id`), plus the three
+    emotion knobs: **exaggeration** (0–2, default 0.5 — emotion intensity), **cfg_weight** (0–1, default
+    0.5 — adherence/pacing vs the reference), **temperature** (default 0.8). The gateway always sends
+    `split_text:false` (single-pass prosody; studio lines are short). English only (base model).
 - **Generation does NOT auto-save (changed 2026-06-15).** `POST /generate*` returns the audio bytes
   directly (played from a browser object-URL) with the suggested filename in an `X-Clip-Name` header;
   nothing is written to disk. The result row shows the clip as **· unsaved** with a **💾 save** icon.
@@ -135,7 +146,7 @@ the per-engine controls, type text, generate, play in-browser.
   `REFS_DIR / "<persona>/<name>.wav"` natively, so the file tree drives the UI.
 - Implemented as extra FastAPI routes in pocket-tts `main.py` (`GET /`, `/voices`, `/clips`,
   `/clips/{name:path}` GET+DELETE+promote — `:path` so nested `engine/voice/file.wav` matches,
-  `POST /generate` / `/generate_kokoro` / `/generate_xtts` → **return audio + `X-Clip-Name`** (no
+  `POST /generate` / `/generate_kokoro` / `/generate_chatterbox` → **return audio + `X-Clip-Name`** (no
   disk write), and `POST /save` → write the held audio into the library). `/generate*` build only a
   *suggested* name via `_suggest_name`; `/save` does the real collision-safe `_resolve_out`. `/clips`
   walks the tree (`rglob`). The page is bind-mounted
@@ -150,8 +161,8 @@ the per-engine controls, type text, generate, play in-browser.
   was retired once the fold-in was verified (the documents-mount approach was chosen instead).
 
 ### Kokoro blend — second engine in the studio (2026-06-14)
-The studio is **multi-engine** (Pocket TTS | Kokoro Blend | XTTS Clone — see the XTTS section for the
-third tab): an engine switch above the shared
+The studio is **multi-engine** (Pocket TTS | Kokoro Blend | Chatterbox Clone — see the Chatterbox section
+for the third tab): an engine switch above the shared
 text box / result player / clips panel. The Kokoro tab is a **voice-blend builder** — add any of the
 67 Kokoro voices, give each a `+`/`−` sign and a relative weight, set speed, generate. It leverages
 Kokoro's own blend config: the `voice` string `af_jadzia(2)+af_sarah(1)-am_adam(0.5)` (additive `+`,
@@ -177,15 +188,18 @@ promote-to-Pocket-reference button yet (the blend→clone-for-speed loop is defe
 - Note: Kokoro is ~1.8× slower than Pocket and pegs 3 cores (per the Harvard+Rainbow benchmark), so
   it's the "design a voice you like" engine; Pocket remains the fast path.
 
-### Cloning + voice management in the studio (2026-06-14 / -15)
-Pocket **and XTTS** both expose upload-to-clone, and a **Voice library** panel manages the reference set:
-- **Upload a clip to clone (on the fly):** file input on the Pocket **and** XTTS tabs (`voice_wav` on
-  `POST /generate` and `POST /generate_xtts`; priority: upload > built-in/dropdown). Pocket clones via
-  `get_state_for_audio_prompt(..., truncate=True)`. XTTS has no writable `/voices`, so its upload is
-  **staged into `/out/.xtts_refs/`** (xtts mounts `/out` rw), passed as `speaker_wav=/out/.xtts_refs/…`,
-  then deleted; `/clips` skips dot-dirs so the staging never shows as a clip. (XTTS accepts wav/mp3 — it
-  has ffmpeg; Pocket's `/voices` uploads are WAV-only, no transcoder in that container.)
-- **Voice library panel** (right column) — manage the cloneable references used by Pocket + XTTS:
+### Cloning + voice management in the studio (2026-06-14 / -15, Chatterbox rewired 2026-07-10)
+Pocket **and Chatterbox** both expose upload-to-clone, and a **Voice library** panel manages the reference set:
+- **Upload a clip to clone (on the fly):** file input on the Pocket **and** Chatterbox tabs (`voice_wav` on
+  `POST /generate` and `POST /generate_chatterbox`; priority: upload > built-in/dropdown). Pocket clones via
+  `get_state_for_audio_prompt(..., truncate=True)`. **Chatterbox cloning is HTTP, not shared-path** (it's
+  on another node): the gateway uploads the clip to the server's reference store (`POST /upload_reference`,
+  multipart field `files`) under a **content-hashed name** `vs_<slug>_<sha1[:8]>.wav`, then synthesizes with
+  `reference_audio_filename=<the RETURNED name>` — the server **sanitizes filenames and skips duplicates**
+  (never overwrites), so the hash makes re-uploads of identical audio a server-side no-op and changed audio
+  a new name (no stale-content risk; `reference_audio/` growth is bounded per distinct clip). Chatterbox
+  accepts wav/mp3, **max 30s reference**; Pocket's `/voices` uploads are WAV-only.
+- **Voice library panel** (right column) — manage the cloneable references used by Pocket + Chatterbox:
   `GET /voices/{rel:path}` preview, `POST /voices/upload` (persona/name/WAV), `POST /voices/rename`
   (rename or move persona, carries the `.txt` companion, prunes empty dirs), `DELETE /voices/{rel:path}`.
   All paths are traversal-guarded under `/voices` (`_safe_voice`). Edits refresh every voice picker live.
@@ -194,7 +208,7 @@ Pocket **and XTTS** both expose upload-to-clone, and a **Voice library** panel m
   `/voices/custom/{name}.wav` as a permanent, cloneable voice (id `custom/{name}.wav`), then it appears
   in the Pocket voice dropdown under the **custom** persona. This is the **blend/design → clone-for-speed
   loop**: build a voice in the Kokoro tab (or upload one), generate a decent-length take, promote it, then
-  synthesize fast with Pocket. **Requires `/voices` mounted writable** (pocket-tts mounts it rw; xtts ro).
+  synthesize fast with Pocket. **Requires `/voices` mounted writable** (pocket-tts + gateway mount it rw).
 
 ### Gated cloning weights (one-time setup, done 2026-06-10)
 Kyutai license-gates the cloning-capable weights. Without auth, only the ~26 preset voices
@@ -266,46 +280,56 @@ and `studio/` (`/out`).
 - **Container name conflicts after killed `compose up`** → dockerd phantom name reservation; use a different container_name or restart dockerd. PREVENT: run long creates detached (`setsid nohup docker compose up -d`) — on foundry's disk, creates from multi-GB images take minutes. (Bit us 3× during the NeuTTS saga.)
 - **Voice sounds wrong/muddy** → reference is everything: shorter + cleaner beats longer + contaminated; check the reference for music/SFX under the voice.
 
-## XTTS-v2 — third CPU TTS engine (2026-06-14)
-A standalone XTTS-v2 (Coqui, idiap fork) stack on foundry for a quality comparison vs Pocket/Kokoro —
-the "best naturalness we can run CPU-only" experiment (GPU not possible).
+## Chatterbox — third engine, on the forge GPU (2026-07-10, replaced XTTS-v2)
+Chatterbox (Resemble AI, MIT, **base 0.5B English** model) via the **devnen/Chatterbox-TTS-Server**
+self-host server, running on **CT 200 "forge"** (t5 node) on the **GTX 1660 Super** — the first
+cross-node engine. Replaced XTTS-v2 (see the decommission note below).
 
 | | |
 |---|---|
-| Endpoint | `http://192.168.0.130:8002` — stock Coqui `tts-server` web UI; cloning over `GET /api/tts` |
-| Stack | `/mnt/docker/xtts/compose.yaml` (own project, **builds from a local Dockerfile** — see below) |
-| Container | `xtts`, 3 CPU / 4g, CPU-only; model cache `/mnt/docker/xtts/models` (1.8 GB, bind-mounted) |
-| Refs | `…/tts/voices:/voices:ro` + `…/studio:/out` (same tree as pocket-tts; ro) |
-| Trailhead | "XTTS-v2" card in AI - Foundry |
+| Endpoint | `http://192.168.0.155:8004` — devnen web UI at `/`, Swagger at `/docs` |
+| Stack | `/mnt/docker/chatterbox/compose.yaml` on **CT 200** (plain compose, NOT Komodo — forge has no periphery) |
+| Container | `chatterbox`, `gpus: all` + explicit `/dev/nvidia*` devices (same pattern as forge's ollama/sd-webui) |
+| Build | local clone of github.com/devnen/Chatterbox-TTS-Server; CUDA 12.1 Dockerfile, fp32 (Turing has no bf16) |
+| Config | `./config.yaml` — `model.repo_id: chatterbox` (base 0.5B), `tts_engine.device: cuda`, exaggeration default 0.5 |
+| Model cache | `./hf_cache` bind mount (survives rebuilds) |
+| VRAM | **~3.3 GB resident** (measured) — model stays loaded; `POST /api/unload` frees it |
+| Trailhead | "Chatterbox (engine)" card, AI - Foundry → Voice |
 
-**Synthesis API** (`GET /api/tts` → 24 kHz WAV): clone → `&speaker_wav=/voices/<persona>/<ref>.wav`;
-built-in speaker → `&speaker_id=<Name>` (list at the xtts server's `GET /voices`, 58 speakers). **The
-language param is `language_id` — NOT `language_idx`** (the server silently ignores the wrong name and
-falls back to its default `en`; this was a real bug in the studio, fixed 2026-06-15). The studio's
-`/xtts/speakers` route proxies + caches that speaker list.
+**Server API** (what the gateway uses): `POST /tts` (JSON: `text`, `voice_mode` `clone|predefined`,
+`reference_audio_filename` / `predefined_voice_id`, `exaggeration`, `cfg_weight`, `temperature`,
+`split_text`, `output_format`) → streamed WAV; `POST /upload_reference` (multipart `files`, **sanitizes
+names + skips duplicates** — use the returned filename); `GET /get_predefined_voices`;
+`GET /api/model-info` (**there is no `/health`** — use this for readiness); `POST /api/unload` (free VRAM).
 
-**Why a custom build (not a prebuilt image):** `ghcr.io/idiap/coqui-tts-cpu:latest` ships **no torch** —
-unusable. So we build from `python:3.11-slim`: install **CPU torch first** from the pytorch CPU index
-(so `coqui-tts` doesn't pull CUDA), then `coqui-tts`. **Dependency pins that matter** (the saga):
-coqui-tts 0.27.x requires `transformers>=4.57`, but transformers 5.x **dropped `isin_mps_friendly`**
-(which coqui's tortoise layer imports) → must pin **`transformers==4.57.1`** (has both that symbol and
-`is_torchcodec_available`). transformers 4.57 also needs **`torchcodec`** (CPU, uses the apt `ffmpeg`
-libs) for its audio path, and the stock server needs **`flask`** (the `[server]` extra; installed
-directly so it doesn't re-resolve transformers back to 5.x). All CPU: torch 2.12.0+cpu, torchcodec
-0.14.0+cpu.
+**Why base 0.5B and NOT Turbo:** Turbo (350M, 1-step decoder) **silently ignores `exaggeration` and
+`cfg_weight`** (CFG stripped for speed — needs batch-2; exaggeration training dropped) — the devnen server
+logs "not supported by Turbo version and will be ignored". The emotion knobs are the point of the studio,
+so base it is. Turbo remains one dropdown away in the devnen web UI (runtime model hot-swap) if a fast
+flat read is ever wanted; `chatterbox-multilingual` (23 langs) is a config-only swap if non-English
+cloning is ever needed. All output carries Resemble's inaudible **Perth watermark** (not disableable).
 
-**Verdict (A/B in `tts/tts-bench/results.md`):** XTTS is the **slowest** by far — 0.35–0.38×
-realtime (46 s for 18 s of audio), heaviest (~2.8 GiB RAM, ~2.7 cores). Pocket's native voice is ~3.3×,
-Kokoro ~1.7×, Pocket's clone path ~8 s/short line (re-encodes the ref each call) but amortizes on long
-text. Quality is ear-judged — kept for now as the "design a voice" option; Pocket remains the fast path.
+**VRAM contention (the 6 GB reality, measured 2026-07-10):** chatterbox resident **3.3 GB** + gemma3:4b
+**~3.3 GB** > 6 GB — they can't both be fully VRAM-resident. Ollama's `OLLAMA_KEEP_ALIVE=5m` (already set
+on forge) means chat models unload after idle; when both are hot, Ollama partially CPU-offloads (slower
+chat, not a crash). An SD render on top of resident chatterbox can OOM A1111 (whose post-OOM `--medvram`
+state corrupts → `docker restart sd-webui`). If contention bites: `curl -X POST
+http://192.168.0.155:8004/api/unload` after TTS sessions, or the known 12 GB RTX 3060 upgrade path.
 
-**Folded into the Voice Studio (3rd tab "XTTS Clone", 2026-06-14):** the studio (pocket-tts `:8001`)
-reaches XTTS server-side via the host IP (separate docker net, like kokoro) — routes `GET /xtts/langs`
-and `POST /generate_xtts` (Form `text`/`voice`/`language`) + `GET /xtts/speakers`. The tab's voice
-dropdown offers **both** the `/voices` clone references (apples-to-apples with Pocket) **and** XTTS's 58
-built-in studio speakers (`builtin/<Name>`), plus a working **language** selector (XTTS's 17 languages).
-Clips sort to `studio/xtts/<voice>/<vkey>_<lang>.wav`. XTTS itself stays a
-standalone container; the studio just calls its `/api/tts`.
+**Speed (measured, same Athena line):** first-ever clone of a reference ~18s (one-time upload +
+conditioning); subsequent clones **~2–7s** per line (conditioning cache keyed on file+mtime+exaggeration).
+XTTS-CPU took 25–46s for the same work.
+
+### XTTS-v2 decommission note (2026-07-10)
+XTTS-v2 (Coqui/idiap, foundry `:8002`) was **replaced by Chatterbox**: highest-maintenance engine of the
+trio (hand-built image, `transformers==4.57.1`+`torchcodec`+CPU-torch pins, stock server exposed none of
+its own sampling knobs) and slowest (0.35× realtime on CPU). Container stopped + Voice Studio/announcer/
+Trailhead rewired 2026-07-10; **`/mnt/docker/xtts/` and the built image are kept on foundry until the
+Chatterbox A/B is confirmed by ear** (A/B clips: `tts/studio/{xtts,chatterbox}/athena_natural/*_AB.wav`)
+— then delete the dir + `docker rmi xtts-xtts` + deregister the stack in the Komodo UI. Lessons worth
+keeping: prebuilt `ghcr.io/idiap/coqui-tts-cpu` ships no torch; coqui-tts 0.27 needs `transformers==4.57.1`
+(5.x dropped `isin_mps_friendly`); Coqui's `/api/tts` language param is `language_id`, NOT `language_idx`
+(silently ignored → falls back to `en`).
 
 ## Announcer — play Voice Studio voices on the Chromecast (2026-07-07)
 A small **`announcer`** service casts Voice Studio audio to the Chromecast Audio **"Home Announcer"**
@@ -317,7 +341,9 @@ A small **`announcer`** service casts Voice Studio audio to the Chromecast Audio
   `voice-studio.home`) — an HTTPS page (`voice-studio.1701.me`) blocks the cross-origin HTTP cast call
   (mixed content).
 - **From anything (curl/HA):** `GET /say?text=...&voice=athena/athena_calm.wav&engine=pocket&volume=0.5`
-  regenerates via Voice Studio, serves the WAV, casts it. `POST /cast_upload` (multipart `audio` +
+  regenerates via Voice Studio, serves the WAV, casts it. Engines: `pocket` (default) / `kokoro` /
+  `chatterbox` — **`engine=xtts` is kept as a legacy alias for chatterbox** (2026-07-10) so any old
+  HA/scripted callers keep working. `POST /cast_upload` (multipart `audio` +
   `volume`) casts an existing clip. Temp WAVs auto-pruned after 10 min.
 - **How it works:** the CCA plays a *URL it fetches itself*, so the announcer serves the WAV at
   `http://192.168.0.130:8011/audio/<id>.wav` (host-reachable) and drives playback via **pychromecast**
@@ -372,11 +398,22 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
 1. HA long-lived access token → build the `via=hass` announcer path + `rest_command.announcer_say` + 🏠 HA studio chip.
 2. Kokoro as an HA-native `tts.` entity (HACS OpenAI TTS Speech Service → `:8880/v1`), then point Chime TTS/pipelines at it.
 3. OpenAI-compatible shim for pocket-engine so Athena/Majel can be an HA pipeline voice.
-4. Kokoro blend → promote-to-Pocket-reference button (Pocket/XTTS clips have ➜ voice; Kokoro blends don't).
-5. XTTS deep knobs (temperature/top_k/top_p/penalties/speed) — deferred; needs a custom inference server + rebuild (declined 2026-06-15).
+4. Kokoro blend → promote-to-Pocket-reference button (Pocket/Chatterbox clips have ➜ voice; Kokoro blends don't).
+5. **Finish the XTTS decommission after the by-ear A/B** (clips in `tts/studio/*/athena_natural/*_AB.wav`):
+   delete `/mnt/docker/xtts/` + `docker rmi` the image on foundry, deregister the stack in the Komodo UI.
+6. Consider PBS/backup coverage for forge/CT200's `/mnt/docker` (chatterbox + ollama + sd-webui configs).
 
 ## History
 
+- **2026-07-10 — XTTS-v2 → Chatterbox (first GPU engine).** XTTS dumped as highest-maintenance/slowest;
+  Chatterbox base 0.5B (devnen server, CUDA fp32) deployed on forge/CT200's GTX 1660 Super at
+  `192.168.0.155:8004`. Gateway `/generate_xtts` + `/xtts/*` routes replaced by `/generate_chatterbox` +
+  `/chatterbox/voices`; cloning went shared-path → HTTP upload (content-hashed, dedup'd); studio tab now
+  has exaggeration/cfg_weight/temperature sliders (base chosen over Turbo BECAUSE Turbo ignores the first
+  two); announcer's `engine=xtts` remapped with alias kept. Measured: chatterbox 3.3 GB VRAM resident,
+  ~2–7s/line vs XTTS's 25–46s. XTTS container stopped; dir+image kept pending by-ear A/B. Multi-agent
+  recon + adversarial review preceded the swap (caught the Turbo-ignores-emotion-knobs trap and the
+  announcer dependency).
 - **2026-07-09 — Voice audit + doc consolidation.** Multi-agent sweep of chats/docs/live state; all five
   voice containers verified healthy. Announcer Trailhead card added (had been missed at deploy). HA
   integration state + open TODOs captured above.

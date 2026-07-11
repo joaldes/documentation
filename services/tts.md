@@ -302,7 +302,7 @@ cross-node engine. Replaced XTTS-v2 (see the decommission note below).
 | Build | local clone of github.com/devnen/Chatterbox-TTS-Server; CUDA 12.1 Dockerfile, fp32 (Turing has no bf16) |
 | Config | `./config.yaml` — `model.repo_id: chatterbox` (base 0.5B), `tts_engine.device: cuda`, exaggeration default 0.5 |
 | Model cache | `./hf_cache` bind mount (survives rebuilds — the upstream compose's *named volume* would re-download; that file is kept as `docker-compose.yml.upstream`, do NOT deploy from it) |
-| VRAM | **~3.3 GB resident, ~3.9 GB after a clone** — model stays loaded; `POST /api/unload` frees it. Compose sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (added 2026-07-10 after allocator creep to 5.5 GB caused real generation OOMs — do not remove) |
+| VRAM | **~3.1 GB floor, plateaus ~4.0 GB in use** (leak FIXED 2026-07-11 — see below); `POST /api/unload` frees it. Compose sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` + `CONDS_CACHE_MAX=3` — do not remove either |
 | Trailhead | "Chatterbox (engine)" card, AI - Foundry → Voice |
 
 **Server API** (what the gateway uses): `POST /tts` (JSON: `text`, `voice_mode` `clone|predefined`,
@@ -318,12 +318,24 @@ so base it is. Turbo remains one dropdown away in the devnen web UI (runtime mod
 flat read is ever wanted; `chatterbox-multilingual` (23 langs) is a config-only swap if non-English
 cloning is ever needed. All output carries Resemble's inaudible **Perth watermark** (not disableable).
 
-**VRAM contention (the 6 GB reality, measured 2026-07-10):** chatterbox resident **3.3 GB** + gemma3:4b
-**~3.3 GB** > 6 GB — they can't both be fully VRAM-resident. Ollama's `OLLAMA_KEEP_ALIVE=5m` (already set
-on forge) means chat models unload after idle; when both are hot, Ollama partially CPU-offloads (slower
-chat, not a crash). An SD render on top of resident chatterbox can OOM A1111 (whose post-OOM `--medvram`
-state corrupts → `docker restart sd-webui`). If contention bites: `curl -X POST
-http://192.168.0.155:8004/api/unload` after TTS sessions, or the known 12 GB RTX 3060 upgrade path.
+**VRAM leak FIXED 2026-07-11** (was: creep 3.1→5.4 GB over a varied session → intermittent 502s from
+CUDA OOM; full forensics in `…/claudeai/chatterbox-vram-leak-findings.md`). Two upstream bugs in the
+devnen server's `engine.py`, patched locally (file is **bind-mounted** `./engine.py:/app/engine.py` AND
+in the build context; rollback = `git checkout -- engine.py`): (1) the voice-conditioning cache
+`_conds_cache` held GPU tensors with **no eviction** — now LRU-capped via **`CONDS_CACHE_MAX`**
+(compose env, **3**; each entry costs **~260 MiB** measured, so cap ≈ floor 3.1 GB + N×0.26); (2)
+`synthesize()` never released allocator reserve — now `torch.cuda.empty_cache()` in a `finally` per
+chunk. Verified: 10 varied voice×exaggeration generations plateau **flat at ~4.0 GB**, all 200, no OOM.
+A nightly `docker restart chatterbox` cron (04:00 Phoenix, `/etc/cron.d/chatterbox-restart` in CT200)
+stays as backstop.
+
+**VRAM contention (the 6 GB reality, measured 2026-07-10):** chatterbox at its ~4.0 GB plateau +
+gemma3:4b **~3.3 GB** > 6 GB — they can't both be fully VRAM-resident. Ollama's `OLLAMA_KEEP_ALIVE=5m`
+(already set on forge) means chat models unload after idle; when both are hot, Ollama partially
+CPU-offloads (slower chat, not a crash). An SD render on top of resident chatterbox can OOM A1111
+(whose post-OOM `--medvram` state corrupts → `docker restart sd-webui`). If contention bites:
+`curl -X POST http://192.168.0.155:8004/api/unload` after TTS sessions, or the known 12 GB RTX 3060
+upgrade path.
 
 **Speed (measured, same Athena line):** first-ever clone of a reference ~18s (one-time upload +
 conditioning); subsequent clones **~2–7s** per line (conditioning cache keyed on file+mtime+exaggeration).
@@ -417,6 +429,12 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
 
 ## History
 
+- **2026-07-11 (later) — Chatterbox VRAM leak fixed.** Intermittent `/generate_chatterbox` 502s =
+  CUDA OOM from two upstream `engine.py` bugs (unbounded GPU-tensor voice cache + no per-generation
+  allocator release). Patched locally (LRU cap `CONDS_CACHE_MAX=3` + `empty_cache()` in a finally),
+  deployed via bind mount, hardened per pre-deploy opus review (env clamp, race-safe eviction).
+  Measured ~260 MiB per cache entry; verified flat ~4.0 GB plateau over varied generations. Nightly
+  restart cron kept as backstop. Forensics doc: `…/claudeai/chatterbox-vram-leak-findings.md`.
 - **2026-07-11 — Real split: standalone voice-studio gateway + engine-only pocket-tts.** The 2026-06-15
   ROLE-flag arrangement (one image, two containers, code living in the neighbor's dir) was rebuilt into
   properly-separated stacks: `/mnt/docker/voice-studio/` now owns its own slim image (`voice-studio:latest`,

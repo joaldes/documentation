@@ -428,6 +428,13 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
 
 ## History
 
+- **2026-07-11 (later still) — Studio UI redesigned via Claude Design.** New `index.html` (~910
+  lines) produced in a sandboxed Claude Design session (handoff via samba `tts/ui-rebuild/` — that
+  session has no shell/SSH, files must be uploaded to it), contract-reviewed against the ui-guide
+  (all fetch surfaces + landmines intact, incl. the HTTP cast button and legacy `x*` element ids),
+  deployed live-on-refresh. Visual/organizational only: per-tab ⓘ help popovers, grouped controls,
+  collapsible Saved-clips/Voice-library panels (localStorage-persisted). API contract unchanged;
+  previous UI kept as `index.html.bak`.
 - **2026-07-11 (later) — Chatterbox VRAM leak fixed.** Intermittent `/generate_chatterbox` 502s =
   CUDA OOM from two upstream `engine.py` bugs (unbounded GPU-tensor voice cache + no per-generation
   allocator release). Patched locally (LRU cap `CONDS_CACHE_MAX=3` + `empty_cache()` in a finally),

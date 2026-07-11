@@ -36,6 +36,9 @@ container on 2026-06-15 — see History.)**
   **closed 2026-07-01**: the nightly PBS fileshares job backs up foundry's `/mnt/docker` as `docker.pxar`.
   ⚠ forge/CT200 has no PBS coverage yet — the chatterbox stack dir is small and re-cloneable from
   github.com/devnen/Chatterbox-TTS-Server; `config.yaml` + `compose.yaml` are the only local edits).
+- **`chatterbox-power.service`** (forge/CT 200, systemd, not Docker) — `/opt/chatterbox-power/warden.py`
+  on `:8005`; the stop/start control plane behind Voice Studio's GPU Power button (see the Chatterbox §).
+  No PBS coverage on forge — the unit + script are the sole copy; re-createable from that § if lost.
 - **Two SEPARATE services, each owning its stack (real split 2026-07-11 — replaced the 2026-06-15
   `ROLE`-flag arrangement).** No shared image, no ROLE env:
   - **`voice-studio`** (`/mnt/docker/voice-studio/`, image `voice-studio:latest`, **:8010→8010**) —
@@ -334,8 +337,31 @@ gemma3:4b **~3.3 GB** > 6 GB — they can't both be fully VRAM-resident. Ollama'
 (already set on forge) means chat models unload after idle; when both are hot, Ollama partially
 CPU-offloads (slower chat, not a crash). An SD render on top of resident chatterbox can OOM A1111
 (whose post-OOM `--medvram` state corrupts → `docker restart sd-webui`). If contention bites:
-`curl -X POST http://192.168.0.155:8004/api/unload` after TTS sessions, or the known 12 GB RTX 3060
-upgrade path.
+**use the GPU Power button in Voice Studio** (see below — stops the container, frees the full ~4 GB down
+to ~0), or `curl -X POST http://192.168.0.155:8004/api/unload` (frees the model but the process keeps the
+~3.1 GB floor), or the known 12 GB RTX 3060 upgrade path.
+
+### GPU Power button — stop/start Chatterbox from Voice Studio (2026-07-11)
+So the forge 6 GB card can be handed to **Stable Diffusion** without a CLI, the studio's **Chatterbox
+Clone** tab has a **GPU Power** panel: a red **⏻ Free GPU — stop Chatterbox** button (JS `confirm()`
+before it acts), a **▶ Start Chatterbox** button, and a live status line showing running/stopped + GPU
+VRAM. Stopping the container frees the whole ~4 GB (down to ~172 MiB) — more thorough than `/api/unload`,
+which leaves the process floor resident. This is the intended lever whenever you want to run image gen.
+
+**Why a helper service was needed:** Voice Studio runs on foundry (CT 130) but Chatterbox runs on forge
+(CT 200) — cross-node, and CUDA has no cross-process VRAM eviction, so *something on forge* must control
+its Docker. Chain (all same-origin from the browser, matching the gateway's proxy pattern):
+
+| Layer | What |
+|---|---|
+| Warden (forge) | **`chatterbox-power.service`** — systemd unit running `/opt/chatterbox-power/warden.py` (stdlib-only Python) on **`:8005`** of CT 200. `GET /status` → `{running, vram_used_mib, vram_total_mib}` (via `docker inspect` + `nvidia-smi`); `POST /stop` / `POST /start` → `docker stop/start chatterbox`. **Blast radius hardcoded to the `chatterbox` container** (LAN-only, no auth — homelab norm). `Restart=on-failure`, enabled at boot. |
+| Gateway (foundry) | `voice-studio/app/main.py` proxy routes `GET /chatterbox/power`, `POST /chatterbox/power/stop`, `POST /chatterbox/power/start` → the warden. Base URL env **`CHATTERBOX_POWER_BASE`** (compose default `http://192.168.0.155:8005`). |
+| UI | `studio/index.html` — `refreshCbPower()` polls status on tab open; Stop wrapped in `confirm()`. |
+
+⚠ **Editing-over-SSH trap (learned here):** heredoc'ing JS through `ssh "... <<'EOF'"` double-nests
+shell quoting and collapsed `\n`→a real newline inside a JS string literal (syntax error, killed the whole
+inline script). Fix: write the patch script **locally + `scp`** it, don't heredoc code through a
+double-quoted ssh arg.
 
 **Speed (measured, same Athena line):** first-ever clone of a reference ~18s (one-time upload +
 conditioning); subsequent clones **~2–7s** per line (conditioning cache keyed on file+mtime+exaggeration).

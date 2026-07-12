@@ -1,6 +1,6 @@
 # The Curious — Self-Writing Fun-Fact Magazine
 
-**Last Updated**: 2026-05-29
+**Last Updated**: 2026-07-12
 **Related Systems**: CT 128 (Komodo/Docker), jobs.home, Trailhead, AdGuard (CT 101)
 
 ## Summary
@@ -15,7 +15,8 @@ Produce genuinely surprising, *trustworthy* fun-fact articles automatically — 
 
 ## Solution
 Four agents run sequentially per article (Claude Agent SDK driving the `claude` CLI as a
-subprocess, authenticated with a **dedicated in-container Claude Max login** — no API key):
+subprocess, authenticated with a **long-lived Claude Max setup-token** (`CLAUDE_CODE_OAUTH_TOKEN`
+in the stack `.env`, generated with `claude setup-token`, ~1-year lifetime) — no API key):
 
 1. **Editor (pick)** — chooses a topic + specific angle from `taxonomy.yaml`, avoiding recent topics.
 2. **Researcher** — WebSearch; must surface a primary source, a disputed claim, a specific
@@ -43,7 +44,11 @@ open-license (Wikimedia Commons → Unsplash) with attribution.
 - **Data**: `/mnt/docker/magazine/data/` — `magazine.db` (SQLite, WAL) + `articles/<slug>/`
   (markdown, `hero.*`, `sources/`).
 - **Config (edit via Samba)**: `/mnt/docker/magazine/taxonomy.yaml`, `trusted-sources.yaml`.
-- **Auth**: `/mnt/docker/magazine/claude-home/` mounted to `/root/.claude` (dedicated Max session).
+- **Auth**: `CLAUDE_CODE_OAUTH_TOKEN` in `/etc/komodo/stacks/magazine/.env` (long-lived Max
+  setup-token, ~1yr). `claude-home/` is still mounted at `/root/.claude` but only holds CLI
+  settings/history — no credentials. ⚠ **Cron strips docker env**, so `entrypoint.sh` re-declares
+  the token inside `/etc/cron.d/magazine`; without that line every nightly 401s while interactive
+  `docker exec` works fine (the 2026-06-27→07-12 outage).
 - **Port**: 8089 → `magazine.home` (AdGuard rewrite).
 - **Schedule**: in-container cron at `NIGHTLY_HOUR` (TZ-aware), wrapped in `jobctl run magazine-nightly`.
 
@@ -62,8 +67,16 @@ curl -X POST http://localhost:8089/run/nightly
 docker exec magazine python orchestrator.py --nightly
 docker exec magazine python orchestrator.py --custom "Why is the speed of light what it is?"
 
-# Re-auth the Max session if articles show 'auth_expired':
-docker exec -it magazine claude   # then /login, follow device-code flow
+# Re-auth if articles show 'auth_expired' (token revoked/expired, ~yearly):
+#   1. claude setup-token   (any machine; approve in browser, copy sk-ant-oat01-...)
+#   2. put it in /etc/komodo/stacks/magazine/.env as CLAUDE_CODE_OAUTH_TOKEN=...
+#   3. docker compose up -d --force-recreate   (re-runs entrypoint -> new cron env)
+# Then requeue the stuck rows — --resume skips 'auth_expired', and janitor() fails
+# rows whose updated_at is >12h old, so the timestamp bump is REQUIRED:
+docker exec magazine python -c "import sqlite3; c=sqlite3.connect('/data/magazine.db'); \
+c.execute(\"UPDATE articles SET status='picking', owner=NULL, lease_until=NULL, \
+spike_reason=NULL, updated_at=datetime('now') WHERE status='auth_expired'\"); c.commit()"
+docker exec -d magazine sh -c 'cd /app && python orchestrator.py --resume >> /data/cron.log 2>&1'
 
 # Logs / cron log:
 docker logs magazine
@@ -76,7 +89,10 @@ docker exec magazine cat /data/cron.log
 - `/spiked` shows rejected pieces + Fact-Checker reasons.
 
 ## Troubleshooting
-- **`auth_expired` articles** → the Max token lapsed; re-run `claude` login in the container.
+- **`auth_expired` articles** → the setup-token was revoked/expired; regenerate per the
+  Operations re-auth steps above. If `claude -p "say hi"` works interactively but nightlies
+  still 401, the token is missing from `/etc/cron.d/magazine` (cron-env trap) — recreate the
+  container so `entrypoint.sh` rewrites the cron file.
 - **No hero images** → Wikimedia returned nothing and no `UNSPLASH_KEY` set; harmless (text-only).
 - **Chromium/PDF failures** → archiving is best-effort and never blocks publishing; check
   `/dev/shm` (`shm_size: 512m` in compose) and `--no-sandbox` flags.

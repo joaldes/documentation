@@ -305,7 +305,7 @@ cross-node engine. Replaced XTTS-v2 (see the decommission note below).
 | Build | local clone of github.com/devnen/Chatterbox-TTS-Server; CUDA 12.1 Dockerfile, fp32 (Turing has no bf16) |
 | Config | `./config.yaml` — `model.repo_id: chatterbox` (base 0.5B), `tts_engine.device: cuda`, exaggeration default 0.5 |
 | Model cache | `./hf_cache` bind mount (survives rebuilds — the upstream compose's *named volume* would re-download; that file is kept as `docker-compose.yml.upstream`, do NOT deploy from it) |
-| VRAM | **~3.1 GB floor, plateaus ~4.0 GB in use** (leak FIXED 2026-07-11 — see below); `POST /api/unload` frees it. Compose sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` + `CONDS_CACHE_MAX=3` — do not remove either |
+| VRAM | **On-demand since 2026-07-12: 0 model VRAM by default** (`CHATTERBOX_PRELOAD=false` — no startup load; ~404 MiB process floor once used), loads on first request, **auto-unloads after 10 min idle** (`CHATTERBOX_IDLE_UNLOAD_SEC=600`). In use: **~3.1 GB floor, plateaus ~4.0 GB** (leak FIXED 2026-07-11 — see below). `POST /api/unload` frees the model manually. Compose sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` + `CONDS_CACHE_MAX=3` — do not remove either |
 | Trailhead | "Chatterbox (engine)" card, AI - Foundry → Voice |
 
 **Server API** (what the gateway uses): `POST /tts` (JSON: `text`, `voice_mode` `clone|predefined`,
@@ -336,10 +336,13 @@ stays as backstop.
 gemma3:4b **~3.3 GB** > 6 GB — they can't both be fully VRAM-resident. Ollama's `OLLAMA_KEEP_ALIVE=5m`
 (already set on forge) means chat models unload after idle; when both are hot, Ollama partially
 CPU-offloads (slower chat, not a crash). An SD render on top of resident chatterbox can OOM A1111
-(whose post-OOM `--medvram` state corrupts → `docker restart sd-webui`). If contention bites:
-**use the GPU Power button in Voice Studio** (see below — stops the container, frees the full ~4 GB down
-to ~0), or `curl -X POST http://192.168.0.155:8004/api/unload` (frees the model but the process keeps the
-~3.1 GB floor), or the known 12 GB RTX 3060 upgrade path.
+(whose post-OOM `--medvram` state corrupts → `docker restart sd-webui`; note A1111 `/sdapi/v1/unload-checkpoint`
+does **not** release VRAM under `--medvram` — a container restart is what frees SD's ~2.5 GB). Contention
+levers, in order: **(0) automatic — since 2026-07-12 chatterbox holds 0 model VRAM until a request and
+self-unloads after 10 min idle** (see the On-demand § below), so an idle chatterbox no longer competes;
+(1) **GPU Power button in Voice Studio** (see below — stops the container, frees the full ~4 GB down to ~0);
+(2) `curl -X POST http://192.168.0.155:8004/api/unload` (frees the model, process keeps the ~404 MiB floor);
+(3) the known 12 GB RTX 3060 / A2000 upgrade path (planned, <$500).
 
 ### GPU Power button — stop/start Chatterbox from Voice Studio (2026-07-11)
 So the forge 6 GB card can be handed to **Stable Diffusion** without a CLI, the studio's **Chatterbox
@@ -366,6 +369,37 @@ double-quoted ssh arg.
 **Speed (measured, same Athena line):** first-ever clone of a reference ~18s (one-time upload +
 conditioning); subsequent clones **~2–7s** per line (conditioning cache keyed on file+mtime+exaggeration).
 XTTS-CPU took 25–46s for the same work.
+
+### On-demand model loading + idle-unload (2026-07-12)
+Chatterbox was pinning ~3.3 GB of the 6 GB card **whenever the container ran** (the devnen server loads the
+model in FastAPI `lifespan` and never releases it). Since it's only needed for ad-hoc cloning via Voice
+Studio (Pocket + Kokoro on foundry CPU cover everyday TTS), it now **loads on the first request and unloads
+after 10 min idle, container staying up at :8004**. Complements — does not replace — the GPU Power button
+(that stops the whole container to ~0; this keeps it reachable and drops just the model).
+
+**How** — patched the devnen `server.py`, which is **now bind-mounted** (`./server.py:/app/server.py` added to
+compose next to `engine.py`; edits are restart-only, no `--build`):
+- module helpers `_ensure_model_loaded()` (idempotent, double-checked `_model_lock`) and `_idle_monitor()`
+  (asyncio task, 60s tick → `engine.unload_model()` when `MODEL_LOADED` and idle > `IDLE_UNLOAD_SEC`);
+- `lifespan` skips the startup load unless `CHATTERBOX_PRELOAD=true`, and launches the monitor (cancelled in `finally`);
+- the two `if not engine.MODEL_LOADED: 503` guards (`custom_tts_endpoint`, `/v1/audio/speech`) now call
+  `_ensure_model_loaded()` first, so a request that arrives cold loads the model instead of erroring.
+- **Env (compose):** `CHATTERBOX_IDLE_UNLOAD_SEC=600` (0 = never), `CHATTERBOX_PRELOAD=false`.
+- **Backups:** `server.py.bak-pre-idleunload`, `compose.yaml.bak-pre-idleunload`. **Rollback:** drop the
+  `./server.py` mount + the two envs → back to load-at-startup.
+
+**Behavior notes / traps:**
+- After **▶ Start Chatterbox** (or the nightly 04:00 restart) the container comes up holding **0 model VRAM**
+  now — `/api/model-info` reads `loaded:false` until the first request. That's expected, not "broken."
+- First request after idle pays a **one-time ~3–8 s** model load; the Voice Studio gateway just needs its
+  HTTP timeout to exceed that (it does).
+- ⚠ `/v1/audio/speech` `voice` needs the **`.wav` suffix** (`"Olivia.wav"`) or you get a 404 *before* the
+  load guard runs.
+- The idle-unload cannot fix a **cold load into an already-full card**: with sd-webui holding ~2.5 GB, a
+  first TTS load OOMs synthesis (`CUBLAS_STATUS_ALLOC_FAILED`) — free SD first (container restart). Same 6 GB
+  ceiling; the 2nd-GPU purchase is the real fix.
+- Verified 2026-07-12: boot → 0 VRAM; request → `loaded:true` + valid 127 KB 24 kHz WAV; `/api/unload` →
+  `loaded:false`, card back to ~404 MiB floor.
 
 ### XTTS-v2 decommission note (2026-07-10)
 XTTS-v2 (Coqui/idiap, foundry `:8002`) was **replaced by Chatterbox**: highest-maintenance engine of the

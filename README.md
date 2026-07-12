@@ -39,6 +39,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [arr-stack.md](services/arr-stack.md) | *arr media pipeline — Jellyseerr → Radarr/Sonarr → seedbox (usenet+torrent) → Emby; per-request status, import-blocked failure mode, Request Tracker |
 | [unmanic-config.md](services/unmanic-config.md) | Unmanic transcoding service |
 | [prometheus-config.yaml](services/prometheus-config.yaml) | Prometheus scrape configuration |
+| [gpu-vram-monitoring.md](services/gpu-vram-monitoring.md) | Per-container GPU VRAM monitoring for forge/t5 (1660 Super) — t5-host collector → Prometheus/Grafana dashboard `gpu-forge` + >90% Telegram alert |
 | [homeassistant-mcp-integration.md](services/homeassistant-mcp-integration.md) | Home Assistant MCP integration for Claude |
 | [rtl433-honeywell-setup.md](services/rtl433-honeywell-setup.md) | RTL-433 SDR + Honeywell 5800 sensor integration |
 | [birdnet-deployment-guide.md](services/birdnet-deployment-guide.md) | BirdNET bird detection system (Pi audio stream + BirdNET-Go + settings) |

@@ -7,6 +7,10 @@ Super (CUDA). **All consolidated onto forge 2026-07-12** (previously the CPU pie
 Foundry (CT 130) is being retired 2026-07-12 — open-webui + searxng also moved to forge. Komodo-managed stacks on the **forge** server,
 Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements).
 
+> **Naming (2026-07-12):** CT 200 was **renamed `forge` → `foundry`** once the whole AI hub landed on it —
+> **"forge" anywhere in this doc = CT 200 = now `foundry`** (192.168.0.155). Physical node stays `t5`. The old
+> foundry (CT 130) became `foundry-old` and is retiring.
+
 ## Engines at a glance
 | Engine | Host | Port | Role | Cloning | Speed |
 |---|---|---|---|---|---|

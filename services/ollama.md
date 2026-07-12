@@ -3,7 +3,9 @@
 **Last Updated**: 2026-07-12
 **Related Systems**: LXC 200 "forge" (192.168.0.155, t5 GPU node), Open WebUI (:8085), Ollama API (:11434), SearXNG (:8888)
 
-> **⚠ CURRENT STATE (2026-07-12): the entire AI hub lives on forge (CT 200 @ 192.168.0.155), not foundry.**
+> **⚠ CURRENT STATE (2026-07-12): the entire AI hub lives on CT 200 @ 192.168.0.155 — which was RENAMED
+> `forge` → `foundry` on 2026-07-12** (it now carries the AI-hub identity; physical node stays `t5`; the old
+> CT 130 became `foundry-old`, retiring). "forge" = this same CT 200 = now `foundry`.
 > - **Ollama** moved off foundry's Intel Iris Xe (ipex build) to forge's **GTX 1660 Super (CUDA)** on 2026-07-10
 >   (`ollama/ollama` + `--gpus all`; `ollama-api.home` DNS → .155). See the t5 GPU node notes.
 > - **Open WebUI** (`:8085`) and **SearXNG** (`:8888`) moved from foundry to forge on 2026-07-12 (this migration).

@@ -81,6 +81,7 @@ Official documentation for the Proxmox-based homelab infrastructure.
 | [2026-05-01-ha-unreachable-claude-ai-overload.md](incidents/2026-05-01-ha-unreachable-claude-ai-overload.md) | HA unreachable 55min — Claude AI CT overload starved Proxmox host, stalled HA vCPU, missed DHCP renewal |
 | [2026-06-24-shipyard-powerloss-boot-failure.md](incidents/2026-06-24-shipyard-powerloss-boot-failure.md) | Power outage → emergency mode (fstab missing `nofail`); enclosure reattach + `nofail`/mergerfs hardening, GPU render-only fix, PBS datastore restored |
 | [2026-07-03-runaway-grep-disk-io.md](incidents/2026-07-03-runaway-grep-disk-io.md) | Stray `grep -r frigate/config /` in CT 124 crawled all media shares for 28h, pinning `sdd` at 81% util (~142 MB/s reads); killed the process → dropped to ~5% |
+| [2026-07-12-magazine-claude-auth-outage.md](incidents/2026-07-12-magazine-claude-auth-outage.md) | Magazine published nothing for 15 days: Max OAuth died, then the token fix never reached the nightly job (cron strips docker env); entrypoint now injects the token into the cron file |
 
 ### Troubleshoot
 

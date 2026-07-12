@@ -1,11 +1,23 @@
-# Ollama (Container 130 — host: foundry)
+# Ollama + Open WebUI + SearXNG (now on forge / CT 200, t5 node)
 
-**Last Updated**: 2026-03-25
-**Related Systems**: LXC 130 "foundry" (192.168.0.130), Open WebUI (:8085), Ollama API (:11434), SearXNG (:8888)
+**Last Updated**: 2026-07-12
+**Related Systems**: LXC 200 "forge" (192.168.0.155, t5 GPU node), Open WebUI (:8085), Ollama API (:11434), SearXNG (:8888)
+
+> **⚠ CURRENT STATE (2026-07-12): the entire AI hub lives on forge (CT 200 @ 192.168.0.155), not foundry.**
+> - **Ollama** moved off foundry's Intel Iris Xe (ipex build) to forge's **GTX 1660 Super (CUDA)** on 2026-07-10
+>   (`ollama/ollama` + `--gpus all`; `ollama-api.home` DNS → .155). See the t5 GPU node notes.
+> - **Open WebUI** (`:8085`) and **SearXNG** (`:8888`) moved from foundry to forge on 2026-07-12 (this migration).
+>   open-webui data (webui.db + RAG `vector_db`) was carried over; both are Komodo-managed on the `forge` server
+>   and share a `webui` docker network (so open-webui resolves `searxng:8080` — this **fixed** web search, which
+>   was silently broken by the two containers being on separate nets on foundry).
+> - **Working URLs** (via NPM, now → .155:8085): `ai.home` / `ai.1701.me` / `ollama.home` / `ollama.1701.me`.
+> - **Foundry (CT 130) is being retired** after a soak. Everything below describing foundry / Intel-iGPU / ipex
+>   is **HISTORICAL** (kept for reference); substitute host `192.168.0.130` → `192.168.0.155` throughout.
 
 ## Summary
 
-Local LLM inference running on Intel Iris Xe iGPU via Intel IPEX-optimized Ollama. Two models configured: a fast general-purpose model and a coding-focused model. Web search powered by SearXNG. Accessible via Open WebUI at `192.168.0.130:8085`.
+Local LLM inference. Web search powered by SearXNG. Accessible via Open WebUI at `192.168.0.155:8085`
+(historically `192.168.0.130:8085` on foundry — see the banner above).
 
 ## Infrastructure
 

@@ -4,7 +4,7 @@
 **Related Systems**: **CT 200 "forge" on the t5 node (192.168.0.155) now hosts the ENTIRE voice stack** —
 Pocket TTS + Kokoro (CPU), the Voice Studio gateway (:8010), the announcer, and Chatterbox on the GTX 1660
 Super (CUDA). **All consolidated onto forge 2026-07-12** (previously the CPU pieces lived on CT 130 "foundry").
-Foundry now runs only open-webui (:8085) + searxng. Komodo-managed stacks on the **forge** server,
+Foundry (CT 130) is being retired 2026-07-12 — open-webui + searxng also moved to forge. Komodo-managed stacks on the **forge** server,
 Trailhead (AI - Foundry group), documents samba (tts), Home Assistant VM 100 (announcements).
 
 ## Engines at a glance
@@ -534,7 +534,7 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
   through the gateway, voice list + a `/save` round-trip to the samba share both work over the SMB mount.
   **NOT verified:** the announcer→Chromecast cast — the CCA was powered off during the migration (see the
   Announcer § caveat). Foundry freed of ~9 GB images + its 6.5 GB of TTS mem-limits; its stopped stack dirs
-  are the rollback. Foundry now runs only open-webui + searxng.
+  are the rollback. (Foundry's open-webui + searxng also moved to forge 2026-07-12; CT 130 is being retired.)
 
 - **2026-07-11 (later still) — Studio UI redesigned via Claude Design.** New `index.html` (~910
   lines) produced in a sandboxed Claude Design session (handoff via samba `tts/ui-rebuild/` — that

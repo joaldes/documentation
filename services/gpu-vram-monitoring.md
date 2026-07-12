@@ -4,7 +4,7 @@
 **Related Systems**: t5 PVE host (192.168.0.152), CT 200 forge (192.168.0.155), CT 128 Prometheus/Grafana
 
 ## Summary
-Per-container VRAM monitoring for the GTX 1660 Super on the t5 node. A collector on the t5 host attributes every GPU process to its docker container inside forge (ollama / chatterbox / sd-webui), exports the numbers through the existing node-exporter → Prometheus pipeline, and a Grafana dashboard + Telegram alert sit on top. Built because the 6 GB card is chronically contended and OOM debugging previously required manual `nvidia-smi` + `/proc` spelunking.
+Per-container VRAM monitoring for the GTX 1660 Super on the t5 node. A collector on the t5 host attributes every GPU process to its docker container inside forge (ollama / chatterbox / sd-webui), exports the numbers through the existing node-exporter → Prometheus pipeline, and a Grafana dashboard + alert rule sit on top. Built because the 6 GB card is chronically contended and OOM debugging previously required manual `nvidia-smi` + `/proc` spelunking.
 
 ## Problem / Goal
 Three GPU consumers share 6 GB: Ollama (~3.3 GB with a model loaded), Chatterbox TTS (~3.3–4.0 GB resident), sd-webui (~116 MiB idle, 2–4 GB with a checkpoint loaded). `nvidia-smi` shows only anonymous host PIDs (`python3`, `venv/bin/python`) — no way to see *what* holds the VRAM, and no history or alerting.
@@ -14,7 +14,7 @@ Three GPU consumers share 6 GB: Ollama (~3.3 GB with a model loaded), Chatterbox
 - **Schedule**: `/etc/cron.d/gpu-vram-metrics` — every minute (same pattern as the existing smartmon/nvme textfile crons).
 - **Transport**: node-exporter's textfile collector on `t5-host:9100`, already scraped by Prometheus (CT 128) — zero Prometheus config changes.
 - **Dashboard**: Grafana **`http://192.168.0.179:3001/d/gpu-forge/`** — stacked per-container VRAM with total-used + card-max lines, VRAM gauge (70/90% thresholds), current-allocation table, util/temp/power. Created via the Grafana API (not file-provisioned; lives in Grafana's DB).
-- **Alert**: rule `gpu-vram-high` (folder "GPU", group `gpu`, eval 1m): VRAM >90% for 5 min → contact point **`telegram-homelab`** (bot + chat id reused from the arr-stack Telegram wiring; chat id `-4576105359`). Root notification policy routes to it. `noDataState: NoData` doubles as a collector-down signal.
+- **Alert**: rule `gpu-vram-high` (folder "GPU", group `gpu`, eval 1m): VRAM >90% for 5 min. **No notification channel is wired** (user preference — no Telegram); alert state is visible in the Grafana UI (Alerting → Alert rules) and on the dashboard. Root policy points at the inert default email placeholder. `noDataState: NoData` doubles as a collector-down signal. End-to-end delivery was verified once via a temporary Telegram contact point on 2026-07-12, then removed.
 - **Live view**: `nvtop` installed on the t5 host; `watch -n2 nvidia-smi` also works.
 
 ## Metrics
@@ -32,7 +32,7 @@ Labels are docker container names; a GPU process not in a forge container falls 
 - t5 host: `/usr/local/bin/gpu-vram-textfile.py` — collector (python3 stdlib only)
 - t5 host: `/etc/cron.d/gpu-vram-metrics` — `* * * * * root /usr/local/bin/gpu-vram-textfile.py` (PATH includes `/usr/sbin` for `pct`)
 - t5 host: `/var/lib/prometheus/node-exporter/gpu.prom` — output (atomic tmp+rename)
-- Grafana (API-managed, in DB): dashboard uid `gpu-forge`, alert rule uid `gpu-vram-high`, contact point `telegram-homelab`
+- Grafana (API-managed, in DB): dashboard uid `gpu-forge`, alert rule uid `gpu-vram-high`
 - CT 128: `/mnt/docker/trailhead/trailhead.yaml` — card `gpu-vram` (AI - Foundry section)
 
 ## Verification
@@ -51,4 +51,3 @@ Then load/unload something (generate a TTS line, load an Ollama model) and watch
 - **Metric missing entirely / stale**: cron or node-exporter problem — check `stat /var/lib/prometheus/node-exporter/gpu.prom` mtime and `systemctl status prometheus-node-exporter cron` on t5.
 - **Container shows as 12-hex-char id or command name**: the process isn't in forge (CT 200) or `docker ps` timed out; if a second GPU LXC is ever added, extend `FORGE_CT`/`container_names()` in the collector.
 - **Alert fires constantly**: usually sd-webui holding a checkpoint after image gen (it does NOT auto-unload) — `docker restart sd-webui` in forge frees it. Chatterbox creep should be gone (LRU cache fix 2026-07-11, nightly 04:00 restart as backstop).
-- **Telegram silent**: contact point shares the arr-stack bot; if the arrs still notify, the problem is in Grafana (`docker logs grafana | grep -i telegram` on CT 128).

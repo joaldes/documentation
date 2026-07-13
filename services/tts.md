@@ -465,7 +465,11 @@ the CCA fetches the audio from that URL, so it must be forge's IP).
   (`get_chromecasts(known_hosts=["192.168.0.206"])`, retried — mDNS is lossy). CORS `*` on the announcer
   so the UI button can call it.
 - **Files:** `/mnt/docker/announcer/{app.py,Dockerfile,requirements.txt,compose.yaml}`; UI button
-  (`castClip`) in `voice-studio/studio/index.html` (read per request, rebuild-free; `.bak` kept). ⚠ **Announcer
+  (`castClip`) in `voice-studio/studio/index.html` (read per request, rebuild-free; `.bak` kept).
+  ⚠ **castClip POSTs to a HARDCODED absolute IP** `http://192.168.0.155:8011/cast_upload` (must be an
+  http:// absolute URL — mixed-content/proxy won't work; see the ui-guide landmine). The 2026-07-12 forge
+  migration missed this literal (it stayed `.130` → casting silently broke); **repointed .130→.155 2026-07-12**.
+  Re-edit it directly if the announcer ever moves. ⚠ **Announcer
   app edits need `docker compose up -d --build` — `app.py` is BAKED into the image (COPY, no bind mount);
   a plain `docker restart` silently keeps the old code** (bit us on the 2026-07-10 chatterbox remap).
 - Chromecast provisioning itself (orphaned CCA → local `eureka` API): `troubleshoot/chromecast-audio-provisioning.md`.
@@ -533,7 +537,9 @@ trusted-network bypass). Designed 2026-07-08, not resumed since.
   copied to forge (recreates the `tts` docker net); stack dirs rsynced; `pocket-tts` (3.17 GB) + kokoro images
   moved via `docker save|load` and pull; voice-studio + announcer rebuilt on forge; announcer `SELF_URL`
   .130→.155. Repointed: NPM proxy hosts 212/213 (DB + conf), Trailhead Voice cards, Komodo (the 3 foundry stack
-  defs re-pointed to the `forge` server + announcer newly registered → all 5 adopted, running). Pre-migration
+  defs re-pointed to the `forge` server + announcer newly registered → all 5 adopted, running). **Straggler
+  found + fixed 2026-07-12:** the studio UI's 📢 cast button hardcoded `192.168.0.130:8011` (not covered by the
+  SELF_URL/NPM repoints) → silently broken casting; repointed to `.155`. Pre-migration
   LVM-thin snapshot `pre_tts_migration` taken. **Verified end-to-end:** pocket/kokoro/chatterbox generate
   through the gateway, voice list + a `/save` round-trip to the samba share both work over the SMB mount.
   **NOT verified:** the announcer→Chromecast cast — the CCA was powered off during the migration (see the

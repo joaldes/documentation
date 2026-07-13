@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-09 22:00 UTC*
+*Last updated: 2026-07-13 00:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 0.90, 1.38, 2.04 | RAM: 38/62 GB | Uptime: 2 days
+**Shipyard** (192.168.0.151) | CPU: 4.68, 4.88, 6.10 | RAM: 37/62 GB | Uptime: 5 days
 
 **58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 12 storage pools
 
@@ -17,7 +17,7 @@
 | cartography | lxc | 192.168.0.229 | - | - | running |
 | claudeai | lxc | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
-| foundry | lxc | 192.168.0.130 | - | - | running |
+| foundry-old | lxc | 192.168.0.130 | - | - | running |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
 | garmin | lxc | 192.168.0.132 | - | - | running |
@@ -91,7 +91,7 @@
 | 121 | scanopy | 192.168.0.219 | - | - | stopped |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
-| 130 | foundry | 192.168.0.130 | - | - | running |
+| 130 | foundry-old | 192.168.0.130 | - | - | running |
 | 131 | cartography | 192.168.0.229 | - | - | running |
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
@@ -130,7 +130,7 @@
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
 | tinyauth | 3005 | 1/1 | 1 | running | http://192.168.0.179:3005 |
 | tplan | 8084 | 2/2 | 0 | running | http://192.168.0.179:8084 |
-| trailhead | 8076 | 2/2 | 2 | running | http://192.168.0.179:8076 |
+| trailhead | 8076 | 2/2 | 1 | running | http://192.168.0.179:8076 |
 | vaultwarden | 8092 | 1/1 | 1 | running | http://192.168.0.179:8092 |
 
 ## VMs (3)
@@ -146,12 +146,12 @@
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
 | container-backups | dir | 0/0 | 0% |
-| docker-data | dir | 245/1006 | 24% |
+| docker-data | dir | 246/1006 | 24% |
 | local | dir | 50/93 | 53% |
-| local-lvm | lvmthin | 123/348 | 35% |
-| pbs-homelab | pbs | 3211/7110 | 45% |
-| smb-documents | dir | 81/491 | 16% |
-| smb-frigate | dir | 439/1510 | 29% |
-| smb-hometheater | dir | 17507/29679 | 58% |
+| local-lvm | lvmthin | 124/348 | 35% |
+| pbs-homelab | pbs | 3219/7110 | 45% |
+| smb-documents | dir | 82/491 | 16% |
+| smb-frigate | dir | 361/1510 | 23% |
+| smb-hometheater | dir | 17530/29679 | 59% |
 | smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 298/1740 | 17% |
+| ssd | lvmthin | 322/1740 | 18% |

@@ -1,6 +1,6 @@
 # The Curious — Self-Writing Fun-Fact Magazine
 
-**Last Updated**: 2026-07-12
+**Last Updated**: 2026-07-14
 **Related Systems**: CT 128 (Komodo/Docker), jobs.home, Trailhead, AdGuard (CT 101)
 
 ## Summary
@@ -35,6 +35,22 @@ If the *core premise* is a myth, the piece **pivots** to a myth-buster when the 
 surprising, else it's **spiked**. Nothing unverified is ever published. Spiked pieces and the
 Fact-Checker's reasoning are visible at `/spiked` (audit trail).
 
+**Revision budget & convergence gate (`agents.MAX_REVISIONS`, default 4):** the correct→re-check
+loop runs up to `MAX_REVISIONS` rounds. Because the adversarial Fact-Checker on a capable model
+almost always finds *one more* minor nit on fact-dense topics (dates, dollar figures, sourcing to
+non-allowlisted domains), a strict "zero corrections remaining" gate would spike nearly every
+article. So after the budget is exhausted the pipeline applies one final correction round and then
+**grace-exits to the Editor's release pass** (the holistic final gate) instead of spiking on the
+Fact-Checker's residual nits — see the `revision_count > MAX_REVISIONS` grace-exit in
+`orchestrator.py`. The Editor, not the nitpicky verifier, has the final say.
+
+**Model is pinned (`agents.MODEL`):** the agents are launched with an explicit `model=` in
+`ClaudeAgentOptions`. Left unset they inherit the bundled `claude` CLI's default, which silently
+drifts on every CLI auto-update — a newer, stricter Fact-Checker is what stalled nightly publishing
+right after the 2026-07-12 auth restore (2 weeks of blackout masked a model upgrade; the June
+`MAX_REVISIONS=2` was calibrated for the older, less-pedantic model). Pin keeps fact-check
+strictness and article quality reproducible; bump it deliberately when you want a newer model.
+
 Sources are archived locally (the agent's actual search snippet as the authoritative record,
 plus best-effort httpx HTML + Chromium full-page PDF) against link rot. Hero images are fetched
 open-license (Wikimedia Commons → Unsplash) with attribution.
@@ -54,7 +70,8 @@ open-license (Wikimedia Commons → Unsplash) with attribution.
 
 ### Key files
 - `code/orchestrator.py` — pipeline, leasing, resume, revision loop, usage budget, auth detection.
-- `code/agents.py` — the six system prompts + output JSON schemas.
+- `code/agents.py` — the six system prompts + output JSON schemas; also `MODEL` (pinned model id)
+  and `MAX_REVISIONS` (convergence budget).
 - `code/archive.py` — background source archiving + hero image.
 - `code/app.py` — FastAPI + server-rendered frontend.
 
@@ -97,6 +114,15 @@ docker exec magazine cat /data/cron.log
 - **Chromium/PDF failures** → archiving is best-effort and never blocks publishing; check
   `/dev/shm` (`shm_size: 512m` in compose) and `--no-sandbox` flags.
 - **Empty magazine / lots of spikes** → tighten or loosen `trusted-sources.yaml`; review `/spiked`.
+- **Spikes reading `fact-check corrections did not converge`** → the adversarial Fact-Checker keeps
+  returning `recommendation:"correct"` with residual nits until the revision budget runs out. First
+  confirm it's *not* auth (interactive `docker exec magazine claude -p "hi"` returns text, and
+  `cron.log` has no fresh `AuthError` — the jobctl "spiked" message can mask a 401). If auth is fine,
+  it's the convergence gate: (1) verify `agents.MODEL` is pinned so behavior is reproducible; a CLI
+  auto-update can make the checker abruptly stricter. (2) Raise `agents.MAX_REVISIONS` and/or rely on
+  the grace-exit-to-Editor (see the Revision-budget note above). This exact failure mode stalled
+  publishing 2026-07-13→14: fixed by pinning the model (`claude-sonnet-4-6`), `MAX_REVISIONS 2→4`,
+  and the grace-exit. Restart the container after editing (`code/` is bind-mounted `:ro`, no rebuild).
 
 ## Morning Telegram integration (live 2026-06-01)
 

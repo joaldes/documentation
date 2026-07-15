@@ -1,8 +1,9 @@
 # *arr Media Stack (Jellyseerr → Radarr/Sonarr → Emby)
 
-**Last Updated**: 2026-06-30
+**Last Updated**: 2026-07-15
 **Related Systems**: CT 113 Jellyseerr, CT 107 Radarr, CT 110 Sonarr, CT 115 Bazarr, CT 102 Emby,
-remote seedbox (ultra.cc / beryl.usbx.me), CT 128 Trailhead (Request Tracker)
+remote seedbox (ultra.cc / beryl.usbx.me), CT 128 Trailhead (Request Tracker),
+CT 135 `servarr` (dormant parallel Docker stack — see Consolidation)
 
 ## Summary
 
@@ -125,9 +126,18 @@ The five arr LXCs are being consolidated into **one Komodo-managed Docker stack*
 Approach: **greenfield parallel deploy** — built + wired + verified, but the existing LXCs remain the
 live system; nothing is flipped until a deliberate activation step. Emby stays its own LXC.
 
-- **CT 135 `servarr` @ 192.168.0.135** — privileged Ubuntu 24.04 LXC, Docker + Komodo Periphery.
-  Stack `/mnt/docker/servarr/compose.yaml` (LinuxServer images, PUID/PGID 1000): prowlarr :9696 ·
-  flaresolverr :8191 · radarr :7878 · sonarr :8989 · bazarr :6767 · jellyseerr :5055.
+> **Status re-verified 2026-07-15 (still DORMANT, native LXCs remain the sole system of record).**
+> Live audit: native Radarr = **500 movies**, native Sonarr = **197 series**, active grabs/imports
+> through 2026-07-14; the CT 135 Docker copies manage **0 items** with download clients **disabled**
+> and are not behind the reverse proxy. Public `jellyseerr.1701.me` still resolves to native CT 113.
+> **What changed:** CT 135 is now **registered in Komodo** (server `servarr`, id
+> `6a57f774777538def1eaac73`) and the stack is Komodo-managed — the one activation-checklist item below
+> that is now DONE. Everything else on that list still remains for a future activation/cutover.
+
+- **CT 135 `servarr` @ 192.168.0.135** — privileged Ubuntu 24.04 LXC, Docker + Komodo Periphery,
+  **registered in Komodo since 2026-07-15**. Stack `/mnt/docker/servarr/compose.yaml` (LinuxServer
+  images, PUID/PGID 1000): prowlarr :9696 · flaresolverr :8191 · radarr :7878 · sonarr :8989 ·
+  bazarr :6767 · jellyseerr :5055.
 - **Prowlarr is now home** (FlareSolverr for Cloudflare) with 19 indexers = 2 usenet (NZBgeek, Nzb.su)
   + 17 torrent. (16 old torrent trackers are defunct/removed from current Prowlarr.) Radarr/Sonarr added
   as Applications → auto-sync.
@@ -144,9 +154,13 @@ live system; nothing is flipped until a deliberate activation step. Emby stays i
   `setPermissions=false`; Bazarr providers off. The `fix-ownership.sh`→Unmanic hook + Emby connection
   are recreated in the new arrs. Live stack confirmed untouched.
 
-**Left for activation** (separate step): enable clients, library-import, copy Jellyseerr DB (preserve
-requests), repoint NPM/Trailhead/Prometheus/Uptime-Kuma/profilarr, Komodo Core server-registration,
-verify qBit password, then decommission the old LXCs. Full checklist in the plan.
+**Left for activation** (separate step): migrate app DBs from the native LXCs (Radarr `/var/lib/radarr`,
+Sonarr `/var/lib/sonarr`, Bazarr `/opt/bazarr/data`, Jellyseerr `/opt/jellyseerr/config`) so the 500
+movies / 197 series + indexers + history carry over instead of rebuilding by hand; enable the two
+download clients, library-import, copy Jellyseerr DB (preserve requests), repoint
+NPM/Trailhead/Prometheus/Uptime-Kuma/profilarr from the native IPs to 192.168.0.135, verify qBit
+password, then decommission the old LXCs. (Komodo server-registration ✅ done 2026-07-15.) Full
+checklist in the plan.
 
 ## Verification
 

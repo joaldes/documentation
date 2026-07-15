@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-15 07:00 UTC*
+*Last updated: 2026-07-15 22:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 8.91, 3.38, 2.06 | RAM: 35/62 GB | Uptime: 8 days
+**Shipyard** (192.168.0.151) | CPU: 1.44, 1.52, 1.72 | RAM: 34/62 GB | Uptime: 8 days
 
-**58 services** — 27 LXC containers, 31 Docker stacks, 3 VMs, 12 storage pools
+**57 services** — 27 LXC containers, 30 Docker stacks, 3 VMs, 12 storage pools
 
-## All Services (58)
+## All Services (57)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -29,7 +29,6 @@
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | jellystat | docker | 192.168.0.179 | 3000 | http://192.168.0.179:3000 | running |
 | jobsd | docker | 192.168.0.179 | 8077 | http://192.168.0.179:8077 | running |
-| karakeep | docker | 192.168.0.179 | 8055 | http://192.168.0.179:8055 | running |
 | komodo | lxc | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | komodo | docker | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
 | lldap | docker | 192.168.0.179 | 17170 | http://192.168.0.179:17170 | running |
@@ -98,7 +97,7 @@
 | 134 | pbs | 192.168.0.134 | - | - | running |
 | 135 | servarr | 192.168.0.135 | - | - | running |
 
-## Docker Stacks (31) — 192.168.0.179
+## Docker Stacks (30) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 0/4 | 0 | stopped | http://192.168.0.179:9000 |
@@ -112,8 +111,7 @@
 | immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
 | jobsd | 8077 | 1/1 | 1 | running | http://192.168.0.179:8077 |
-| karakeep | 8055 | 3/3 | 1 | running | http://192.168.0.179:8055 |
-| komodo | 9120 | 7/7 | 2 | running | http://192.168.0.179:9120 |
+| komodo | 9120 | 4/4 | 1 | running | http://192.168.0.179:9120 |
 | lldap | 17170 | 1/1 | 1 | running | http://192.168.0.179:17170 |
 | lubelogger | 8071 | 1/1 | 0 | running | http://192.168.0.179:8071 |
 | magazine | - | 0/1 | 0 | stopped | - |
@@ -149,9 +147,9 @@
 | docker-data | dir | 245/1006 | 24% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 125/348 | 35% |
-| pbs-homelab | pbs | 3225/7110 | 45% |
+| pbs-homelab | pbs | 3236/7110 | 45% |
 | smb-documents | dir | 82/491 | 16% |
-| smb-frigate | dir | 375/1510 | 24% |
+| smb-frigate | dir | 428/1510 | 28% |
 | smb-hometheater | dir | 17490/29679 | 58% |
 | smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 324/1740 | 18% |
+| ssd | lvmthin | 325/1740 | 18% |

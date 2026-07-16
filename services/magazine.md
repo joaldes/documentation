@@ -1,6 +1,6 @@
 # The Curious — Self-Writing Fun-Fact Magazine
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-07-15
 **Related Systems**: CT 128 (Komodo/Docker), jobs.home, Trailhead, AdGuard (CT 101)
 
 ## Summary
@@ -44,6 +44,16 @@ article. So after the budget is exhausted the pipeline applies one final correct
 Fact-Checker's residual nits — see the `revision_count > MAX_REVISIONS` grace-exit in
 `orchestrator.py`. The Editor, not the nitpicky verifier, has the final say.
 
+**Turn budget (`MAG_TURN_BUDGET`, now 100):** independent of the revision count, each article has
+a hard total-agent-turn budget (`TURN_BUDGET` in `orchestrator.py`, env-overridable). ⚠ These two
+budgets must be sized together: the original 60 was calibrated for the 2-revision loop, and when
+`MAX_REVISIONS` went 2→4 on 07-14 the turn budget wasn't raised — one adversarial fact-check pass
+costs ~13–16 turns, so articles ran out of turns around revision 3 and **the grace-exit was
+unreachable**: every article spiked `turn budget exceeded (6x)` and nothing published 07-14→15.
+Raised to 100 on 2026-07-15 (compose `environment:` AND the cron heredoc in `entrypoint.sh` — cron
+strips env, same trap as the token); first article through published at turn 63. Turn counts
+persist in `num_turns_total` and survive resume, so a resumed article keeps its spent turns.
+
 **Model is pinned (`agents.MODEL`):** the agents are launched with an explicit `model=` in
 `ClaudeAgentOptions`. Left unset they inherit the bundled `claude` CLI's default, which silently
 drifts on every CLI auto-update — a newer, stricter Fact-Checker is what stalled nightly publishing
@@ -61,10 +71,16 @@ open-license (Wikimedia Commons → Unsplash) with attribution.
   (markdown, `hero.*`, `sources/`).
 - **Config (edit via Samba)**: `/mnt/docker/magazine/taxonomy.yaml`, `trusted-sources.yaml`.
 - **Auth**: `CLAUDE_CODE_OAUTH_TOKEN` in `/etc/komodo/stacks/magazine/.env` (long-lived Max
-  setup-token, ~1yr). `claude-home/` is still mounted at `/root/.claude` but only holds CLI
-  settings/history — no credentials. ⚠ **Cron strips docker env**, so `entrypoint.sh` re-declares
-  the token inside `/etc/cron.d/magazine`; without that line every nightly 401s while interactive
-  `docker exec` works fine (the 2026-06-27→07-12 outage).
+  setup-token, ~1yr). `claude-home/` is mounted at `/root/.claude` (**not** `/root`) and — since
+  2026-07-15 — `CLAUDE_CONFIG_DIR=/root/.claude` points the CLI's `.claude.json` into that bind
+  mount so it survives force-recreates. `DISABLE_AUTOUPDATER=1` is also set: the bundled CLI is
+  installed unpinned, and on 2026-07-15 an auto-update "cleanup" rotated the live `.claude.json`
+  into `backups/` → every agent call died with *"Claude configuration file not found"* while the
+  token itself was still valid (looked exactly like a revoked token; it wasn't). Both env vars are
+  declared in compose `environment:` **and** re-declared in the `entrypoint.sh` cron heredoc.
+  ⚠ **Cron strips docker env**, so `entrypoint.sh` re-declares the token (and the vars above, and
+  `MAG_TURN_BUDGET`) inside `/etc/cron.d/magazine`; without that every nightly 401s while
+  interactive `docker exec` works fine (the 2026-06-27→07-12 outage).
 - **Port**: 8089 → `magazine.home` (AdGuard rewrite).
 - **Schedule**: in-container cron at `NIGHTLY_HOUR` (TZ-aware), wrapped in `jobctl run magazine-nightly`.
 
@@ -114,6 +130,19 @@ docker exec magazine cat /data/cron.log
 - **Chromium/PDF failures** → archiving is best-effort and never blocks publishing; check
   `/dev/shm` (`shm_size: 512m` in compose) and `--no-sandbox` flags.
 - **Empty magazine / lots of spikes** → tighten or loosen `trusted-sources.yaml`; review `/spiked`.
+- **Spikes reading `turn budget exceeded (NN)`** → the article ran out of total agent turns
+  (`MAG_TURN_BUDGET`, default 100 since 2026-07-15) before converging. A few on genuinely
+  claim-dense topics is healthy editorial behavior; *every* article budget-spiking means the
+  turn budget is too small for the current `MAX_REVISIONS` (see the Turn-budget note above — this
+  exact mismatch published nothing 07-14→15). To salvage a budget-spiked article: `UPDATE articles
+  SET status='drafting', owner=NULL, lease_until=NULL, spike_reason=NULL,
+  updated_at=datetime('now') WHERE id=N;` then run `--resume` (one-off headroom:
+  `docker exec -d -e MAG_TURN_BUDGET=140 magazine ...`).
+- **A crashed `--resume`/`--nightly` leaving rows stuck in `picking`** → contained since
+  2026-07-15: `resume_all()` catches per-row `ValueError` (e.g. *"no JSON object in agent
+  output"* from an empty CLI response) and marks just that row `failed` instead of crashing the
+  batch. Before this, a driver loop retrying a crashing `--nightly` inserted an empty `picking`
+  row per attempt (rows 87–108, 2026-07-14/15).
 - **Spikes reading `fact-check corrections did not converge`** → the adversarial Fact-Checker keeps
   returning `recommendation:"correct"` with residual nits until the revision budget runs out. First
   confirm it's *not* auth (interactive `docker exec magazine claude -p "hi"` returns text, and

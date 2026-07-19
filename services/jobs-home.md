@@ -1,7 +1,7 @@
 # jobs.home — Ambient Job Progress Visibility
 
-**Last Updated**: 2026-05-13
-**Related Systems**: CT 128 (Komodo, 192.168.0.179), CT 124 (Claude AI), CT 102 (Emby), CT 101 (AdGuard DNS)
+**Last Updated**: 2026-07-19 (v2)
+**Related Systems**: CT 128 (Komodo, 192.168.0.179), CT 124 (Claude AI), CT 102 (Emby), Shipyard (PVE host), CT 101 (AdGuard DNS)
 
 ---
 
@@ -15,40 +15,51 @@
 | **Direct URL** | `http://192.168.0.179:8077` |
 | **Container** | `jobsd` (Docker, built from `/mnt/docker/jobsd/`) |
 | **Compose** | `/mnt/docker/jobsd/compose.yaml` |
-| **Data** | `/mnt/docker/jobsd/data/jobs.db` (SQLite, WAL mode) |
+| **Data** | `/mnt/docker/jobsd/data/jobs.db` (SQLite, WAL) + `/mnt/docker/jobsd/data/logs/` (per-run logs) |
 | **Token file** | `~/.jobsrc` per-host, mode 600 |
-| **Helper script** | `/usr/local/bin/jobctl` (POSIX sh) |
+| **Helper script** | `/usr/local/bin/jobctl` (POSIX sh) — source of truth `/mnt/docker/jobsd/jobctl` |
+| **Hosts with jobctl** | CT 124 (claudeai), CT 128 (komodo), CT 102 (emby), Shipyard, magazine container (bind-mounted) |
+| **Watchdog seed** | `/mnt/docker/jobsd/seed-schedules.sh` (idempotent, re-run after edits) |
+| **PVE poller** | `/mnt/docker/jobsd/pve-poller.py`, cron `/etc/cron.d/pve-poller` (*/10), env `/root/.pve-poller.env` |
 
 ---
 
 ## What it does
 
-Live progress dashboard for ad-hoc scripts running anywhere on the homelab. Any host with `jobctl` installed and `~/.jobsrc` configured can `POST` job state to jobsd and have it surface on `jobs.home` immediately. Page auto-refreshes every 2 sec via htmx.
+Live progress dashboard for every job on the homelab — ad-hoc scripts, wrapped crons, and Proxmox backups. Any host with `jobctl` + `~/.jobsrc` POSTs job state to jobsd; the page auto-refreshes every 2 s via htmx.
 
-Solves the problem of "I run scripts everywhere" — wget on CT 128, Python audits on CT 124, ad-hoc operations on the laptop, etc. — and previously had no single place to glance and see "what's running, how is it doing, when will it finish."
+**v2 (2026-07-19)** added:
+- **Unique run ids** — every run is its own row (`name@host.epoch-pid`); history is never overwritten, concurrent same-name runs coexist.
+- **Per-run logs** — `jobctl run` captures stdout+stderr and streams it to the server; view/tail from the dashboard, failures show their last lines inline.
+- **Missed-run watchdog** — registered schedules (crons, backups) get a MISSED state when a run doesn't check in on time. Dead crons are no longer silent.
+- **Attention panel** — failures, stalls, and missed schedules at the top of the page; collapses to a green "all clear" line.
+- **Proxmox backup ingestion** — vzdump/PBS results appear as jobs via a poller; the fileshares timer reports through a systemd drop-in.
+- **Robust rate/ETA** — median-of-gaps rate (reset-tolerant) + EMA-smoothed ETA; `--unit items` for non-byte jobs.
+- **Stall lifecycle** — stalled jobs revive on any sign of life; auto-close to failed after 24 h so amber is always actionable.
+
+Alerting is **dashboard-only** by design (no push/Telegram/email).
 
 ---
 
-## Architecture
+## Run ids (v2)
 
-- **`jobsd`**: FastAPI service in a single container. SQLite for state + history. ~250 LOC.
-- **`jobctl`**: POSIX-sh helper deployed per-host. ~180 LOC. Calls jobsd via curl.
-- **No Pushgateway, no AlertManager rules, no Authentik**: deferred to v2 if needed.
-
-Bearer-token auth on writes (`POST /jobs/.../{start,progress,done}`); reads (`GET /api/jobs`, `/`, `/_partial/jobs`) are open on LAN. Service is bound to LAN; no external exposure.
+- `jobctl start|run|track-file|pipe-progress` mint `slug(name)@host.epoch-pid`, e.g. `screener-nightly@komodo.1752897000-8841`, and print it.
+- `name` stays the series key: sparklines, history queries, and watchdog matching are by name (+host).
+- Update commands (`progress`, `phase`, `done`, `waiting`) resolve their target in this order:
+  1. `--id RUN_ID` flag
+  2. `$JOBCTL_RUN_ID` env var
+  3. state file written by `start` (`/tmp/jobctl-<uid>/<slug>.run`, deleted by `done`)
+  4. legacy bare `name@host` (v1 compatibility)
+- Limitation: two concurrent same-name `start`…`done` pairs from *separate scripts* share the state file — pass `--id "$(jobctl start NAME)"` in that case. `jobctl run` is immune (id held internally).
+- Docker containers must set `JOBS_HOST` (in `.jobsrc` or env) or they report hex container ids as hostnames. The magazine container does this via its entrypoint-generated `.jobsrc`.
 
 ---
 
 ## Quick-start examples (common tools)
 
 ```sh
-# wget — pipe progress
-wget --progress=dot:giga "$URL" 2>&1 | jobctl pipe-progress iso-dl --total 12G --re '[0-9]+%'
-
-# curl — wrap with track-file
-jobctl track-file iso-dl /tmp/file.iso --total 12G --interval 30 &
-curl -fSL -o /tmp/file.iso "$URL"
-wait    # track-file auto-completes when file size goes flat
+# One command, everything tracked: progress + full log capture
+jobctl run dl -- curl -o /tmp/file.iso "$URL"
 
 # yt-dlp batch (the Time Team pattern)
 jobctl run yt-batch -- yt-dlp -a urls.txt -o "%(title)s.%(ext)s" --write-info-json
@@ -56,100 +67,23 @@ jobctl run yt-batch -- yt-dlp -a urls.txt -o "%(title)s.%(ext)s" --write-info-js
 # rsync (incremental backup)
 jobctl run backup-photos -- rsync -avh --info=progress2 /src /dst
 
+# Item-based work instead of bytes
+jobctl run tt-classify --unit items --total 1226 -- python3 classify.py
+
 # ffmpeg encode of a single file (track output growth)
 jobctl track-file encode-foo /tmp/out.mp4 --total 2G &
 ffmpeg -i in.mkv -c:v libx264 -crf 22 /tmp/out.mp4
 wait
 
-# Large dir backup (track recursive size)
-jobctl track-file tar-snapshot /mnt/backups/snap.tar --total 50G --interval 60 &
-tar -cf /mnt/backups/snap.tar /mnt/photos
+# wget with parsed progress + log streaming
+wget --progress=dot:giga "$URL" 2>&1 | jobctl pipe-progress iso-dl --total 12G --re '[0-9]+%' --log
 
-# Custom Python script reporting progress
-# (in your script:)
-#   from urllib.request import Request, urlopen
-#   import json
-#   def progress(name, current, total=None, msg=None):
-#       body = json.dumps({"current": current, "total": total, "msg": msg}).encode()
-#       Request(f"http://192.168.0.179:8077/jobs/{name}/progress",
-#               data=body, headers={"Authorization": f"Bearer {TOKEN}",
-#                                   "Content-Type": "application/json"})
-```
-
----
-
-## API
-
-| Endpoint | Auth | Purpose |
-|---|---|---|
-| `POST /jobs/{id}/start` | bearer | mark job started |
-| `POST /jobs/{id}/progress` | bearer | update current progress + msg |
-| `POST /jobs/{id}/done` | bearer | mark succeeded/failed (by exit_code) |
-| `GET /api/jobs` | none | JSON list of running + recent jobs |
-| `GET /` | none | HTML auto-refresh dashboard |
-| `GET /_partial/jobs` | none | htmx fragment (cards) |
-| `GET /jobs/{id}/tail` | none | last ~50 lines of `log_path` if provided |
-| `GET /metrics` | none | Prometheus exposition (for future AlertManager) |
-| `GET /healthz` | none | liveness probe |
-
----
-
-## `jobctl` usage
-
-```sh
-# basic
-jobctl start NAME [--total N] [--cmd "..."] [--log /path]
-jobctl progress NAME CURRENT [--msg "..."]
-jobctl done NAME [--exit-code N]
-
-# automatic
-jobctl track-file NAME PATH [--total N] [--interval 30] [--auto-done]
-  # foreground polling loop; runs until killed (or until file size flat for 5
-  # polls iff --auto-done is given — OFF by default since 2026-05-13 to prevent
-  # false-success on bursty workloads like tar/bzip2/db-compaction)
-
-jobctl pipe-progress NAME [--total N] [--re REGEX]
-  # consume stdin, parse out a number per line as current
-
-jobctl run NAME -- <cmd...>
-  # The default wrapper. Start → exec → capture exit → done.
-  #
-  # Since 2026-05-13:
-  #  - Non-blocking start (jobsd outages never block the work).
-  #  - SIGINT/SIGTERM trap → done(130)/done(143). No more zombies on Ctrl-C.
-  #  - Auto-suffix id on collision with an active run of the same name.
-  #
-  # Auto-tracking (added later 2026-05-13):
-  #  - Sniffs the cmdline for known output-file flags: wget -O, curl -o,
-  #    aria2c -o (+ optional -d), --output, --output-document.
-  #  - If found: polls that file's size every 3s and reports it as progress.
-  #  - If a URL is present and --total wasn't given, HEADs the URL for
-  #    Content-Length and uses that as the total (so the dashboard shows
-  #    a real bar with %, MB/s rate, and ETA).
-  #  - If nothing detectable: falls back to a 30s heartbeat so the row
-  #    stays alive but shows no bar.
-  # Result: `jobctl run dl -- curl -o foo.iso http://...` Just Works —
-  # one command, progress bar fills in automatically.
-
-jobctl ls [--running]
-  # list jobs known to jobsd (added 2026-05-13). Use --running to filter to
-  # running+stalled. Cheap self-audit for "did I forget to wrap something?"
-```
-
-### Examples
-
-```sh
-# Backup a directory and track size growth
-jobctl track-file backup-photos /mnt/backups/photos.tar --total 50G &
-tar -cf /mnt/backups/photos.tar /mnt/photos
-wait
-# track-file daemon detects size flat → marks done
-
-# wget with parsed progress
-wget --progress=dot:giga ... 2>&1 | jobctl pipe-progress wget-foo --total 12G --re '[0-9]+%'
-
-# Wrap any one-shot command
-jobctl run nightly-rsync -- rsync -av /src /dst
+# Manual start/progress/done from a script (state file threads the run id)
+jobctl start audit --total 500 --unit items
+...
+jobctl progress audit 250
+...
+jobctl done audit --exit-code 0
 ```
 
 ### Mid-flight tracking (no job restart needed)
@@ -161,54 +95,114 @@ jobctl track-file overpass-indexing /mnt/docker/map/overpass/db/db --total 32G -
 
 ---
 
+## API
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `POST /jobs/{id}/start` | bearer | create a run (renames aside any existing row under the same id — legacy protection) |
+| `POST /jobs/{id}/progress` | bearer | update current/total/msg/phase/unit; revives a stalled run |
+| `POST /jobs/{id}/phase` | bearer | set phase (milestone recorded on change) |
+| `POST /jobs/{id}/done` | bearer | mark succeeded/failed (by exit_code) |
+| `POST /jobs/{id}/log` | bearer | append a raw text chunk to the run's stored log (5 MB cap/run) |
+| `POST /runs/report` | bearer | one-shot report of an already-finished run with historical timestamps (used by pve-poller) |
+| `POST /schedules` | bearer | upsert a watchdog schedule |
+| `DELETE /schedules/{id}` | bearer | remove a schedule |
+| `GET /api/schedules` | none | schedules + missed state + next expected |
+| `GET /api/jobs` | none | JSON list of running + recent (24 h) jobs; `?name=X` for one series' full history |
+| `GET /jobs/{id}/log?tail=N` | none | last N lines of the stored log (default 100, max 2000) |
+| `GET /jobs/{id}/tail` | none | legacy alias of the above |
+| `GET /` | none | HTML dashboard |
+| `GET /_partial/jobs` | none | htmx fragment |
+| `GET /metrics` | none | Prometheus exposition incl. `jobsd_schedule_missed` |
+| `GET /healthz` | none | liveness probe |
+
+---
+
+## `jobctl` usage
+
+```sh
+jobctl start NAME [--total N] [--unit items|bytes] [--cmd "..."] [--log /path] [--phase P] [--msg M]
+jobctl progress NAME CURRENT [--total N] [--unit U] [--msg "..."] [--id RUN_ID]
+jobctl phase NAME PHASE [--msg "..."] [--id RUN_ID]
+jobctl done NAME [--exit-code N] [--id RUN_ID]
+
+jobctl run NAME [--total N] [--unit U] [--phase P] [--msg M] [--no-log] -- <cmd...>
+  # The default wrapper. Start → run → capture exit → done. In v2 it also:
+  #  - captures merged stdout+stderr and streams it to jobsd every ~3 s
+  #    (client stops past 2 MB, then sends the last 64 KB at the end so
+  #    failure context is always the tail; --no-log opts out)
+  #  - still auto-sniffs download output files (wget -O, curl -o, aria2c -o)
+  #    and HEADs the URL for Content-Length → real bar + rate + ETA
+  #  - traps INT/TERM/HUP → exactly one done post (4 retry attempts)
+  #  - its background watcher exits when the main process dies (kill -9 safe)
+
+jobctl track-file NAME PATH [--total N] [--interval 30] [--auto-done]
+  # Polls file/dir size. --auto-done stays OFF by default (false-success risk
+  # on bursty workloads). v2: ctrl-C posts done(130) instead of stalling.
+
+jobctl pipe-progress NAME [--total N] [--re REGEX] [--log]
+  # Parse a number per stdin line as progress. --log also streams the lines.
+
+jobctl ls [--running]   # list jobs known to jobsd
+jobctl id NAME          # echo the name-scoped id prefix (series key)
+```
+
+Environment knobs (in `~/.jobsrc` or env): `JOBS_URL`, `JOBS_TOKEN`, `JOBS_HOST` (hostname override, required in containers), `JOBS_LOG_CLIENT_MAX` (default 2097152).
+
+---
+
+## Watchdog schedules
+
+Registered in `schedules` (SQLite) via `POST /schedules`; the sweeper flags a schedule MISSED when no matching run (`name` + optional `host`) has started within the last cron slot (or interval) + grace. MISSED and failed-last-run schedules go to the attention panel; `/metrics` exposes `jobsd_schedule_missed`.
+
+Seeded set (2026-07-19) — edit + re-run `/mnt/docker/jobsd/seed-schedules.sh`:
+
+| Schedule | Cadence | TZ | Source |
+|---|---|---|---|
+| claude-backup@claudeai | every 30 min | — | CT124 crontab |
+| claude-health@claudeai | every 15 min | — | CT124 crontab |
+| night-info-refresh@claudeai | every 30 min | — | CT124 crontab |
+| screener-nightly@komodo | 03:30 Tue–Sat | UTC | CT128 cron.d |
+| vaultwarden-backup@komodo | 02:00 daily | UTC | CT128 cron.d |
+| tplan-backup@komodo | 03:00 daily | UTC | CT128 cron.d |
+| docker-prune@komodo | 03:00 Sun | UTC | CT128 cron.d |
+| magazine-nightly@magazine | 02:00 daily | America/Phoenix | in-container cron |
+| magazine-weekly@magazine | 17:00 Fri | America/Phoenix | in-container cron |
+| system-inventory@Shipyard | hourly | UTC | Shipyard cron.d |
+| pbs-nightly@Shipyard | 04:00 daily | UTC | `/etc/pve/jobs.cfg` via pve-poller |
+| pbs-fileshares@Shipyard | 02:30 daily (+20 m jitter) | UTC | systemd timer + drop-in |
+
+**Cron TZ rule**: the jobsd container runs `TZ=America/Phoenix` but most host crons are UTC — every cron-type schedule carries an explicit `tz`, and the server evaluates the cron grid in that zone (croniter).
+
+All previously-unmonitored crons were jobctl-wrapped on 2026-07-19: CT124 crontab (all 3), CT128 `/etc/cron.d/{tplan-backup,docker-prune}`, Shipyard `/etc/cron.d/system-inventory`. Wrapped crons redirect local output to `/dev/null` where a local log file used to exist — the job log in jobsd replaces it. Backup copies of the original cron files: `/root/cron-bak-*.2026-07-19` on each host, `/tmp/crontab.bak.2026-07-19` on CT124.
+
+---
+
+## Proxmox backup ingestion
+
+- **pve-poller** (`/mnt/docker/jobsd/pve-poller.py`, cron `*/10` on CT128) reads finished `vzdump` tasks from the PVE API (`claude@pam!api` token, config `/root/.pve-poller.env` mode 600) and one-shot-reports each unseen UPID via `POST /runs/report` as job `pbs-nightly@Shipyard.<hex>` with the task's real start/end times. Failed tasks get the last 100 lines of the PVE task log attached. Seen-UPID state: `/var/lib/pve-poller/seen.upids`.
+- The poller is deliberately **not** jobctl-wrapped: if it dies, `pbs-nightly` goes MISSED on the dashboard — that *is* the alarm.
+- **pbs-backup-fileshares** (systemd oneshot on Shipyard) reports itself via drop-in `/etc/systemd/system/pbs-backup-fileshares.service.d/20-jobctl.conf`: `ExecStartPre` → `jobctl start`, `ExecStopPost` → `jobctl done --exit-code $EXIT_STATUS`. The service's `HOME=/root` override (older fix) is required for jobctl.
+
+---
+
 ## Compose file
 
-`/mnt/docker/jobsd/compose.yaml`:
+`/mnt/docker/jobsd/compose.yaml` — v2 additions to `environment`:
 
 ```yaml
-name: jobsd
-
-services:
-  jobsd:
-    build:
-      context: /mnt/docker/jobsd
-      dockerfile: Dockerfile
-    container_name: jobsd
-    restart: unless-stopped
-    ports:
-      - "8077:8077"
-    volumes:
-      - /mnt/docker/jobsd/data:/data
-    environment:
-      JOBS_DB: /data/jobs.db
-      JOBS_TOKEN: ${JOBS_TOKEN:?JOBS_TOKEN must be set in .env}
-      # Hardening (2026-05-13)
-      JOBS_STALL_THRESHOLD_SEC: "600"   # mark running→stalled after 10min quiet
-      JOBS_SWEEP_INTERVAL_SEC: "60"     # how often the async sweeper runs
-      JOBS_PRUNE_DAYS: "30"             # delete terminal rows + events older than this
-      JOBS_BUSY_TIMEOUT_MS: "5000"      # sqlite busy_timeout for concurrent writers
+      JOBS_STALL_THRESHOLD_SEC: "600"   # running → stalled after 10 min quiet
+      JOBS_STALL_FAIL_SEC: "86400"      # stalled → failed (auto-close) after 24 h
+      JOBS_SWEEP_INTERVAL_SEC: "60"
+      JOBS_PRUNE_DAYS: "30"             # rows, events, and stored logs
+      JOBS_BUSY_TIMEOUT_MS: "5000"
+      JOBS_LOG_DIR: /data/logs
+      JOBS_LOG_MAX_BYTES: "5242880"     # 5 MB server cap per run log
+      JOBS_LOG_DIR_MAX_MB: "500"        # total log dir cap (oldest deleted first)
       TZ: America/Phoenix
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "0.5"
 ```
 
-`Dockerfile`:
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-RUN pip install --no-cache-dir fastapi uvicorn[standard] jinja2 python-multipart
-COPY app /app
-EXPOSE 8077
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8077"]
-```
-
-`.env`:
-```
-JOBS_TOKEN=<32-byte hex>
-```
+`Dockerfile` deps: `fastapi uvicorn[standard] jinja2 python-multipart croniter==2.0.5`.
 
 ---
 
@@ -216,99 +210,74 @@ JOBS_TOKEN=<32-byte hex>
 
 ### Restart
 ```bash
-ssh root@192.168.0.229 'cd /mnt/docker/jobsd && docker compose restart jobsd'
+ssh root@192.168.0.179 'cd /mnt/docker/jobsd && docker compose restart jobsd'
 ```
 
 ### Rebuild after code change
 ```bash
-ssh root@192.168.0.229 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
+ssh root@192.168.0.179 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
 ```
 
 ### View live logs
 ```bash
-ssh root@192.168.0.229 'docker logs -f jobsd'
+ssh root@192.168.0.179 'docker logs -f jobsd'
 ```
 
 ### Add a new host
 1. `scp /mnt/docker/jobsd/jobctl host:/usr/local/bin/jobctl && ssh host "chmod 755 /usr/local/bin/jobctl"`
-2. Create `~/.jobsrc` with `JOBS_URL=http://192.168.0.179:8077` and `JOBS_TOKEN=<token>` (chmod 600)
+2. Create `~/.jobsrc` with `JOBS_URL=http://192.168.0.179:8077` and `JOBS_TOKEN=<token>` (chmod 600). In a docker container also add `JOBS_HOST=<meaningful-name>`.
 3. Smoke test: `ssh host 'jobctl start hello; jobctl done hello'`
 
+### Add/adjust a watchdog schedule
+Edit `/mnt/docker/jobsd/seed-schedules.sh` and re-run it (upsert by id). One of `cron` (+ explicit `tz`!) or `interval_sec`; `grace_sec` should absorb the job's normal duration + jitter.
+
 ### Rotate token
-Tokens are 32-byte hex (256-bit). Distribute via secure channel only.
 1. **Generate**: `NEW=$(openssl rand -hex 32); echo "$NEW"`
-2. **Server**: edit `/mnt/docker/jobsd/.env` → `JOBS_TOKEN=$NEW`, restart with `docker compose restart jobsd`
-3. **Each host**: update `~/.jobsrc` (mode 600) with the new `JOBS_TOKEN=...`
-4. **Smoke**: from each host run `jobctl start rotate-test; jobctl done rotate-test --exit-code 0` — appears + completes on dashboard
-5. **Rollback** if anything breaks: revert `.env` to old value + restart, revert each `~/.jobsrc`
+2. **Server**: edit `/mnt/docker/jobsd/.env` → `JOBS_TOKEN=$NEW`, `docker compose restart jobsd`
+3. **Each host**: update `~/.jobsrc`; also `/root/.pve-poller.env` (JOBS_TOKEN) and the magazine stack `.env` on CT128
+4. **Smoke**: from each host `jobctl start rotate-test; jobctl done rotate-test`
+5. **Rollback**: revert `.env` + restart, revert each `~/.jobsrc`
 
 ---
 
 ## Disaster recovery
 
-If `/mnt/docker/jobsd/data/jobs.db` is wiped or corrupted, the service rebuilds an empty DB on next start (the `init_db()` function in `app/main.py` runs `CREATE TABLE IF NOT EXISTS`). Just restart:
+If `/mnt/docker/jobsd/data/jobs.db` is wiped or corrupted, the service rebuilds an empty DB on next start (`init_db()` is `CREATE TABLE IF NOT EXISTS` + idempotent ALTERs). Re-run `seed-schedules.sh` afterwards to restore the watchdog registry:
 
 ```bash
-ssh root@192.168.0.229 'rm -f /mnt/docker/jobsd/data/jobs.db
-cd /mnt/docker/jobsd && docker compose restart jobsd'
+ssh root@192.168.0.179 'rm -f /mnt/docker/jobsd/data/jobs.db
+cd /mnt/docker/jobsd && docker compose restart jobsd && ./seed-schedules.sh'
 ```
 
-Historical jobs are lost; running jobs (those with active `jobctl track-file` watchers or that subsequently call `progress`) re-register on their next POST. Existing `~/.jobsrc` tokens stay valid.
-
-If the entire `/mnt/docker/jobsd/` dir is wiped (compose, app, data), restore from git: the source-of-truth for `app/main.py`, `Dockerfile`, `compose.yaml`, and `app/templates/*.html` lives at the runbook reference paths above. Rebuild from those + a fresh `.env` with a new token + run `docker compose up -d --build`.
+Pre-v2 backups from the 2026-07-19 upgrade: `data/jobs.db.bak.2026-07-19`, `app.bak.2026-07-19/`, `jobctl.bak-fleet.2026-07-19` (all under `/mnt/docker/jobsd/`), plus `/usr/local/bin/jobctl.bak.2026-07-19` on each host.
 
 ---
 
 ## Querying history (SQLite)
 
-The DB is at `/mnt/docker/jobsd/data/jobs.db` on CT 128. WAL mode, safe to query while service is running.
+The DB is at `/mnt/docker/jobsd/data/jobs.db` on CT 128 (192.168.0.179). WAL mode, safe to query while running.
 
 ```sh
 # last 7 days of finished jobs
-ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
   \"SELECT name, host, status, duration FROM jobs
     WHERE ended_at > strftime('%s','now','-7 days')
     ORDER BY started_at DESC\""
 
-# slowest jobs ever (top 20)
-ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
-  \"SELECT name, ROUND(duration/60,1) AS mins, status FROM jobs
-    WHERE duration IS NOT NULL ORDER BY duration DESC LIMIT 20\""
+# success rate per named job
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+  \"SELECT name, COUNT(*) runs, SUM(status='succeeded') ok,
+           SUM(status='failed') fail, ROUND(AVG(duration),1) avg_sec
+    FROM jobs WHERE status<>'running' GROUP BY name ORDER BY runs DESC\""
 
-# rate-over-time for a specific job (for plotting)
-ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
-  \"SELECT ts, current FROM progress_events
-    WHERE job_id = 'overpass-indexing@komodo' ORDER BY ts\""
-
-# how many runs of each named job, success rate
-ssh root@192.168.0.229 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
-  \"SELECT name, COUNT(*) AS runs,
-           SUM(status='succeeded') AS ok,
-           SUM(status='failed')    AS fail,
-           AVG(duration)           AS avg_sec
-    FROM jobs WHERE status<>'running'
-    GROUP BY name ORDER BY runs DESC\""
+# watchdog state
+ssh root@192.168.0.179 "sqlite3 /mnt/docker/jobsd/data/jobs.db \
+  \"SELECT id, cron, interval_sec, tz, last_run_status,
+           datetime(last_run_at,'unixepoch') last_run, missed_since IS NOT NULL missed
+    FROM schedules ORDER BY id\""
 ```
 
----
-
-## Extending the service
-
-To add a new endpoint or change behavior:
-1. Source on CT 128 at `/mnt/docker/jobsd/app/main.py` (FastAPI) and `/mnt/docker/jobsd/app/templates/*.html` (Jinja2 + htmx)
-2. Edit in place via SSH or scp from a working copy
-3. Rebuild + redeploy:
-   ```sh
-   ssh root@192.168.0.229 'cd /mnt/docker/jobsd && docker compose up -d --build --force-recreate jobsd'
-   ```
-4. Container logs show import errors immediately if Python is broken: `docker logs jobsd --tail 30`
-
-The dependencies are in `Dockerfile` (`fastapi uvicorn[standard] jinja2 python-multipart`); to add packages, edit Dockerfile and rebuild.
-
-Existing extensions worth wiring later:
-- `/metrics` already emits Prometheus exposition; add a Prometheus scrape config + AlertManager rule for `jobsd_job_status==0` to get phone-pingable failure alerts
-- Per-job log tail UI panel (the `/jobs/{id}/tail` endpoint exists; just needs frontend wiring)
-- Webhook-out on done (POST to ntfy / Discord / etc on completion) — single function in `done()` handler
+Note on old rows: v1 (pre-2026-07-19) used name-scoped ids with `INSERT OR REPLACE`, so pre-v2 history has at most one row per name and many `failed`/`stalled` rows are auto-closed orphans of the old id-collision bug, not real failures.
 
 ---
 
@@ -316,51 +285,50 @@ Existing extensions worth wiring later:
 
 ```sql
 CREATE TABLE jobs (
-  id          TEXT PRIMARY KEY,
-  name        TEXT NOT NULL,
+  id          TEXT PRIMARY KEY,   -- v2: <slug>@<host>.<epoch>-<pid>; legacy: <slug>@<host>
+  name        TEXT NOT NULL,      -- series key (sparklines, watchdog matching)
   host        TEXT,
   cmd         TEXT,
-  log_path    TEXT,
+  log_path    TEXT,               -- legacy optional pointer; v2 logs live server-side
   total       REAL,
   current     REAL DEFAULT 0,
   msg         TEXT,
-  status      TEXT DEFAULT 'running',     -- 'running' | 'succeeded' | 'failed'
+  phase       TEXT,
+  status      TEXT DEFAULT 'running',  -- running | succeeded | failed | stalled
   exit_code   INTEGER,
-  started_at  REAL,                        -- unix epoch
-  updated_at  REAL,
-  ended_at    REAL,
-  duration    REAL                         -- seconds
+  started_at  REAL, updated_at REAL, ended_at REAL,
+  duration    REAL,
+  unit        TEXT,               -- 'items' | NULL (= bytes)
+  log_bytes   INTEGER,            -- stored log size; NULL = no log
+  log_truncated INTEGER DEFAULT 0,
+  stalled_at  REAL
 );
 
-CREATE TABLE progress_events (
-  job_id   TEXT NOT NULL,
-  ts       REAL NOT NULL,
-  current  REAL NOT NULL
+CREATE TABLE progress_events (job_id TEXT, ts REAL, current REAL);  -- capped 200/job
+CREATE TABLE milestones      (job_id TEXT, ts REAL, phase TEXT, msg TEXT);
+
+CREATE TABLE schedules (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, host TEXT,
+  cron TEXT, interval_sec INTEGER,          -- exactly one set
+  tz TEXT DEFAULT 'UTC', grace_sec INTEGER DEFAULT 1800,
+  enabled INTEGER DEFAULT 1, created_at REAL,
+  last_run_id TEXT, last_run_status TEXT, last_run_at REAL,
+  missed_since REAL, note TEXT
 );
 ```
 
-`progress_events` is pruned to most-recent 200 per job to keep DB compact.
-
-Job ID convention: `<slug-of-name>@<short-hostname>` (host-scoped). `jobctl id NAME` echoes it.
+Per-run logs: `/data/logs/<run_id>.log`, 5 MB/run server cap, 500 MB dir cap, pruned with their job rows (30 days).
 
 ---
 
 ## UI features
 
-- Mobile-first responsive (single column, big bars)
-- Auto-refresh every 2 sec via htmx
-- Progress bar color: blue=running, green=succeeded, red=failed, amber=stalled (>10 min no update)
-- Per-job: rate (B/s, MB/s), ETA, last-N-runs sparkline (history of completed runs of same `name`)
-- Recent succeeded jobs visible for 24 hr then drop off
-
----
-
-## Future work
-
-- AlertManager → ntfy webhook for failed/stalled jobs (AlertManager has empty receivers; would also light up MountRO/DiskSpace/etc rules)
-- Per-job log tail panel inline (currently a separate `/jobs/{id}/tail` endpoint)
-- Authentik SSO if exposing externally
-- Grafana dashboards via the `/metrics` endpoint for "this job vs historical runs" graphs
+- **Attention panel** at top: MISSED schedules, failed-last-run schedules, current stalls, failed runs from the last 7 days (latest-per-name; compact rows, first 10). Collapses to a green "all clear" line.
+- **Running** section: %, unit-aware rate (B/s or items/s), smoothed ETA, short run id, live log viewer (open state survives refresh via hx-preserve; "raw" link for full tail).
+- **Recent (24 h)**: latest run per name with a ×N count badge (click → that name's full history via `/?name=X`).
+- **Schedules** table: cadence, last run, next expected; missed rows highlighted.
+- Failed cards render their last 15 log lines inline — zero-click failure context.
+- Progress bar colors: blue=running, green=succeeded, red=failed, amber=stalled.
 
 ---
 
@@ -368,22 +336,28 @@ Job ID convention: `<slug-of-name>@<short-hostname>` (host-scoped). `jobctl id N
 
 **`jobctl: command not found` from `pct exec`** — `/usr/local/bin` not in non-login shell PATH. Use `/usr/local/bin/jobctl` explicitly.
 
-**500 on `/_partial/jobs`** — likely a Jinja template error. `docker logs jobsd` shows the trace. Templates are server-rendered and cached; rebuild with `docker compose up -d --build`.
+**Job "stuck" running** — sweeper marks it `stalled` after 10 min quiet (log appends and progress posts both count as life). Stalled auto-closes to `failed` (exit −1, msg `[auto-closed after stall]`) after 24 h. Manual close: `jobctl done NAME` (uses the state file / legacy id) or `jobctl done NAME --id <run_id>` (run id shown on the card).
 
-**Job "stuck" running** — since 2026-05-13 the server-side sweeper auto-marks any `running` job with `updated_at > JOBS_STALL_THRESHOLD_SEC` (default 10min) as `stalled`. A genuinely-orphaned watcher will surface in amber on its own within a minute. Manual override remains available:
-- Manual close: `jobctl done NAME --exit-code 0` from any host (host-scoped IDs — use `jobctl id NAME` to confirm exact ID)
-- Find + kill orphan watcher: `ps -ef | grep "jobctl track-file NAME"; kill <pid>` then `jobctl done NAME`
-- For long jobs that outlive a shell: run watchers in `tmux new-session -d -s "watch-NAME" 'jobctl track-file NAME …'` so they survive disconnection
-- `jobctl ls --running` lists every running/stalled row across hosts — quick self-audit for orphans
+**A schedule shows MISSED but the cron ran** — check `host` on the schedule matches what the job reports (`jobctl id NAME` on that host shows the `@host` part; containers need `JOBS_HOST`). Also check the schedule's `tz` — cron-type schedules are evaluated in their declared zone, not the container's.
 
-**Ctrl-C left a stuck row (pre-2026-05-13 behavior)** — fixed: `jobctl run` now traps SIGINT/SIGTERM and posts `done --exit-code 130` (INT) or `143` (TERM) before exiting. If you see this on an old jobctl, run `jobctl done NAME --exit-code 130`.
-
-**Heartbeat noise in `progress_events`** — `jobctl run`'s 30s heartbeat sends `{}` (no `current` field), so it bumps `updated_at` only and does not append a row to `progress_events`. Rate/ETA math is unaffected.
-
-**Watcher detached too early** — `track-file` exits when file size is flat for 5 polls. For jobs with long pauses (e.g., osmium fileinfo phase between steps), use longer interval: `--interval 120`.
-
-**Wrong size on directory tracking** — confirm that path is a directory; `jobctl track-file` uses `du -sb` for dirs vs `stat` for files. If you see flat 4096 bytes for a dir, the version of jobctl is pre-fix; redeploy from `/mnt/docker/jobsd/jobctl`.
+**Run id confusion in scripts** — `start` prints the run id and writes the state file; `done NAME` picks it up automatically in the common case. Concurrent same-name scripted runs must pass `--id`.
 
 **`401` from POSTs** — `~/.jobsrc` token doesn't match `/mnt/docker/jobsd/.env`. Re-sync.
 
-**DNS doesn't resolve `jobs.home` from a host** — that host isn't using AdGuard for DNS. Use `192.168.0.179:8077` directly.
+**500 on `/_partial/jobs`** — Jinja error; `docker logs jobsd` shows the trace; rebuild after fixing.
+
+**Heartbeat noise** — `{}` progress posts bump `updated_at` only; they never enter `progress_events`, so rate/ETA math is unaffected.
+
+**Watcher detached too early** — `track-file --auto-done` exits when size is flat for 5 polls; for jobs with long pauses use `--interval 120`.
+
+**DNS doesn't resolve `jobs.home`** — that host isn't using AdGuard DNS (CT124 is one). Use `192.168.0.179:8077` directly.
+
+**pve-poller silent** — check `/var/log/pve-poller.log` on CT128 and that `/root/.pve-poller.env` has all 5 keys. A dead poller surfaces as `pbs-nightly` MISSED within a few hours.
+
+---
+
+## Future work
+
+- Grafana dashboards via `/metrics` (`jobsd_schedule_missed` is alert-rule-ready if push alerting is ever wanted)
+- `jobctl log NAME` subcommand to tail a run's stored log from the CLI
+- Retention knob per-name (e.g. keep claude-health only 7 days)

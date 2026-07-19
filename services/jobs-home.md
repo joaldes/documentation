@@ -169,8 +169,10 @@ Seeded set (2026-07-19) — edit + re-run `/mnt/docker/jobsd/seed-schedules.sh`:
 | magazine-nightly@magazine | 02:00 daily | America/Phoenix | in-container cron |
 | magazine-weekly@magazine | 17:00 Fri | America/Phoenix | in-container cron |
 | system-inventory@Shipyard | hourly | UTC | Shipyard cron.d |
-| pbs-nightly@Shipyard | 04:00 daily | UTC | `/etc/pve/jobs.cfg` via pve-poller |
-| pbs-fileshares@Shipyard | 02:30 daily (+20 m jitter) | UTC | systemd timer + drop-in |
+| pbs-nightly@Shipyard | 04:00 daily | **America/Phoenix** | `/etc/pve/jobs.cfg` via pve-poller |
+| pbs-fileshares@Shipyard | 02:30 daily (+20 m jitter) | **America/Phoenix** | systemd timer; script-internal jobctl |
+
+⚠ **Shipyard timers/PVE schedules fire in host-local time (Phoenix), not UTC** — discovered 2026-07-19 after first seeding them as UTC. Container crons on CT128 really are UTC.
 
 **Cron TZ rule**: the jobsd container runs `TZ=America/Phoenix` but most host crons are UTC — every cron-type schedule carries an explicit `tz`, and the server evaluates the cron grid in that zone (croniter).
 
@@ -182,7 +184,7 @@ All previously-unmonitored crons were jobctl-wrapped on 2026-07-19: CT124 cronta
 
 - **pve-poller** (`/mnt/docker/jobsd/pve-poller.py`, cron `*/10` on CT128) reads finished `vzdump` tasks from the PVE API (`claude@pam!api` token, config `/root/.pve-poller.env` mode 600) and one-shot-reports each unseen UPID via `POST /runs/report` as job `pbs-nightly@Shipyard.<hex>` with the task's real start/end times. Failed tasks get the last 100 lines of the PVE task log attached. Seen-UPID state: `/var/lib/pve-poller/seen.upids`.
 - The poller is deliberately **not** jobctl-wrapped: if it dies, `pbs-nightly` goes MISSED on the dashboard — that *is* the alarm.
-- **pbs-backup-fileshares** (systemd oneshot on Shipyard) reports itself via drop-in `/etc/systemd/system/pbs-backup-fileshares.service.d/20-jobctl.conf`: `ExecStartPre` → `jobctl start`, `ExecStopPost` → `jobctl done --exit-code $EXIT_STATUS`. The service's `HOME=/root` override (older fix) is required for jobctl.
+- **pbs-backup-fileshares** (systemd oneshot on Shipyard) needs no drop-in: `/usr/local/bin/pbs-fileshares-backup.sh` already wraps the backup in `jobctl run pbs-fileshares --total <bytes>` with a sidecar progress reporter (`pbs-progress-reporter.sh`) — job name **pbs-fileshares**, which is what the watchdog schedule matches. (A redundant drop-in added 2026-07-19 was removed the same day. The sidecar reporter depends on jobctl `run` writing its state file — v2 ≥ 2026-07-19 does.) The service's `HOME=/root` override is required for jobctl.
 
 ---
 

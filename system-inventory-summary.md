@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-20 20:00 UTC*
+*Last updated: 2026-07-20 21:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 0.72, 1.06, 1.32 | RAM: 34/62 GB | Uptime: 13 days
+**Shipyard** (192.168.0.151) | CPU: 4.56, 4.36, 10.24 | RAM: 27/62 GB | Uptime: 13 days
 
-**56 services** — 27 LXC containers, 29 Docker stacks, 3 VMs, 12 storage pools
+**55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 12 storage pools
 
-## All Services (56)
+## All Services (55)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -17,7 +17,6 @@
 | cartography | lxc | 192.168.0.229 | - | - | running |
 | claudeai | lxc | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | emby | lxc | 192.168.0.13 | 8096 | http://192.168.0.13:8096 | running |
-| foundry-old | lxc | 192.168.0.130 | - | - | running |
 | fragments | docker | 192.168.0.179 | 8075 | http://192.168.0.179:8075 | running |
 | frigate | docker | 192.168.0.179 | 5000 | http://192.168.0.179:5000 | running |
 | garmin | lxc | 192.168.0.132 | - | - | running |
@@ -65,7 +64,7 @@
 | wikijs | lxc | 192.168.0.57 | 3000 | http://192.168.0.57:3000 | running |
 | zwave-js-ui | lxc | 192.168.0.153 | 8091 | http://192.168.0.153:8091 | running |
 
-## LXC Containers (27)
+## LXC Containers (26)
 | CT | Name | IP | Port | URL | Status |
 |-----|------------------|----------------|-------|------------------------------|---------|
 | 101 | adguard | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -89,7 +88,6 @@
 | 121 | scanopy | 192.168.0.219 | - | - | stopped |
 | 124 | claudeai | 192.168.0.180 | 3000 | http://192.168.0.180:3000 | running |
 | 128 | komodo | 192.168.0.179 | 9120 | http://192.168.0.179:9120 | running |
-| 130 | foundry-old | 192.168.0.130 | - | - | running |
 | 131 | cartography | 192.168.0.229 | - | - | running |
 | 132 | garmin | 192.168.0.132 | - | - | running |
 | 133 | vpn | 192.168.0.220 | - | - | running |
@@ -150,4 +148,4 @@
 | smb-frigate | dir | 591/1510 | 39% |
 | smb-hometheater | dir | 17516/29679 | 59% |
 | smb-pictures | dir | 3918/6046 | 64% |
-| ssd | lvmthin | 345/1740 | 19% |
+| ssd | lvmthin | 291/1740 | 16% |

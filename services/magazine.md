@@ -1,6 +1,6 @@
 # The Curious — Self-Writing Fun-Fact Magazine
 
-**Last Updated**: 2026-07-15
+**Last Updated**: 2026-07-19
 **Related Systems**: CT 128 (Komodo/Docker), jobs.home, Trailhead, AdGuard (CT 101)
 
 ## Summary
@@ -138,11 +138,44 @@ docker exec magazine cat /data/cron.log
   SET status='drafting', owner=NULL, lease_until=NULL, spike_reason=NULL,
   updated_at=datetime('now') WHERE id=N;` then run `--resume` (one-off headroom:
   `docker exec -d -e MAG_TURN_BUDGET=140 magazine ...`).
+- **Spikes/failures reading `no JSON object in agent output`, always in `phase_write`** → the
+  Writer exhausted its *per-agent* `max_turns` (distinct from `MAG_TURN_BUDGET`) and returned the
+  prose it had emitted so far. Fixed 2026-07-19 by raising the writer's cap 8→14 (clamped by the
+  remaining turn budget) and adding the "deliver in ONE reply" rule to `agents.WRITER`.
+  Diagnosis notes, because this one is easy to misread:
+  - `max_turns` is a **hard cap, not a target**, so raising it costs nothing on the normal path.
+    A replay of article 117's exact failing input needed **turn 5 of 8** — the margin was simply
+    too thin, and revision rounds (bigger input) are where it ran out.
+  - Distinguish the two `_extract_json` messages: *"no JSON object"* means the reply had prose but
+    no `{` (turns exhausted **after** some text), while *"empty agent output"* means no text at all
+    (exhausted **before** any). Both are `error_max_turns` underneath — which used to be swallowed
+    silently; `run_agent` now logs `[agent] <phase>: error_max_turns after N turns (cap M)`.
+  - `_retry_parse` could never rescue this: it opens a **fresh session** with no history, so it was
+    asking the model to re-emit an article it had never seen. It now carries the original
+    `user_message`.
+  - Symptom to watch for: three of five nights produced nothing 07-17→19 while the *dashboard*
+    complained about something unrelated (see the MISSED note below).
+- **`MAGAZINE-NIGHTLY`/`MAGAZINE-WEEKLY` showing MISSED on jobs.home while the magazine is
+  demonstrably running** → the orchestrator used to report only per-article `magazine-<id>` jobs;
+  the module-level `JOB_NAME` was dead code because `job_start()` overwrites the `_CUR_JOB` global.
+  jobsd matches schedules on exact `(name, host)`, so the seeded `magazine-nightly`/`magazine-weekly`
+  schedules never saw a run. Fixed 2026-07-19 with `umbrella_job()` in `orchestrator.py`, which wraps
+  the whole `--nightly`/`--weekly` run and addresses its own run via explicit `jobctl --id` (immune
+  to the `_CUR_JOB` mutation; per-name state files never collide). The umbrella reports exit 0 **only
+  if an article actually published**. Note `missed_since` on the dashboard is *when the sweeper first
+  noticed*, not when the run was due — a freshly-seeded schedule reads as "missed Xh ago" immediately.
 - **A crashed `--resume`/`--nightly` leaving rows stuck in `picking`** → contained since
   2026-07-15: `resume_all()` catches per-row `ValueError` (e.g. *"no JSON object in agent
   output"* from an empty CLI response) and marks just that row `failed` instead of crashing the
   batch. Before this, a driver loop retrying a crashing `--nightly` inserted an empty `picking`
-  row per attempt (rows 87–108, 2026-07-14/15).
+  row per attempt (rows 87–108, 2026-07-14/15). The `run_one` path got the equivalent guard on
+  2026-07-19: `process()` now catches any exception, prints the traceback and `spike()`s that one
+  article. Before that, a `ValueError` from a phase propagated through `run_one` → `go()` and killed
+  the whole nightly, so the 3-attempt retry loop never ran and the row stayed owned until
+  `janitor()` swept it 12h later (`spike_reason: janitor: stuck >12h` — that string means the run
+  *crashed*, not that the article was editorially rejected). A revision-round write failure is also
+  forgiven once: the prior draft is kept, `_pending_corrections` cleared, and the article re-enters
+  claim-freeze → fact-check on the unmodified draft, so nothing unchecked can reach print.
 - **Spikes reading `fact-check corrections did not converge`** → the adversarial Fact-Checker keeps
   returning `recommendation:"correct"` with residual nits until the revision budget runs out. First
   confirm it's *not* auth (interactive `docker exec magazine claude -p "hi"` returns text, and

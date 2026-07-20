@@ -1,7 +1,7 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-16 04:00 UTC*
+*Last updated: 2026-07-20 05:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 4.50, 4.62, 3.62 | RAM: 37/62 GB | Uptime: 8 days
+**Shipyard** (192.168.0.151) | CPU: 4.00, 4.23, 4.49 | RAM: 31/62 GB | Uptime: 12 days
 
 **57 services** — 27 LXC containers, 30 Docker stacks, 3 VMs, 12 storage pools
 
@@ -25,7 +25,7 @@
 | homelable | lxc | 192.168.0.218 | - | - | stopped |
 | homepage | lxc | 192.168.0.70 | 3000 | http://192.168.0.70:3000 | stopped |
 | hometheaterfiles | docker | 192.168.0.179 | 8100 | http://192.168.0.179:8100 | running |
-| immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | running |
+| immich | docker | 192.168.0.179 | 2283 | http://192.168.0.179:2283 | stopped |
 | jellyseerr | lxc | 192.168.0.43 | 5055 | http://192.168.0.43:5055 | running |
 | jellystat | docker | 192.168.0.179 | 3000 | http://192.168.0.179:3000 | running |
 | jobsd | docker | 192.168.0.179 | 8077 | http://192.168.0.179:8077 | running |
@@ -108,7 +108,7 @@
 | frigate | 5000 | 1/1 | 1 | running | http://192.168.0.179:5000 |
 | grafana | 3001 | 1/1 | 1 | running | http://192.168.0.179:3001 |
 | hometheaterfiles | 8100 | 1/1 | 0 | running | http://192.168.0.179:8100 |
-| immich | 2283 | 5/5 | 5 | running | http://192.168.0.179:2283 |
+| immich | 2283 | 0/5 | 0 | stopped | http://192.168.0.179:2283 |
 | jellystat | 3000 | 2/2 | 2 | running | http://192.168.0.179:3000 |
 | jobsd | 8077 | 1/1 | 1 | running | http://192.168.0.179:8077 |
 | komodo | 9120 | 4/4 | 1 | running | http://192.168.0.179:9120 |
@@ -144,12 +144,12 @@
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
 | container-backups | dir | 0/0 | 0% |
-| docker-data | dir | 245/1006 | 24% |
-| local | dir | 50/93 | 54% |
-| local-lvm | lvmthin | 125/348 | 35% |
-| pbs-homelab | pbs | 3228/7110 | 45% |
+| docker-data | dir | 248/1006 | 24% |
+| local | dir | 50/93 | 53% |
+| local-lvm | lvmthin | 125/348 | 36% |
+| pbs-homelab | pbs | 3810/7110 | 53% |
 | smb-documents | dir | 82/491 | 16% |
-| smb-frigate | dir | 449/1510 | 29% |
-| smb-hometheater | dir | 17460/29679 | 58% |
-| smb-pictures | dir | 2571/6046 | 42% |
-| ssd | lvmthin | 326/1740 | 18% |
+| smb-frigate | dir | 591/1510 | 39% |
+| smb-hometheater | dir | 17511/29679 | 59% |
+| smb-pictures | dir | 3817/6046 | 63% |
+| ssd | lvmthin | 347/1740 | 19% |

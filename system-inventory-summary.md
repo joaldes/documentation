@@ -1,9 +1,9 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-20 21:00 UTC*
+*Last updated: 2026-07-20 22:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 4.56, 4.36, 10.24 | RAM: 27/62 GB | Uptime: 13 days
+**Shipyard** (192.168.0.151) | CPU: 1.04, 1.00, 1.23 | RAM: 27/62 GB | Uptime: 13 days
 
-**55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 12 storage pools
+**55 services** — 26 LXC containers, 29 Docker stacks, 3 VMs, 11 storage pools
 
 ## All Services (55)
 | Name | Type | IP | Port | URL | Status |
@@ -134,12 +134,11 @@
 | 106 | WindowsXP | stopped |
 | 119 | WindowsTiny10 | stopped |
 
-## Storage (12)
+## Storage (11)
 | ID | Type | Used/Total GB | % Used |
 |-----------------|---------|---------------|--------|
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
-| container-backups | dir | 0/0 | 0% |
 | docker-data | dir | 249/1006 | 24% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 125/348 | 36% |

@@ -150,9 +150,14 @@ docker exec magazine cat /data/cron.log
     no `{` (turns exhausted **after** some text), while *"empty agent output"* means no text at all
     (exhausted **before** any). Both are `error_max_turns` underneath — which used to be swallowed
     silently; `run_agent` now logs `[agent] <phase>: error_max_turns after N turns (cap M)`.
-  - `_retry_parse` could never rescue this: it opens a **fresh session** with no history, so it was
-    asking the model to re-emit an article it had never seen. It now carries the original
-    `user_message`.
+  - Parse recovery is now two-tier. **Tier 1** re-asks *inside the still-open session*, where the
+    model already holds its own reply and only has to re-serialize it (verified: a second query on a
+    live session retains full context). Tier 1 is **skipped after `error_max_turns`** — that
+    session's allowance is already spent. **Tier 2** opens a fresh session and redoes the phase,
+    which is why it must carry the original `user_message`: previously it passed only the system
+    prompt plus 300 chars of the bad reply, i.e. it asked the model to re-emit an article it had
+    never seen, so it could never rescue the Writer. Tier 2 is skipped when fewer than 4 turns
+    remain (`turns_left`), since spiking is cheaper than overshooting the budget.
   - Symptom to watch for: three of five nights produced nothing 07-17→19 while the *dashboard*
     complained about something unrelated (see the MISSED note below).
 - **`MAGAZINE-NIGHTLY`/`MAGAZINE-WEEKLY` showing MISSED on jobs.home while the magazine is

@@ -1,11 +1,11 @@
 # System Inventory — Shipyard
-*Last updated: 2026-07-20 05:00 UTC*
+*Last updated: 2026-07-20 20:00 UTC*
 
-**Shipyard** (192.168.0.151) | CPU: 4.00, 4.23, 4.49 | RAM: 31/62 GB | Uptime: 12 days
+**Shipyard** (192.168.0.151) | CPU: 0.72, 1.06, 1.32 | RAM: 34/62 GB | Uptime: 13 days
 
-**57 services** — 27 LXC containers, 30 Docker stacks, 3 VMs, 12 storage pools
+**56 services** — 27 LXC containers, 29 Docker stacks, 3 VMs, 12 storage pools
 
-## All Services (57)
+## All Services (56)
 | Name | Type | IP | Port | URL | Status |
 |------------------|--------|----------------|-------|------------------------------|---------|
 | adguard | lxc | 192.168.0.11 | 80 | http://192.168.0.11:80 | running |
@@ -47,7 +47,6 @@
 | reyday | docker | 192.168.0.179 | 8105 | http://192.168.0.179:8105 | running |
 | samba | lxc | 192.168.0.176 | - | - | running |
 | scanopy | lxc | 192.168.0.219 | - | - | stopped |
-| screener | docker | 192.168.0.179 | 8087 | http://192.168.0.179:8087 | running |
 | servarr | lxc | 192.168.0.135 | - | - | running |
 | sftp | docker | 192.168.0.179 | 8070 | http://192.168.0.179:8070 | running |
 | shoplist | docker | 192.168.0.179 | 8086 | http://192.168.0.179:8086 | running |
@@ -97,7 +96,7 @@
 | 134 | pbs | 192.168.0.134 | - | - | running |
 | 135 | servarr | 192.168.0.135 | - | - | running |
 
-## Docker Stacks (30) — 192.168.0.179
+## Docker Stacks (29) — 192.168.0.179
 | Stack | Port | Containers | Healthy | Status | URL |
 |---------------|------|------------|---------|---------|--------------------------------|
 | authentik | 9000 | 0/4 | 0 | stopped | http://192.168.0.179:9000 |
@@ -122,7 +121,6 @@
 | profilarr | 5005 | 2/2 | 2 | running | http://192.168.0.179:5005 |
 | prometheus | 9092 | 5/5 | 3 | running | http://192.168.0.179:9092 |
 | reyday | 8105 | 1/1 | 0 | running | http://192.168.0.179:8105 |
-| screener | 8087 | 1/1 | 0 | running | http://192.168.0.179:8087 |
 | sftp | 8070 | 1/1 | 0 | running | http://192.168.0.179:8070 |
 | shoplist | 8086 | 1/1 | 0 | running | http://192.168.0.179:8086 |
 | tandoor | 8090 | 2/2 | 2 | running | http://192.168.0.179:8090 |
@@ -144,12 +142,12 @@
 | backups | dir | 6739/10158 | 66% |
 | birdnet | dir | 0/294 | 0% |
 | container-backups | dir | 0/0 | 0% |
-| docker-data | dir | 248/1006 | 24% |
+| docker-data | dir | 249/1006 | 24% |
 | local | dir | 50/93 | 53% |
 | local-lvm | lvmthin | 125/348 | 36% |
-| pbs-homelab | pbs | 3810/7110 | 53% |
+| pbs-homelab | pbs | 4579/7110 | 64% |
 | smb-documents | dir | 82/491 | 16% |
 | smb-frigate | dir | 591/1510 | 39% |
-| smb-hometheater | dir | 17511/29679 | 59% |
-| smb-pictures | dir | 3817/6046 | 63% |
-| ssd | lvmthin | 347/1740 | 19% |
+| smb-hometheater | dir | 17516/29679 | 59% |
+| smb-pictures | dir | 3918/6046 | 64% |
+| ssd | lvmthin | 345/1740 | 19% |
